@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pending Approvals - RVRG Store Management</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+    <!-- Top Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
+        <div class="container-fluid">
+            <a class="navbar-brand fw-bold" href="dashboard.html">
+                <i class="fa-solid fa-boxes-stacked me-2"></i>RVRG Store Management
+            </a>
+            <div class="d-flex align-items-center text-white">
+                <span class="me-3" id="userBadge"><i class="fa-solid fa-user-shield me-1"></i> <span id="currentUserName">Development User</span></span>
+                <a href="dashboard.html" class="btn btn-outline-light btn-sm">Dashboard</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container my-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 class="fw-bold text-dark"><i class="fa-solid fa-clipboard-check me-2 text-primary"></i>Material Request Approvals</h3>
+            <button class="btn btn-secondary btn-sm" id="btnRefreshApprovals">
+                <i class="fa-solid fa-rotate-right me-1"></i>Refresh List
+            </button>
+        </div>
+
+        <!-- Pending Approvals Table -->
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white border-bottom-0 pt-3 pb-0">
+                <h5 class="card-title text-muted">Tickets Awaiting Approval</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Ticket No</th>
+                                <th>Department & Tech</th>
+                                <th>Material Details</th>
+                                <th>Qty</th>
+                                <th>Location & Type</th>
+                                <th class="text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pendingApprovalsTable">
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-4">Loading pending requests...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rejection Modal -->
+    <div class="modal fade" id="rejectModal" tabindex="-1" aria-labelledby="rejectModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="rejectModalLabel">Confirm Rejection</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to reject ticket <strong id="rejectTicketNoDisplay"></strong>?</p>
+                    <div class="mb-3">
+                        <label for="rejectReason" class="form-label fw-semibold">Reason for Rejection</label>
+                        <textarea class="form-control" id="rejectReason" rows="3" placeholder="Enter reason (optional)"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirmRejectBtn">Confirm Reject</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <script src="common.js"></script>
+    <!-- Logic script for this module -->
+    <script src="approvals.js"></script>
+</body>
+</html>

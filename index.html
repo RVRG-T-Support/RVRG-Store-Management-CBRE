@@ -72,11 +72,10 @@ if (error || !data) throw new Error("Invalid User ID or Password");
 
                 // Save active session
 localStorage.setItem('RVRG_ACTIVE_USER', JSON.stringify({
-id: data.id,
-name: data.name,
-role: data.role
+    id: data.id,
+    name: data.full_name,
+    role: data.role
 }));
-
 window.location.href = 'dashboard.html';
 
 } catch (err) {

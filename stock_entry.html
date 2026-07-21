@@ -11,14 +11,9 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     
     <style>
-        .item-row-input {
-            min-width: 120px;
-        }
-        /* Highlight the calculated total */
-        .calculated-total {
-            background-color: #e9ecef;
-            font-weight: bold;
-        }
+        .item-row-input { min-width: 120px; }
+        .calculated-total { background-color: #e9ecef; font-weight: bold; }
+        .upload-section { background-color: #f8f9fa; border: 1px dashed #ced4da; padding: 10px; border-radius: 5px; }
     </style>
 </head>
 <body class="bg-light">
@@ -62,7 +57,7 @@
                             <select class="form-select" id="gstType">
                                 <option value="Included">Included in Price</option>
                                 <option value="Excluded">Excluded (Extra)</option>
-                            </option>
+                            </select>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label fw-semibold">Transportation Cost (₹)</label>
@@ -71,7 +66,6 @@
                         <div class="col-md-3 mt-3">
                             <label class="form-label fw-bold text-dark">Billed Invoice Amount (₹) <span class="text-danger">*</span></label>
                             <input type="number" step="0.01" class="form-control border-primary shadow-sm" id="billedAmount" required placeholder="Total on physical bill">
-                            <small class="text-muted">Enter the exact total from the paper invoice.</small>
                         </div>
                     </div>
                 </div>
@@ -79,12 +73,25 @@
 
             <!-- Details Section: Material Items -->
             <div class="card shadow-sm border-0 mb-4">
-                <div class="card-header bg-white pt-3 pb-2 border-bottom-0 d-flex justify-content-between align-items-center">
+                <div class="card-header bg-white pt-3 pb-2 border-bottom-0 d-flex flex-wrap justify-content-between align-items-center">
                     <h5 class="card-title text-primary mb-0"><i class="fa-solid fa-boxes-packing me-2"></i>2. Material Items</h5>
-                    <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddRow">
-                        <i class="fa-solid fa-plus me-1"></i> Add Row
+                    
+                    <!-- EXCEL BULK UPLOAD TOOLS -->
+                    <div class="d-flex align-items-center upload-section gap-2 mt-2 mt-md-0">
+                        <button type="button" class="btn btn-sm btn-outline-secondary fw-bold" id="btnDownloadTemplate" title="Download Excel Format">
+                            <i class="fa-solid fa-download me-1"></i> Template
+                        </button>
+                        <input class="form-control form-control-sm" type="file" id="excelUpload" accept=".xlsx, .xls" style="max-width: 200px;">
+                        <button type="button" class="btn btn-sm btn-success fw-bold" id="btnProcessExcel">
+                            <i class="fa-solid fa-file-excel me-1"></i> Upload
+                        </button>
+                    </div>
+
+                    <button type="button" class="btn btn-sm btn-outline-primary mt-2 mt-md-0" id="btnAddRow">
+                        <i class="fa-solid fa-plus me-1"></i> Add Manual Row
                     </button>
                 </div>
+                
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-bordered align-middle mb-0 text-center" id="itemsTable">
@@ -99,7 +106,7 @@
                                 </tr>
                             </thead>
                             <tbody id="stockEntryItems">
-                                <!-- Dynamic rows will be injected here via JS -->
+                                <!-- Dynamic rows -->
                             </tbody>
                             <tfoot class="table-secondary">
                                 <tr>
@@ -113,16 +120,15 @@
                 </div>
             </div>
 
-            <!-- Save Button -->
             <div class="text-end mb-5">
-                <button type="submit" class="btn btn-success btn-lg fw-bold shadow">
+                <button type="submit" class="btn btn-primary btn-lg fw-bold shadow">
                     <i class="fa-solid fa-floppy-disk me-2"></i> Verify & Save Stock Entry
                 </button>
             </div>
         </form>
     </div>
 
-    <!-- Confirmation Modal -->
+    <!-- Confirmation Modal (Kept exactly the same) -->
     <div class="modal fade" id="confirmStockModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow">
@@ -130,40 +136,22 @@
                     <h5 class="modal-title"><i class="fa-solid fa-clipboard-check me-2"></i>Confirm Stock Entry</h5>
                 </div>
                 <div class="modal-body bg-light">
-                    <div class="alert alert-info mb-3">
-                        Please verify the details below match the physical invoice before saving.
-                    </div>
+                    <div class="alert alert-info mb-3">Please verify the details below match the physical invoice before saving.</div>
                     <table class="table table-sm table-borderless mb-0">
                         <tbody>
-                            <tr>
-                                <td class="text-muted fw-semibold">Invoice Number:</td>
-                                <td class="fw-bold text-end" id="modalInvoiceNo"></td>
-                            </tr>
-                            <tr>
-                                <td class="text-muted fw-semibold">Total Unique Items:</td>
-                                <td class="fw-bold text-end"><span class="badge bg-dark fs-6" id="modalItemCount">0</span></td>
-                            </tr>
-                            <tr class="border-bottom">
-                                <td class="text-muted fw-semibold pb-2">Billed Invoice Amount:</td>
-                                <td class="fw-bold text-end pb-2" id="modalBilledAmount"></td>
-                            </tr>
-                            <tr>
-                                <td class="text-muted fw-semibold pt-2">System Calculated Total:</td>
-                                <td class="fw-bold text-end pt-2 text-primary fs-5" id="modalCalculatedTotal"></td>
-                            </tr>
+                            <tr><td class="text-muted fw-semibold">Invoice Number:</td><td class="fw-bold text-end" id="modalInvoiceNo"></td></tr>
+                            <tr><td class="text-muted fw-semibold">Total Unique Items:</td><td class="fw-bold text-end"><span class="badge bg-dark fs-6" id="modalItemCount">0</span></td></tr>
+                            <tr class="border-bottom"><td class="text-muted fw-semibold pb-2">Billed Invoice Amount:</td><td class="fw-bold text-end pb-2" id="modalBilledAmount"></td></tr>
+                            <tr><td class="text-muted fw-semibold pt-2">System Calculated Total:</td><td class="fw-bold text-end pt-2 text-primary fs-5" id="modalCalculatedTotal"></td></tr>
                         </tbody>
                     </table>
                     <div id="mismatchWarning" class="alert alert-danger mt-3 d-none">
-                        <i class="fa-solid fa-triangle-exclamation me-2"></i><strong>Warning:</strong> The calculated total does not match your billed amount. Please edit and correct it.
+                        <i class="fa-solid fa-triangle-exclamation me-2"></i><strong>Warning:</strong> Calculated total does not match billed amount.
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" id="btnEditEntry">
-                        <i class="fa-solid fa-pen me-1"></i> Edit / Go Back
-                    </button>
-                    <button type="button" class="btn btn-success fw-bold" id="btnConfirmSave">
-                        <i class="fa-solid fa-check-double me-1"></i> Confirm & Save
-                    </button>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Edit / Go Back</button>
+                    <button type="button" class="btn btn-success fw-bold" id="btnConfirmSave">Confirm & Save</button>
                 </div>
             </div>
         </div>
@@ -172,9 +160,12 @@
     <!-- Dependencies -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Add SheetJS for Excel functionality -->
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    
     <script src="config.js"></script>
     <script src="common.js"></script>
-    <!-- Logic script for this module -->
+    <!-- Logic script -->
     <script src="stock_entry.js"></script>
 </body>
 </html>

@@ -111,14 +111,14 @@ async function loadRecentRequests() {
 
         tbody.innerHTML = '';
         data.forEach(req => {
-            const deptName = req.departments ? req.departments.name : 'N/A';
+            const deptName = '-';
             const tr = document.createElement('tr');
             
             tr.innerHTML = `
                 <td class="fw-bold text-primary">${req.ticket_no}</td>
                 <td>${req.requested_by || 'Unknown'}</td>
                 <td>${deptName}</td>
-                <td>${getStatusBadge(req.status)}</td>
+                <td>${getStatusBadge(req.request_status)}</td>
             `;
             tbody.appendChild(tr);
         });

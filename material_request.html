@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Material Request - RVRG Store Management</title>
+    
+    <!-- 1. Bootstrap 5 CSS (100% Free CDN for styling) -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+    <!-- Top Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
+        <div class="container-fluid">
+            <a class="navbar-brand fw-bold" href="dashboard.html">
+                <i class="fa-solid fa-boxes-stacked me-2"></i>RVRG Store Management
+            </a>
+            <div class="d-flex align-items-center text-white">
+                <span class="me-3" id="userBadge"><i class="fa-solid fa-user me-1"></i> Development User</span>
+                <a href="dashboard.html" class="btn btn-outline-light btn-sm">Dashboard</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container my-4">
+        <div class="row">
+            
+            <!-- LEFT COLUMN: Material Request Form -->
+            <div class="col-lg-5 mb-4">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-primary text-white fw-bold">
+                        <i class="fa-solid fa-file-signature me-2"></i>Raise Material Request Ticket
+                    </div>
+                    <div class="card-body">
+                        <form id="materialRequestForm">
+                            
+                            <!-- Ticket Type Selection -->
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Complaint Type</label>
+                                <select class="form-select" id="ticketType" required>
+                                    <option value="" selected disabled>Select Type</option>
+                                    <option value="Flat / Chargeable">Flat / Chargeable</option>
+                                    <option value="Common Area / Free">Common Area / Free</option>
+                                </select>
+                            </div>
+
+                            <!-- Flat No / Location -->
+                            <div class="mb-3" id="locationGroup">
+                                <label class="form-label fw-semibold" id="locationLabel">Flat / Location Reference</label>
+                                <input type="text" class="form-control" id="locationInput" placeholder="e.g., Flat 402 or Block A Lift Lobby" required>
+                            </div>
+
+                            <!-- Department Dropdown -->
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Department</label>
+                                <select class="form-select" id="departmentSelect" required>
+                                    <option value="" selected disabled>Loading departments...</option>
+                                </select>
+                            </div>
+
+                            <!-- Technician Dropdown -->
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Technician</label>
+                                <select class="form-select" id="technicianSelect" required>
+                                    <option value="" selected disabled>Select Technician</option>
+                                </select>
+                            </div>
+
+                            <!-- Material Selection -->
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Select Material</label>
+                                <select class="form-select" id="materialSelect" required>
+                                    <option value="" selected disabled>Select Department First</option>
+                                </select>
+                            </div>
+
+                            <!-- Material Price Display (Auto-calculated) -->
+                            <div class="p-3 mb-3 bg-light border rounded" id="priceDisplayBox">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="text-muted small">Item Price:</span>
+                                    <span class="fw-bold text-success fs-5" id="unitPriceDisplay">₹ 0.00</span>
+                                </div>
+                                <small class="text-muted d-block mt-1" id="gstNote">GST info will appear here</small>
+                            </div>
+
+                            <!-- Quantity Input -->
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Requested Quantity</label>
+                                <input type="number" class="form-control" id="requestQuantity" min="1" placeholder="Enter quantity" required>
+                            </div>
+
+                            <!-- Remarks / Reason -->
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Reason / Remarks</label>
+                                <textarea class="form-control" id="requestRemarks" rows="2" placeholder="Describe the issue or work..."></textarea>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary w-100 fw-bold py-2">
+                                <i class="fa-solid fa-paper-plane me-2"></i>Submit Ticket Request
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT COLUMN: Recent Requests Table -->
+            <div class="col-lg-7">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-secondary text-white fw-bold d-flex justify-content-between align-items-center">
+                        <span><i class="fa-solid fa-list-check me-2"></i>Recent Material Requests</span>
+                        <button class="btn btn-light btn-sm text-dark" id="btnRefreshTable">
+                            <i class="fa-solid fa-rotate-right me-1"></i>Refresh
+                        </button>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Ticket ID</th>
+                                        <th>Details</th>
+                                        <th>Material</th>
+                                        <th>Qty</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recentRequestsTable">
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted py-4">Loading requests...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- 2. Dependencies (Supabase CDN, Config, Common JS) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <script src="common.js"></script>
+    <!-- 3. Logic script for this module -->
+    <script src="material_request.js"></script>
+</body>
+</html>

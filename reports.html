@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports & Analytics - RVRG Store Management</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+    <!-- Top Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
+        <div class="container-fluid">
+            <a class="navbar-brand fw-bold" href="dashboard.html">
+                <i class="fa-solid fa-boxes-stacked me-2"></i>RVRG Store Management
+            </a>
+            <div class="d-flex align-items-center text-white">
+                <span class="me-3" id="userBadge"><i class="fa-solid fa-user me-1"></i> <span id="currentUserName">Development User</span></span>
+                <a href="dashboard.html" class="btn btn-outline-light btn-sm">Dashboard</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid px-4 my-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 class="fw-bold text-dark"><i class="fa-solid fa-chart-line me-2 text-success"></i>System Reports</h3>
+            <!-- Download Button (Hidden by default, enabled by JS for Master Users) -->
+            <button class="btn btn-success fw-bold d-none" id="btnExportReport">
+                <i class="fa-solid fa-file-excel me-2"></i>Download Report
+            </button>
+        </div>
+
+        <!-- Filter Control Panel -->
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-white pt-3 pb-2 border-bottom-0">
+                <h6 class="card-title text-muted mb-0"><i class="fa-solid fa-filter me-2"></i>Report Filters</h6>
+            </div>
+            <div class="card-body bg-light rounded-bottom">
+                <form id="reportFilterForm" class="row g-3 align-items-end">
+                    
+                    <!-- Date Range -->
+                    <div class="col-md-2">
+                        <label class="form-label fw-semibold small">From Date</label>
+                        <input type="date" class="form-control form-control-sm" id="filterFromDate" required>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-semibold small">To Date</label>
+                        <input type="date" class="form-control form-control-sm" id="filterToDate" required>
+                    </div>
+
+                    <!-- Department -->
+                    <div class="col-md-2">
+                        <label class="form-label fw-semibold small">Department</label>
+                        <select class="form-select form-select-sm" id="filterDepartment">
+                            <option value="ALL">All Departments</option>
+                            <option value="Electrical">Electrical</option>
+                            <option value="Plumbing">Plumbing</option>
+                            <option value="Carpentry">Carpentry</option>
+                            <option value="Civil">Civil</option>
+                            <option value="Housekeeping">Housekeeping</option>
+                            <option value="Painting">Painting</option>
+                            <option value="Security">Security</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+
+                    <!-- Transaction Type -->
+                    <div class="col-md-2">
+                        <label class="form-label fw-semibold small">Record Type</label>
+                        <select class="form-select form-select-sm" id="filterRecordType">
+                            <option value="CONSUMPTION">Material Consumption</option>
+                            <option value="PURCHASE">Stock Purchase (In)</option>
+                        </select>
+                    </div>
+
+                    <!-- Area Type -->
+                    <div class="col-md-2">
+                        <label class="form-label fw-semibold small">Area Type</label>
+                        <select class="form-select form-select-sm" id="filterAreaType">
+                            <option value="ALL">All Areas</option>
+                            <option value="Flat / Chargeable">Flat / Chargeable</option>
+                            <option value="Common Area / Free">Common Area / Free</option>
+                        </select>
+                    </div>
+
+                    <!-- Generate Button -->
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold">
+                            <i class="fa-solid fa-magnifying-glass me-1"></i> Generate
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Report Results Table -->
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover align-middle mb-0 text-center">
+                        <thead class="table-dark" id="reportTableHeader">
+                            <!-- Headers injected via JS based on report type -->
+                            <tr>
+                                <th>Date</th>
+                                <th>Ticket/Invoice</th>
+                                <th>Material</th>
+                                <th>Department</th>
+                                <th>Area Type</th>
+                                <th>Quantity</th>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reportTableBody">
+                            <tr>
+                                <td colspan="7" class="text-center text-muted py-5">
+                                    <i class="fa-solid fa-chart-bar fs-1 text-light mb-3 d-block"></i>
+                                    Select filters and click Generate to view data.
+                                </td>
+                            </tr>
+                        </tbody>
+                        <tfoot class="table-secondary fw-bold" id="reportTableFooter" style="display: none;">
+                            <tr>
+                                <td colspan="5" class="text-end">Total Amount:</td>
+                                <td id="totalQuantity">-</td>
+                                <td id="totalValue" class="text-success">₹ 0.00</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Optional: SheetJS for Excel Export -->
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    
+    <script src="config.js"></script>
+    <script src="common.js"></script>
+    <!-- Logic script for this module -->
+    <script src="reports.js"></script>
+</body>
+</html>

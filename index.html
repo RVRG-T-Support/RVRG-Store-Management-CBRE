@@ -42,10 +42,14 @@
         <div id="loginError" class="alert alert-danger mt-3 d-none text-center small py-2"></div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
     <script>
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // Safe client initialization
+        if (typeof window.supabaseClient === 'undefined') {
+            window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        }
+        const supabase = window.supabaseClient;
         
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -59,7 +63,6 @@
             const password = document.getElementById('loginPassword').value.trim();
 
             try {
-                // Check users_master table for credentials
                 const { data, error } = await supabase
                     .from('users_master')
                     .select('*')
@@ -69,7 +72,6 @@
 
                 if (error || !data) throw new Error("Invalid User ID or Password");
 
-                // Save active session
                 localStorage.setItem('RVRG_ACTIVE_USER', JSON.stringify({
                     id: data.id,
                     name: data.name,

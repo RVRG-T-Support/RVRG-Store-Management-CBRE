@@ -60,7 +60,7 @@ const password = document.getElementById('loginPassword').value.trim();
 
 try {
                 // Check users_master table for credentials
-const { data, error } = await supabase
+const { data, error } = await window.db
 .from('users_master')
 .select('*')
 .eq('username', username)

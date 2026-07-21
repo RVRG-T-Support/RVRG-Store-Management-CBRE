@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - RVRG Store Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f4f6f9; display: flex; align-items: center; justify-content: center; height: 100vh; }
+        .login-card { width: 100%; max-width: 400px; border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="card shadow-lg border-0 login-card p-4">
+        <div class="text-center mb-4">
+            <i class="fa-solid fa-boxes-stacked text-primary" style="font-size: 3rem;"></i>
+            <h4 class="fw-bold mt-2 text-dark">RVRG Store</h4>
+            <p class="text-muted small">Enterprise Management System</p>
+        </div>
+
+        <form id="loginForm">
+            <div class="mb-3">
+                <label class="form-label fw-semibold small">User ID / Username</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light"><i class="fa-solid fa-user"></i></span>
+                    <input type="text" class="form-control" id="loginUsername" required>
+                </div>
+            </div>
+            <div class="mb-4">
+                <label class="form-label fw-semibold small">Password</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light"><i class="fa-solid fa-lock"></i></span>
+                    <input type="password" class="form-control" id="loginPassword" required>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary w-100 fw-bold" id="btnLogin">
+                <i class="fa-solid fa-right-to-bracket me-2"></i> Secure Login
+            </button>
+        </form>
+        <div id="loginError" class="alert alert-danger mt-3 d-none text-center small py-2"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <script>
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btnLogin');
+            const errorDiv = document.getElementById('loginError');
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Authenticating...';
+            btn.disabled = true;
+            errorDiv.classList.add('d-none');
+
+            const username = document.getElementById('loginUsername').value.trim();
+            const password = document.getElementById('loginPassword').value.trim();
+
+            try {
+                // Check users_master table for credentials
+                const { data, error } = await supabase
+                    .from('users_master')
+                    .select('*')
+                    .eq('username', username)
+                    .eq('password', password)
+                    .single();
+
+                if (error || !data) throw new Error("Invalid User ID or Password");
+
+                // Save active session
+                localStorage.setItem('RVRG_ACTIVE_USER', JSON.stringify({
+                    id: data.id,
+                    name: data.name,
+                    role: data.role
+                }));
+
+                window.location.href = 'dashboard.html';
+
+            } catch (err) {
+                errorDiv.innerText = err.message;
+                errorDiv.classList.remove('d-none');
+                btn.innerHTML = '<i class="fa-solid fa-right-to-bracket me-2"></i> Secure Login';
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

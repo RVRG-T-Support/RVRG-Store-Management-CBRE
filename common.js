@@ -1,13 +1,16 @@
 // common.js - Core Utilities & Navigation
 
-// Initialize Supabase Client safely once
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Safe Supabase Client Initialization
+if (typeof window.supabaseClient === 'undefined') {
+    window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+}
+const supabase = window.supabaseClient;
 
 // 1. Session & Auth Management
 function getCurrentUser() {
     const userString = localStorage.getItem('RVRG_ACTIVE_USER');
     if (!userString) {
-        window.location.href = 'index.html'; // Redirect to login if not authenticated
+        window.location.href = 'index.html';
         return null;
     }
     return JSON.parse(userString);
@@ -66,7 +69,7 @@ function injectGlobalNavigation() {
                 <i class="fa-solid fa-right-from-bracket me-2" style="width: 25px;"></i> Logout
             </a>
         </li>
-    </ul>`;
+    `;
 
     const sidebarContainer = document.getElementById('globalSidebar');
     if (sidebarContainer) {

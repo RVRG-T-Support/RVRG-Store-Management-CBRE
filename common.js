@@ -1,92 +1,110 @@
-// common.js
-// Shared utilities and helper functions for RVRG Store Management System
+// common.js - Core Utilities & Navigation
 
-// 1. Initialize Supabase Client using variables from config.js
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// 2. Role & Access Management
+// 1. Session & Auth Management
 function getCurrentUser() {
-    return CURRENT_USER;
+    const userString = localStorage.getItem('RVRG_ACTIVE_USER');
+    if (!userString) {
+        window.location.href = 'index.html'; // Redirect to login if not authenticated
+        return null;
+    }
+    return JSON.parse(userString);
+}
+
+function logout() {
+    localStorage.removeItem('RVRG_ACTIVE_USER');
+    window.location.href = 'index.html';
 }
 
 function checkUserAccess(allowedRoles = []) {
     const user = getCurrentUser();
+    if (!user) return false;
+    
     if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
-        alert(`Access Denied. Current role: ${user.role}`);
-        window.location.href = 'dashboard.html'; // Redirect unauthorized users
+        alert(`Access Denied. Your role (${user.role}) does not have permission.`);
+        window.location.href = 'dashboard.html';
         return false;
     }
     return true;
 }
 
-// Switch Role Helper (For Development Testing)
-function setDevRole(role) {
-    localStorage.setItem("RVRG_ROLE", role);
-    window.location.reload();
+// 2. Dynamic Global Sidebar Injection
+function injectGlobalNavigation() {
+    const user = getCurrentUser();
+    if (!user) return;
+
+    // Navigation configuration with role-based access
+    const navItems = [
+        { name: 'Dashboard', icon: 'fa-house-chimney', link: 'dashboard.html', roles: ['ADMIN', 'FM', 'AFM', 'STORE', 'TECH_SUPERVISOR'] },
+        { name: 'Raise Request', icon: 'fa-file-signature', link: 'material_request.html', roles: ['ADMIN', 'FM', 'AFM', 'STORE', 'TECH_SUPERVISOR'] },
+        { name: 'Approvals', icon: 'fa-clipboard-check', link: 'approvals.html', roles: ['ADMIN', 'FM', 'AFM'] },
+        { name: 'ICR Approvals', icon: 'fa-check-to-slot', link: 'icr_approval.html', roles: ['ADMIN', 'FM', 'AFM'] },
+        { name: 'Issue Materials', icon: 'fa-right-from-bracket', link: 'issue.html', roles: ['ADMIN', 'FM', 'AFM', 'STORE'] },
+        { name: 'Returns', icon: 'fa-rotate-left', link: 'return.html', roles: ['ADMIN', 'FM', 'AFM', 'STORE'] },
+        { name: 'Stock Entry', icon: 'fa-truck-ramp-box', link: 'stock_entry.html', roles: ['ADMIN', 'FM', 'AFM', 'STORE'] },
+        { name: 'Inventory Correction', icon: 'fa-scale-balanced', link: 'inventory_correction.html', roles: ['ADMIN', 'FM', 'AFM', 'STORE'] },
+        { name: 'Reports', icon: 'fa-chart-line', link: 'reports.html', roles: ['ADMIN', 'FM', 'AFM', 'STORE', 'TECH_SUPERVISOR'] },
+        { name: 'Master Data', icon: 'fa-database', link: 'masters.html', roles: ['ADMIN', 'FM'] },
+        { name: 'User Management', icon: 'fa-users-gear', link: 'admin_users.html', roles: ['ADMIN'] }
+    ];
+
+    let navHtml = '<ul class="nav flex-column">';
+    navItems.forEach(item => {
+        if (item.roles.includes(user.role)) {
+            const isActive = window.location.pathname.includes(item.link) ? 'active' : '';
+            navHtml += `
+                <li class="nav-item">
+                    <a class="nav-link ${isActive} text-dark" href="${item.link}">
+                        <i class="fa-solid ${item.icon} me-2" style="width: 25px;"></i> ${item.name}
+                    </a>
+                </li>`;
+        }
+    });
+    navHtml += `
+        <li class="nav-item mt-4">
+            <a class="nav-link text-danger" href="#" onclick="logout()">
+                <i class="fa-solid fa-right-from-bracket me-2" style="width: 25px;"></i> Logout
+            </a>
+        </li>
+    </ul>`;
+
+    // Attempt to inject into a sidebar container if it exists on the page
+    const sidebarContainer = document.getElementById('globalSidebar');
+    if (sidebarContainer) {
+        sidebarContainer.innerHTML = navHtml;
+    }
+
+    // Update Topbar User Badge
+    const userBadge = document.getElementById('currentUserName');
+    if (userBadge) {
+        userBadge.innerText = `${user.name} (${user.role})`;
+    }
 }
+
+// Run on page load
+document.addEventListener('DOMContentLoaded', injectGlobalNavigation);
 
 // 3. Formatting Utilities
 function formatCurrency(amount) {
     if (amount === null || amount === undefined) return '₹ 0.00';
-    return new Intl.NumberFormat('en-IN', {
-        style: 'currency',
-        currency: 'INR'
-    }).format(amount);
+    return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount);
 }
-
 function formatDate(dateString) {
     if (!dateString) return '-';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-IN', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric'
-    });
+    return new Date(dateString).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 }
-
-function formatDateTime(dateString) {
-    if (!dateString) return '-';
-    const date = new Date(dateString);
-    return date.toLocaleString('en-IN', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
-    });
-}
-
-// 4. Status Badge Generator
 function getStatusBadge(status) {
-    const statusUpper = (status || '').toUpperCase();
-    let badgeClass = 'badge-secondary';
-
-    switch (statusUpper) {
-        case 'APPROVED':
-            badgeClass = 'bg-success text-white';
-            break;
-        case 'PENDING':
-            badgeClass = 'bg-warning text-dark';
-            break;
-        case 'REJECTED':
-            badgeClass = 'bg-danger text-white';
-            break;
-        case 'ISSUED':
-            badgeClass = 'bg-info text-white';
-            break;
-        case 'PARTIALLY_ISSUED':
-            badgeClass = 'bg-primary text-white';
-            break;
-        default:
-            badgeClass = 'bg-secondary text-white';
-    }
-
-    return `<span class="badge ${badgeClass}">${statusUpper}</span>`;
+    const s = (status || '').toUpperCase();
+    const badges = {
+        'APPROVED': 'bg-success text-white',
+        'PENDING': 'bg-warning text-dark',
+        'REJECTED': 'bg-danger text-white',
+        'ISSUED': 'bg-info text-dark',
+        'PARTIALLY_ISSUED': 'bg-primary text-white'
+    };
+    return `<span class="badge ${badges[s] || 'bg-secondary'}">${s}</span>`;
 }
-
-// 5. Shared Notification / Alert Helper
 function showAlert(message, type = 'info') {
-    // Basic toast or alert logic
     alert(`[${type.toUpperCase()}]: ${message}`);
 }

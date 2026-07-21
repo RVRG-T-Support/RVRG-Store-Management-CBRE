@@ -1,55 +1,10 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - RVRG Store Management</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <style>
-        body { background-color: #f4f6f9; display: flex; align-items: center; justify-content: center; height: 100vh; }
-        .login-card { width: 100%; max-width: 400px; border-radius: 10px; }
-    </style>
-</head>
-<body>
-
-    <div class="card shadow-lg border-0 login-card p-4">
-        <div class="text-center mb-4">
-            <i class="fa-solid fa-boxes-stacked text-primary" style="font-size: 3rem;"></i>
-            <h4 class="fw-bold mt-2 text-dark">RVRG Store</h4>
-            <p class="text-muted small">Enterprise Management System</p>
-        </div>
-
-        <form id="loginForm">
-            <div class="mb-3">
-                <label class="form-label fw-semibold small">User ID / Username</label>
-                <div class="input-group">
-                    <span class="input-group-text bg-light"><i class="fa-solid fa-user"></i></span>
-                    <input type="text" class="form-control" id="loginUsername" required>
-                </div>
-            </div>
-            <div class="mb-4">
-                <label class="form-label fw-semibold small">Password</label>
-                <div class="input-group">
-                    <span class="input-group-text bg-light"><i class="fa-solid fa-lock"></i></span>
-                    <input type="password" class="form-control" id="loginPassword" required>
-                </div>
-            </div>
-            <button type="submit" class="btn btn-primary w-100 fw-bold" id="btnLogin">
-                <i class="fa-solid fa-right-to-bracket me-2"></i> Secure Login
-            </button>
-        </form>
-        <div id="loginError" class="alert alert-danger mt-3 d-none text-center small py-2"></div>
-    </div>
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
     <script>
-        // Safe client initialization
-        if (typeof window.supabaseClient === 'undefined') {
+        // Initialize client safely if not already present
+        if (!window.supabaseClient) {
             window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         }
-        const supabase = window.supabaseClient;
         
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -59,22 +14,24 @@
             btn.disabled = true;
             errorDiv.classList.add('d-none');
 
-            const username = document.getElementById('loginUsername').value.trim();
-            const password = document.getElementById('loginPassword').value.trim();
+            const emailInput = document.getElementById('loginUsername').value.trim();
+            const passwordInput = document.getElementById('loginPassword').value.trim();
 
             try {
-                const { data, error } = await supabase
+                const { data, error } = await window.supabaseClient
                     .from('users_master')
                     .select('*')
-                    .eq('username', username)
-                    .eq('password', password)
+                    .eq('email', emailInput)
+                    .eq('password', passwordInput)
+                    .eq('is_active', true)
                     .single();
 
-                if (error || !data) throw new Error("Invalid User ID or Password");
+                if (error || !data) throw new Error("Invalid Email or Password");
 
+                // Save active session matching your database columns (full_name)
                 localStorage.setItem('RVRG_ACTIVE_USER', JSON.stringify({
                     id: data.id,
-                    name: data.name,
+                    name: data.full_name,
                     role: data.role
                 }));
 
@@ -88,5 +45,3 @@
             }
         });
     </script>
-</body>
-</html>

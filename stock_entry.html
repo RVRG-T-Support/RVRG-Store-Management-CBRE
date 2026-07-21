@@ -1,141 +1,152 @@
 <!DOCTYPE html>
 <html lang="en">
-<div class="row g-3">
-    <div class="col-md-3">
-        <label class="form-label fw-semibold">Invoice Number *</label>
-        <input type="text" class="form-control" id="invoiceNo" required>
-    </div>
-    <div class="col-md-3">
-        <label class="form-label fw-semibold">Invoice Date *</label>
-        <input type="date" class="form-control" id="invoiceDate" required>
-    </div>
-    <!-- FIXED GST FIELD -->
-    <div class="col-md-3">
-        <label class="form-label fw-semibold">GST (%)</label>
-        <input type="number" class="form-control" id="gstType" value="18" min="0" max="100">
-    </div>
-    <div class="col-md-3">
-        <label class="form-label fw-semibold">Transportation Cost (₹)</label>
-        <input type="number" step="0.01" class="form-control" id="transportationCost" value="0">
-    </div>
-    <div class="col-md-3 mt-3">
-        <label class="form-label fw-bold text-dark">Billed Invoice Amount (₹) *</label>
-        <input type="number" step="0.01" class="form-control border-primary shadow-sm" id="billedAmount" required>
-    </div>
-</div>
-<body class="bg-light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Entry - RVRG Store Management</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        body { background-color: #f4f6f9; }
+        .sidebar { min-height: 100vh; background-color: #ffffff; border-right: 1px solid #dee2e6; }
+        .sidebar .nav-link { color: #495057; font-weight: 500; padding: 10px 20px; margin-bottom: 5px; border-radius: 5px; }
+        .sidebar .nav-link:hover, .sidebar .nav-link.active { background-color: #e9ecef; color: #0d6efd; }
+        .item-row-input { min-width: 120px; }
+        .calculated-total { background-color: #e9ecef; font-weight: bold; }
+        .upload-section { background-color: #f8f9fa; border: 1px dashed #ced4da; padding: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
 
     <!-- Top Navigation Bar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
-        <div class="container-fluid">
-            <a class="navbar-brand fw-bold" href="dashboard.html">
-                <i class="fa-solid fa-boxes-stacked me-2"></i>RVRG Store Management
+        <div class="container-fluid px-4">
+            <a class="navbar-brand fw-bold d-flex align-items-center" href="dashboard.html">
+                <img src="RVRG LOGO.jpg" alt="RVRG Logo" height="40" class="bg-white rounded p-1 me-2 shadow-sm">
+                <span class="text-secondary mx-1">|</span>
+                <img src="cbre_green.jpg" alt="CBRE Logo" height="40" class="bg-white rounded p-1 ms-2 me-3 shadow-sm">
+                <div>
+                    <span class="d-block lh-1 text-white" style="font-size: 0.9rem;">Store Management</span>
+                    <small class="text-info fw-normal" style="font-size: 0.65rem;">Enterprise Edition</small>
+                </div>
             </a>
             <div class="d-flex align-items-center text-white">
-                <span class="me-3" id="userBadge"><i class="fa-solid fa-user me-1"></i> <span id="currentUserName">Development User</span></span>
-                <a href="dashboard.html" class="btn btn-outline-light btn-sm">Dashboard</a>
+                <span class="me-3"><i class="fa-solid fa-bell"></i></span>
+                <span class="me-3" id="userBadge"><i class="fa-solid fa-user-circle me-1"></i> <span id="currentUserName">Loading...</span></span>
             </div>
         </div>
     </nav>
 
-    <div class="container my-4">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h3 class="fw-bold text-dark"><i class="fa-solid fa-truck-ramp-box me-2 text-primary"></i>New Stock Entry (Purchase)</h3>
+    <div class="container-fluid">
+        <div class="row">
+            
+            <!-- Global Sidebar (Injected automatically by common.js) -->
+            <div class="col-md-2 d-none d-md-block sidebar py-3" id="globalSidebar">
+                <!-- Navigation links load dynamically here -->
+            </div>
+
+            <!-- Main Content Area -->
+            <div class="col-md-10 py-4 px-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h3 class="fw-bold text-dark"><i class="fa-solid fa-truck-ramp-box me-2 text-primary"></i>New Stock Entry (Purchase)</h3>
+                </div>
+
+                <form id="stockEntryForm">
+                    <!-- Header Section: Invoice Details -->
+                    <div class="card shadow-sm border-0 mb-4">
+                        <div class="card-header bg-white pt-3 pb-2 border-bottom-0">
+                            <h5 class="card-title text-primary mb-0"><i class="fa-solid fa-file-invoice me-2"></i>1. Invoice Details</h5>
+                        </div>
+                        <div class="card-body bg-light rounded-bottom">
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold">Invoice Number *</label>
+                                    <input type="text" class="form-control" id="invoiceNo" required placeholder="e.g. INV-2026-001">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold">Invoice Date *</label>
+                                    <input type="date" class="form-control" id="invoiceDate" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold">GST (%)</label>
+                                    <input type="number" class="form-control" id="gstType" value="18" min="0" max="100">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold">Transportation Cost (₹)</label>
+                                    <input type="number" step="0.01" class="form-control" id="transportationCost" value="0">
+                                </div>
+                                <div class="col-md-3 mt-3">
+                                    <label class="form-label fw-bold text-dark">Billed Invoice Amount (₹) *</label>
+                                    <input type="number" step="0.01" class="form-control border-primary shadow-sm" id="billedAmount" required placeholder="Total on physical bill">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Details Section: Material Items -->
+                    <div class="card shadow-sm border-0 mb-4">
+                        <div class="card-header bg-white pt-3 pb-2 border-bottom-0 d-flex flex-wrap justify-content-between align-items-center">
+                            <h5 class="card-title text-primary mb-0"><i class="fa-solid fa-boxes-packing me-2"></i>2. Material Items</h5>
+                            
+                            <!-- EXCEL BULK UPLOAD TOOLS -->
+                            <div class="d-flex align-items-center upload-section gap-2 mt-2 mt-md-0">
+                                <button type="button" class="btn btn-sm btn-outline-secondary fw-bold" id="btnDownloadTemplate" title="Download Excel Format">
+                                    <i class="fa-solid fa-download me-1"></i> Template
+                                </button>
+                                <input class="form-control form-control-sm" type="file" id="excelUpload" accept=".xlsx, .xls" style="max-width: 200px;">
+                                <button type="button" class="btn btn-sm btn-success fw-bold" id="btnProcessExcel">
+                                    <i class="fa-solid fa-file-excel me-1"></i> Upload
+                                </button>
+                            </div>
+
+                            <button type="button" class="btn btn-sm btn-outline-primary mt-2 mt-md-0" id="btnAddRow">
+                                <i class="fa-solid fa-plus me-1"></i> Add Manual Row
+                            </button>
+                        </div>
+                        
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-bordered align-middle mb-0 text-center" id="itemsTable">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th width="5%">#</th>
+                                            <th width="35%">Department & Material *</th>
+                                            <th width="15%">Quantity *</th>
+                                            <th width="20%">Unit Price (₹) *</th>
+                                            <th width="20%">Total (₹)</th>
+                                            <th width="5%">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="stockEntryItems">
+                                        <!-- Dynamic rows -->
+                                    </tbody>
+                                    <tfoot class="table-secondary">
+                                        <tr>
+                                            <td colspan="4" class="text-end fw-bold">Calculated Total (Items + Transport):</td>
+                                            <td class="calculated-total text-success fs-5" id="calculatedTotalDisplay">₹ 0.00</td>
+                                            <td></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="text-end mb-5">
+                        <button type="submit" class="btn btn-primary btn-lg fw-bold shadow">
+                            <i class="fa-solid fa-floppy-disk me-2"></i> Verify & Save Stock Entry
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
-
-        <form id="stockEntryForm">
-            <!-- Header Section: Invoice Details -->
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-header bg-white pt-3 pb-2 border-bottom-0">
-                    <h5 class="card-title text-primary mb-0"><i class="fa-solid fa-file-invoice me-2"></i>1. Invoice Details</h5>
-                </div>
-                <div class="card-body bg-light rounded-bottom">
-                    <div class="row g-3">
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold">Invoice Number <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="invoiceNo" required placeholder="e.g. INV-2026-001">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold">Invoice Date <span class="text-danger">*</span></label>
-                            <input type="date" class="form-control" id="invoiceDate" required>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold">GST Type</label>
-                            <select class="form-select" id="gstType">
-                                <option value="Included">Included in Price</option>
-                                <option value="Excluded">Excluded (Extra)</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold">Transportation Cost (₹)</label>
-                            <input type="number" step="0.01" class="form-control" id="transportationCost" placeholder="Optional" value="0">
-                        </div>
-                        <div class="col-md-3 mt-3">
-                            <label class="form-label fw-bold text-dark">Billed Invoice Amount (₹) <span class="text-danger">*</span></label>
-                            <input type="number" step="0.01" class="form-control border-primary shadow-sm" id="billedAmount" required placeholder="Total on physical bill">
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Details Section: Material Items -->
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-header bg-white pt-3 pb-2 border-bottom-0 d-flex flex-wrap justify-content-between align-items-center">
-                    <h5 class="card-title text-primary mb-0"><i class="fa-solid fa-boxes-packing me-2"></i>2. Material Items</h5>
-                    
-                    <!-- EXCEL BULK UPLOAD TOOLS -->
-                    <div class="d-flex align-items-center upload-section gap-2 mt-2 mt-md-0">
-                        <button type="button" class="btn btn-sm btn-outline-secondary fw-bold" id="btnDownloadTemplate" title="Download Excel Format">
-                            <i class="fa-solid fa-download me-1"></i> Template
-                        </button>
-                        <input class="form-control form-control-sm" type="file" id="excelUpload" accept=".xlsx, .xls" style="max-width: 200px;">
-                        <button type="button" class="btn btn-sm btn-success fw-bold" id="btnProcessExcel">
-                            <i class="fa-solid fa-file-excel me-1"></i> Upload
-                        </button>
-                    </div>
-
-                    <button type="button" class="btn btn-sm btn-outline-primary mt-2 mt-md-0" id="btnAddRow">
-                        <i class="fa-solid fa-plus me-1"></i> Add Manual Row
-                    </button>
-                </div>
-                
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-bordered align-middle mb-0 text-center" id="itemsTable">
-                            <thead class="table-light">
-                                <tr>
-                                    <th width="5%">#</th>
-                                    <th width="35%">Department & Material <span class="text-danger">*</span></th>
-                                    <th width="15%">Quantity <span class="text-danger">*</span></th>
-                                    <th width="20%">Unit Price (₹) <span class="text-danger">*</span></th>
-                                    <th width="20%">Total (₹)</th>
-                                    <th width="5%">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody id="stockEntryItems">
-                                <!-- Dynamic rows -->
-                            </tbody>
-                            <tfoot class="table-secondary">
-                                <tr>
-                                    <td colspan="4" class="text-end fw-bold">Calculated Total (Items + Transport):</td>
-                                    <td class="calculated-total text-success fs-5" id="calculatedTotalDisplay">₹ 0.00</td>
-                                    <td></td>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <div class="text-end mb-5">
-                <button type="submit" class="btn btn-primary btn-lg fw-bold shadow">
-                    <i class="fa-solid fa-floppy-disk me-2"></i> Verify & Save Stock Entry
-                </button>
-            </div>
-        </form>
     </div>
 
-    <!-- Confirmation Modal (Kept exactly the same) -->
+    <!-- Confirmation Modal -->
     <div class="modal fade" id="confirmStockModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow">
@@ -167,12 +178,10 @@
     <!-- Dependencies -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- Add SheetJS for Excel functionality -->
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     
     <script src="config.js"></script>
     <script src="common.js"></script>
-    <!-- Logic script -->
     <script src="stock_entry.js"></script>
 </body>
 </html>

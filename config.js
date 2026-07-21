@@ -6,5 +6,4 @@ window.supabaseClient = window.supabase.createClient(
     SUPABASE_ANON_KEY
 );
 
-// Global client
-const supabase = window.supabaseClient;
+window.supabaseDb = window.supabaseClient;

@@ -95,9 +95,9 @@ async function loadRecentRequests() {
             .from('material_requests')
             .select(`
                 ticket_no,
+                request_status,
                 requested_by,
-                status,
-                departments (name)
+                created_at
             `)
             .order('created_at', { ascending: false })
             .limit(5); // Fetch only the 5 most recent[cite: 2]

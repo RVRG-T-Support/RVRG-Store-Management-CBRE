@@ -36,7 +36,7 @@ async function loadMetrics() {
         const { count: pendingCount, error: pendingError } = await supabase
             .from('material_requests')
             .select('*', { count: 'exact', head: true })
-            .eq('status', 'PENDING');
+            .eq('request_status', 'PENDING');
         
         if (!pendingError) {
             document.getElementById('dashPendingRequests').innerText = pendingCount || 0;
@@ -80,9 +80,10 @@ async function loadMetrics() {
             document.getElementById('dashTotalValue').innerText = formatCurrency(totalValue);
         }
 
-    } catch (error) {
-        console.error("Error loading metrics:", error.message);
-    }
+    catch (error) {
+    console.error(error);
+    alert(error.message);
+  }
 }
 
 // --- RECENT REQUESTS TABLE LOGIC ---
@@ -123,10 +124,14 @@ async function loadRecentRequests() {
             tbody.appendChild(tr);
         });
 
-    } catch (error) {
-        console.error("Error loading recent requests:", error.message);
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger py-3">Failed to load requests</td></tr>';
-    }
+    } 
+    
+    catch (error) {
+    console.error(error);
+    alert(error.message);
+    tbody.innerHTML =
+        `<tr><td colspan="4" class="text-danger text-center">${error.message}</td></tr>`;
+}
 }
 
 // --- LOW STOCK ALERTS TABLE LOGIC ---

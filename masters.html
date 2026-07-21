@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master Data Management - RVRG Store Management</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+    <!-- Top Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
+        <div class="container-fluid">
+            <a class="navbar-brand fw-bold" href="dashboard.html">
+                <i class="fa-solid fa-boxes-stacked me-2"></i>RVRG Store Management
+            </a>
+            <div class="d-flex align-items-center text-white">
+                <span class="me-3" id="userBadge"><i class="fa-solid fa-user-shield me-1"></i> <span id="currentUserName">Development User</span></span>
+                <a href="dashboard.html" class="btn btn-outline-light btn-sm">Dashboard</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container my-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 class="fw-bold text-dark"><i class="fa-solid fa-database me-2 text-primary"></i>Master Data Management</h3>
+        </div>
+
+        <!-- Master Tabs -->
+        <ul class="nav nav-tabs fw-bold mb-4" id="masterTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="materials-tab" data-bs-toggle="tab" data-bs-target="#materials" type="button" role="tab">
+                    <i class="fa-solid fa-box me-1"></i> Materials
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="departments-tab" data-bs-toggle="tab" data-bs-target="#departments" type="button" role="tab">
+                    <i class="fa-solid fa-sitemap me-1"></i> Departments
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="technicians-tab" data-bs-toggle="tab" data-bs-target="#technicians" type="button" role="tab">
+                    <i class="fa-solid fa-user-wrench me-1"></i> Technicians
+                </button>
+            </li>
+        </ul>
+
+        <!-- Tab Contents -->
+        <div class="tab-content" id="masterTabsContent">
+            
+            <!-- 1. MATERIALS MASTER -->
+            <div class="tab-pane fade show active" id="materials" role="tabpanel">
+                <div class="row">
+                    <div class="col-lg-4 mb-4">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-primary text-white fw-bold">Add New Material</div>
+                            <div class="card-body">
+                                <form id="formMaterial">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Material ID / Code</label>
+                                        <input type="text" class="form-control" id="matId" required placeholder="e.g., ELEC-001">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Material Name</label>
+                                        <input type="text" class="form-control" id="matName" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Department</label>
+                                        <select class="form-select" id="matDepartment" required>
+                                            <option value="" selected disabled>Loading...</option>
+                                        </select>
+                                    </div>
+                                    <div class="row mb-3">
+                                        <div class="col-6">
+                                            <label class="form-label fw-semibold">Base Price (₹)</label>
+                                            <input type="number" step="0.01" class="form-control" id="matPrice" required>
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label fw-semibold">Min Stock Level</label>
+                                            <input type="number" class="form-control" id="matMinStock" required value="10">
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary w-100 fw-bold">Save Material</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-8">
+                        <div class="card shadow-sm border-0 h-100">
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Code</th>
+                                                <th>Name</th>
+                                                <th>Department</th>
+                                                <th>Price</th>
+                                                <th>Min Stock</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="tableMaterials"><tr><td colspan="5" class="text-center text-muted py-4">Loading...</td></tr></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. DEPARTMENTS MASTER -->
+            <div class="tab-pane fade" id="departments" role="tabpanel">
+                <div class="row">
+                    <div class="col-lg-4 mb-4">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-primary text-white fw-bold">Add Department</div>
+                            <div class="card-body">
+                                <form id="formDepartment">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Department Name</label>
+                                        <input type="text" class="form-control" id="deptName" required placeholder="e.g., Electrical">
+                                    </div>
+                                    <button type="submit" class="btn btn-primary w-100 fw-bold">Save Department</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-8">
+                        <div class="card shadow-sm border-0 h-100">
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle mb-0">
+                                        <thead class="table-light"><tr><th>ID</th><th>Department Name</th></tr></thead>
+                                        <tbody id="tableDepartments"><tr><td colspan="2" class="text-center text-muted py-4">Loading...</td></tr></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. TECHNICIANS MASTER -->
+            <div class="tab-pane fade" id="technicians" role="tabpanel">
+                <div class="row">
+                    <div class="col-lg-4 mb-4">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-primary text-white fw-bold">Add Technician</div>
+                            <div class="card-body">
+                                <form id="formTechnician">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Technician Name</label>
+                                        <input type="text" class="form-control" id="techName" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Assigned Department</label>
+                                        <select class="form-select" id="techDepartment" required>
+                                            <option value="" selected disabled>Loading...</option>
+                                        </select>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary w-100 fw-bold">Save Technician</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-8">
+                        <div class="card shadow-sm border-0 h-100">
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle mb-0">
+                                        <thead class="table-light"><tr><th>Name</th><th>Department</th></tr></thead>
+                                        <tbody id="tableTechnicians"><tr><td colspan="2" class="text-center text-muted py-4">Loading...</td></tr></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <script src="config.js"></script>
+    <script src="common.js"></script>
+    <!-- Logic script -->
+    <script src="masters.js"></script>
+</body>
+</html>

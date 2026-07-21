@@ -1,7 +1,7 @@
 // common.js - Core Utilities & Navigation
 
 // Safe initialization using 'var' to prevent redeclaration crashes
-var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+var supabase = window.supabaseClient || window.supabase;
 
 // 1. Session & Auth Management
 function getCurrentUser() {

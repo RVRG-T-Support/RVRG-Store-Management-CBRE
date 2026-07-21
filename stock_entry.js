@@ -35,11 +35,17 @@ async function loadMaterials() {
             .from('materials')
             .select('material_id, name, departments (name)')
             .order('name', { ascending: true });
+            
         if (error) throw error;
+        
+        if (!data || data.length === 0) {
+            showAlert("No materials found in database. Please add materials in Master Data first.", "warning");
+        }
+        
         materialsData = data;
     } catch (error) {
-        console.error("Error loading materials:", error.message);
-        showAlert("Failed to load materials database.", "error");
+        console.error("Supabase Error Loading Materials:", error.message);
+        showAlert(`Database Error: ${error.message}. Please check Supabase Table settings.`, "error");
     }
 }
 
@@ -133,15 +139,20 @@ function calculateGrandTotal() {
 
 // --- EXCEL BULK UPLOAD LOGIC ---
 function downloadExcelTemplate() {
-    // Define the required columns
-    const templateData = [
-        {"Material_ID": "MAT-001", "Material_Name": "Example Material (For Reference)", "Quantity": 10, "Unit_Price": 150.50},
-        {"Material_ID": "MAT-002", "Material_Name": "Make sure Material_ID exactly matches database", "Quantity": 5, "Unit_Price": 500}
-    ];
-    const ws = XLSX.utils.json_to_sheet(templateData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Stock_Entry_Template");
-    XLSX.writeFile(wb, "RVRG_Stock_Entry_Template.xlsx");
+    try {
+        const templateData = [
+            {"Material_ID": "MAT-001", "Quantity": 10, "Unit_Price": 150.50}
+        ];
+        // Create a new workbook and worksheet
+        const ws = XLSX.utils.json_to_sheet(templateData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Stock_Entry");
+        // Trigger download
+        XLSX.writeFile(wb, "RVRG_Stock_Entry_Template.xlsx");
+    } catch (err) {
+        console.error("Excel Export Error:", err);
+        showAlert("Failed to download template. Ensure SheetJS library is loaded.", "error");
+    }
 }
 
 function processExcelUpload() {

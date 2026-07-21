@@ -1,5 +1,6 @@
 // common.js - Core Utilities & Navigation
 
+// Initialize Supabase Client safely once
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // 1. Session & Auth Management
@@ -34,7 +35,6 @@ function injectGlobalNavigation() {
     const user = getCurrentUser();
     if (!user) return;
 
-    // Navigation configuration with role-based access
     const navItems = [
         { name: 'Dashboard', icon: 'fa-house-chimney', link: 'dashboard.html', roles: ['ADMIN', 'FM', 'AFM', 'STORE', 'TECH_SUPERVISOR'] },
         { name: 'Raise Request', icon: 'fa-file-signature', link: 'material_request.html', roles: ['ADMIN', 'FM', 'AFM', 'STORE', 'TECH_SUPERVISOR'] },
@@ -45,8 +45,7 @@ function injectGlobalNavigation() {
         { name: 'Stock Entry', icon: 'fa-truck-ramp-box', link: 'stock_entry.html', roles: ['ADMIN', 'FM', 'AFM', 'STORE'] },
         { name: 'Inventory Correction', icon: 'fa-scale-balanced', link: 'inventory_correction.html', roles: ['ADMIN', 'FM', 'AFM', 'STORE'] },
         { name: 'Reports', icon: 'fa-chart-line', link: 'reports.html', roles: ['ADMIN', 'FM', 'AFM', 'STORE', 'TECH_SUPERVISOR'] },
-        { name: 'Master Data', icon: 'fa-database', link: 'masters.html', roles: ['ADMIN', 'FM'] },
-        { name: 'User Management', icon: 'fa-users-gear', link: 'admin_users.html', roles: ['ADMIN'] }
+        { name: 'Master Data', icon: 'fa-database', link: 'masters.html', roles: ['ADMIN', 'FM'] }
     ];
 
     let navHtml = '<ul class="nav flex-column">';
@@ -69,20 +68,17 @@ function injectGlobalNavigation() {
         </li>
     </ul>`;
 
-    // Attempt to inject into a sidebar container if it exists on the page
     const sidebarContainer = document.getElementById('globalSidebar');
     if (sidebarContainer) {
         sidebarContainer.innerHTML = navHtml;
     }
 
-    // Update Topbar User Badge
     const userBadge = document.getElementById('currentUserName');
     if (userBadge) {
         userBadge.innerText = `${user.name} (${user.role})`;
     }
 }
 
-// Run on page load
 document.addEventListener('DOMContentLoaded', injectGlobalNavigation);
 
 // 3. Formatting Utilities

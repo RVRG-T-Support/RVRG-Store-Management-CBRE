@@ -1,4 +1,9 @@
 // masters.js
+// Protect page
+const currentUser = getCurrentUser();
+
+if (!currentUser)
+    window.location.replace("index.html");
 
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Security Check: Only ADMIN and FM should manage master data

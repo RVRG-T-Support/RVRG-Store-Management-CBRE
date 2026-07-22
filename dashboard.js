@@ -66,7 +66,7 @@ async function loadMetrics() {
         
         let total = 0;
 
-        if (materials && stock) {
+        if (stock) {
             stock.forEach(item => {
                 total +=
                     (Number(item.unit_cost) || 0) *

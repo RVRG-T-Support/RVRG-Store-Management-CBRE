@@ -1,4 +1,9 @@
 // inventory_correction.js
+// Protect page
+const currentUser = getCurrentUser();
+
+if (!currentUser)
+    window.location.replace("index.html");
 
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Security Check: STORE, ADMIN, FM, AFM can access this page[cite: 2]

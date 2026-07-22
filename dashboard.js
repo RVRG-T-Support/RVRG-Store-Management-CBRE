@@ -58,7 +58,11 @@ async function loadMetrics() {
         // Inventory Value
         const { data: materials } = await supabase
             .from('materials')
-            .select('material_id,price');
+            .select(`
+                material_id,
+                unit_cost,
+                current_stock
+                `)
 
         const { data: stock } = await supabase
             .from('current_stock')

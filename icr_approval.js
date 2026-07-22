@@ -1,4 +1,9 @@
 // icr_approval.js
+// Protect page
+const currentUser = getCurrentUser();
+
+if (!currentUser)
+    window.location.replace("index.html");
 
 let currentRejectId = null;
 let rejectModalInstance = null;

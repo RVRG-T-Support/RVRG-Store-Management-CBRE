@@ -56,25 +56,21 @@ async function loadMetrics() {
         document.getElementById('dashLowStock').innerText = lowCount || 0;
 
         // Inventory Value
-        const { data: materials } = await supabase
-            .from('materials')
-            .select(`
-                material_id,
-                unit_cost,
-                current_stock
-                `)
-
         const { data: stock } = await supabase
-            .from('current_stock')
-            .select('material_id,stock_qty');
-
+        .from('current_stock')
+        .select(`
+            material_id,
+            unit_cost,
+            current_stock
+        `);
+        
         let total = 0;
 
         if (materials && stock) {
-            stock.forEach(s => {
-                const m = materials.find(x => x.material_id == s.material_id);
-                if (m)
-                    total += (Number(m.price) || 0) * (Number(s.stock_qty) || 0);
+            stock.forEach(item => {
+                total +=
+                    (Number(item.unit_cost) || 0) *
+                    (Number(item.current_stock) || 0);
             });
         }
 

@@ -1,4 +1,9 @@
 // material_request.js
+// Protect page
+const currentUser = getCurrentUser();
+
+if (!currentUser)
+    window.location.replace("index.html");
 
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Initialize page data

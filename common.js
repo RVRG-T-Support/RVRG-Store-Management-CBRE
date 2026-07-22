@@ -1,3 +1,4 @@
+
 // common.js - Core Utilities & Navigation
 
 // Safe initialization using 'var' to prevent redeclaration crashes
@@ -7,17 +8,28 @@ var supabase = window.supabaseClient;
 function getCurrentUser() {
 const userString = localStorage.getItem('RVRG_ACTIVE_USER');
 if (!userString) {
-window.location.href = 'index.html';
+window.location.replace("index.html");
 return null;
 }
 return JSON.parse(userString);
 }
 
-function logout() {
-localStorage.removeItem('RVRG_ACTIVE_USER');
-window.location.href = 'index.html';
-}
+// Protect page
+const currentUser = getCurrentUser();
 
+if (!currentUser)
+    window.location.replace("index.html");
+
+function logout() {
+
+    if (!confirm("Are you sure you want to logout?"))
+        return;
+
+    localStorage.removeItem("RVRG_ACTIVE_USER");
+
+    window.location.replace("index.html");
+
+}
 function checkUserAccess(allowedRoles = []) {
 const user = getCurrentUser();
 if (!user) return false;

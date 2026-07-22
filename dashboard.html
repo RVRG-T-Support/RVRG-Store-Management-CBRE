@@ -74,7 +74,25 @@
 
             <div class="d-flex align-items-center text-white">
                 <span class="me-3"><i class="fa-solid fa-bell"></i></span>
-                <span class="me-3" id="userBadge"><i class="fa-solid fa-user-circle me-1"></i> <span id="currentUserName">Loading...</span></span>
+                <span class="me-3" id="userBadge">
+                    <div class="dropdown">
+                        <a class="text-white text-decoration-none dropdown-toggle"
+                           href="#"
+                           data-bs-toggle="dropdown">
+
+                            <i class="fa-solid fa-user-circle me-1"></i>
+        <span id="currentUserName">Loading...</span>
+    </a>
+
+    <ul class="dropdown-menu dropdown-menu-end">
+        <li>
+            <a class="dropdown-item" href="#" onclick="logout()">
+                <i class="fa-solid fa-right-from-bracket me-2 text-danger"></i>
+                Logout
+            </a>
+        </li>
+    </ul>
+</div>
             </div>
         </div>
     </nav>

@@ -32,60 +32,55 @@ async function loadDashboardData() {
 
 async function loadMetrics() {
     try {
-        // 1. Pending Requests Count[cite: 1, 3]
-        const { count: pendingCount, error: pendingError } = await supabase
+
+        // Pending Requests
+        const { count: pendingCount } = await supabase
             .from('material_requests')
             .select('*', { count: 'exact', head: true })
             .eq('request_status', 'PENDING');
-        
-        if (!pendingError) {
-            document.getElementById('dashPendingRequests').innerText = pendingCount || 0;
-        }
 
-        // 2. Active Items Count[cite: 1, 3]
-        const { count: itemsCount, error: itemsError } = await supabase
+        document.getElementById('dashPendingRequests').innerText = pendingCount || 0;
+
+        // Active Items
+        const { count: itemsCount } = await supabase
             .from('materials')
             .select('*', { count: 'exact', head: true });
-        
-        if (!itemsError) {
-            document.getElementById('dashActiveItems').innerText = itemsCount || 0;
-        }
 
-        // 3. Low Stock Alerts Count from view[cite: 1, 3]
-        const { count: lowStockCount, error: lowStockError } = await supabase
+        document.getElementById('dashActiveItems').innerText = itemsCount || 0;
+
+        // Low Stock
+        const { count: lowCount } = await supabase
             .from('low_stock_alerts')
             .select('*', { count: 'exact', head: true });
-        
-        if (!lowStockError) {
-            document.getElementById('dashLowStock').innerText = lowStockCount || 0;
-        }
 
-        // 4. Calculate Total Inventory Value[cite: 3]
-        // Fetch material prices and current stock quantities separately to join locally
-        const { data: materialsData } = await supabase.from('materials').select('material_id, price');
-        const { data: stockData } = await supabase.from('current_stock').select('material_id, stock_qty');
+        document.getElementById('dashLowStock').innerText = lowCount || 0;
 
-        if (materialsData && stockData) {
-            let totalValue = 0;
-            
-            stockData.forEach(stock => {
-                const mat = materialsData.find(m => m.material_id === stock.material_id);
-                if (mat) {
-                    const price = parseFloat(mat.price) || 0;
-                    const qty = parseInt(stock.stock_qty) || 0;
-                    totalValue += (price * qty);
-                }
+        // Inventory Value
+        const { data: materials } = await supabase
+            .from('materials')
+            .select('material_id,price');
+
+        const { data: stock } = await supabase
+            .from('current_stock')
+            .select('material_id,stock_qty');
+
+        let total = 0;
+
+        if (materials && stock) {
+            stock.forEach(s => {
+                const m = materials.find(x => x.material_id == s.material_id);
+                if (m)
+                    total += (Number(m.price) || 0) * (Number(s.stock_qty) || 0);
             });
-
-            document.getElementById('dashTotalValue').innerText = formatCurrency(totalValue);
         }
 
-    catch (error) {
-    console.error(error);
-    alert(error.message);
-  }
-}
+        document.getElementById('dashTotalValue').innerText = formatCurrency(total);
 
+    } catch (error) {
+        console.error(error);
+        alert(error.message);
+    }
+}
 // --- RECENT REQUESTS TABLE LOGIC ---
 
 async function loadRecentRequests() {

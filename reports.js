@@ -1,4 +1,9 @@
 // reports.js
+// Protect page
+const currentUser = getCurrentUser();
+
+if (!currentUser)
+    window.location.replace("index.html");
 
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Security Check: All authenticated roles can view reports

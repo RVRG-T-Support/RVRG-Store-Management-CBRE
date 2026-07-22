@@ -1,4 +1,9 @@
 // stock_entry.js
+// Protect page
+const currentUser = getCurrentUser();
+
+if (!currentUser)
+    window.location.replace("index.html");
 
 let materialsData = [];
 let rowCount = 0;

@@ -1,4 +1,9 @@
 // approvals.js
+// Protect page
+const currentUser = getCurrentUser();
+
+if (!currentUser)
+    window.location.replace("index.html");
 
 // Global variable to hold the ID of the request being rejected
 let currentRejectId = null; 
@@ -12,9 +17,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!hasAccess) return;
 
     // Display current user name in the navbar
-    const user = getCurrentUser();
-    document.getElementById('currentUserName').innerText = `${user.name} (${user.role})`;
-
+    document.getElementById('currentUserName').innerText =
+    `${currentUser.name} (${currentUser.role})`;
+    
     // Initialize Bootstrap Modal
     rejectModalInstance = new bootstrap.Modal(document.getElementById('rejectModal'));
 

@@ -20,23 +20,43 @@ document.addEventListener('DOMContentLoaded', () => {
 // --- DATA LOADING FUNCTIONS ---
 
 async function loadDepartments() {
+
     try {
+
         const { data, error } = await supabase
             .from('departments')
-            .select('*')
-            .order('name', { ascending: true });
+            .select('id, department_name')
+            .order('department_name', { ascending: true });
 
         if (error) throw error;
 
         const deptSelect = document.getElementById('departmentSelect');
-        deptSelect.innerHTML = '<option value="" selected disabled>Select Department</option>';
-        
+
+        deptSelect.innerHTML =
+            `<option value="">Select Department</option>`;
+
         data.forEach(dept => {
-            deptSelect.innerHTML += `<option value="${dept.id}">${dept.name}</option>`;
+
+            deptSelect.innerHTML += `
+                <option value="${dept.id}">
+                    ${dept.department_name}
+                </option>
+            `;
+
         });
-    } catch (error) {
-        console.error("Error loading departments:", error.message);
+
     }
+    catch (err) {
+
+        console.error("Load Departments:", err);
+
+        showAlert(
+            "Unable to load departments.",
+            "danger"
+        );
+
+    }
+
 }
 
 async function handleDepartmentChange(e) {
@@ -53,24 +73,50 @@ async function handleDepartmentChange(e) {
 }
 
 async function loadTechnicians(departmentId) {
+
+    const techSelect =
+        document.getElementById("technicianSelect");
+
+    techSelect.innerHTML =
+        `<option value="">Loading...</option>`;
+
     try {
+
         const { data, error } = await supabase
-            .from('technicians')
-            .select('*')
-            .eq('department_id', departmentId)
-            .order('name', { ascending: true });
+            .from("technicians")
+            .select("id, technician_name")
+            .eq("department_id", departmentId)
+            .eq("active", true)
+            .order("technician_name");
 
         if (error) throw error;
 
-        const techSelect = document.getElementById('technicianSelect');
-        techSelect.innerHTML = '<option value="" selected disabled>Select Technician</option>';
-        
+        techSelect.innerHTML =
+            `<option value="">Select Technician</option>`;
+
         data.forEach(tech => {
-            techSelect.innerHTML += `<option value="${tech.id}">${tech.name}</option>`;
+
+            techSelect.innerHTML += `
+
+                <option value="${tech.id}">
+                    ${tech.technician_name}
+                </option>
+
+            `;
+
         });
-    } catch (error) {
-        console.error("Error loading technicians:", error.message);
+
     }
+
+    catch (err) {
+
+        console.error(err);
+
+        techSelect.innerHTML =
+            `<option value="">No Technician</option>`;
+
+    }
+
 }
 
 async function loadMaterials(departmentId) {

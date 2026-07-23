@@ -12,21 +12,102 @@
 </head>
 <body class="bg-light">
 
-    <!-- Top Navigation Bar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
-        <div class="container-fluid">
-            <a class="navbar-brand fw-bold" href="dashboard.html">
-                <i class="fa-solid fa-boxes-stacked me-2"></i>RVRG Store Management
-            </a>
-            <div class="d-flex align-items-center text-white">
-                <span class="me-3" id="userBadge"><i class="fa-solid fa-user me-1"></i> Development User</span>
-                <a href="dashboard.html" class="btn btn-outline-light btn-sm">Dashboard</a>
-            </div>
-        </div>
-    </nav>
+    <style>
+        /* Custom styling for Sidebar layout */
+        body {
+            background-color: #f4f6f9;
+            overflow-x: hidden;
+        }
+        .sidebar {
+            min-height: 100vh;
+            background-color: #ffffff;
+            border-right: 1px solid #dee2e6;
+        }
+        .sidebar .nav-link {
+            color: #495057;
+            font-weight: 500;
+            padding: 10px 20px;
+            margin-bottom: 5px;
+            border-radius: 5px;
+        }
+        .sidebar .nav-link:hover, .sidebar .nav-link.active {
+            background-color: #e9ecef;
+            color: #0d6efd;
+        }
 
-    <div class="container my-4">
-        <div class="row">
+    <!-- Top Navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
+    <div class="container-fluid px-4">
+
+        <a class="navbar-brand fw-bold d-flex align-items-center" href="dashboard.html">
+
+            <img src="RVRG LOGO.jpg"
+                 height="45"
+                 class="bg-white rounded p-1 me-2 shadow-sm">
+
+            <span class="text-secondary mx-1 fs-4">|</span>
+
+            <img src="cbre_green.jpg"
+                 height="45"
+                 class="bg-white rounded p-1 ms-2 me-3 shadow-sm">
+
+            <div class="d-none d-sm-block">
+                <span class="d-block lh-1 text-white">
+                    Store Management
+                </span>
+
+                <small class="text-info fw-normal"
+                       style="font-size:12px;">
+                    Enterprise Edition
+                </small>
+            </div>
+
+        </a>
+
+        <div class="d-flex align-items-center">
+
+            <span class="me-4 text-white">
+                <i class="fa-solid fa-bell"></i>
+            </span>
+
+            <div class="dropdown">
+
+                <a class="text-white text-decoration-none dropdown-toggle"
+                   href="#"
+                   data-bs-toggle="dropdown">
+
+                    <i class="fa-solid fa-user-circle me-1"></i>
+
+                    <span id="currentUserName">
+                        Loading...
+                    </span>
+
+                </a>
+
+                <ul class="dropdown-menu dropdown-menu-end">
+
+                    <li>
+
+                        <a class="dropdown-item"
+                           href="#"
+                           onclick="logout()">
+
+                            <i class="fa-solid fa-right-from-bracket me-2 text-danger"></i>
+
+                            Logout
+
+                        </a>
+
+                    </li>
+
+                </ul>
+
+            </div>
+
+        </div>
+
+    </div>
+</nav>
             
             <!-- LEFT COLUMN: Material Request Form -->
             <div class="col-lg-5 mb-4">
@@ -147,5 +228,12 @@
     <script src="common.js"></script>
     <!-- 3. Logic script for this module -->
     <script src="material_request.js"></script>
+    
+</div>
+
+</div>
+
+</div>  
+    
 </body>
 </html>

@@ -15,9 +15,9 @@ return JSON.parse(userString);
 }
 
 // Protect page
-const currentUser = getCurrentUser();
+const loggedInUser = getCurrentUser();
 
-if (!currentUser)
+if (!loggedInUser)
     window.location.replace("index.html");
 
 function logout() {

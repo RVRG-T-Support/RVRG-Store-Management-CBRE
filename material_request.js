@@ -279,18 +279,6 @@ async function submitMaterialRequest(e) {
 
 }
 
-// Reset form and refresh table
-        e.target.reset();
-        document.getElementById('unitPriceDisplay').innerText = '₹ 0.00';
-        document.getElementById('gstNote').innerText = 'GST info will appear here';
-        loadRecentRequests();
-
-    } catch (error) {
-        console.error("Error submitting request:", error.message);
-        showAlert("Failed to submit request. Check console for details.", "error");
-    }
-}
-
 // --- RECENT REQUESTS TABLE LOGIC ---
 
 async function loadRecentRequests() {

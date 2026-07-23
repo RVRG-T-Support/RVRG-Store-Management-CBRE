@@ -78,7 +78,7 @@ async function handleDepartmentChange(e) {
 // Load Technicans data
 
 async function loadTechnicians(departmentId) {
-
+console.log("Technician Dept ID:", departmentId);
     const techSelect = document.getElementById("technicianSelect");
 
     techSelect.innerHTML =
@@ -121,7 +121,7 @@ async function loadTechnicians(departmentId) {
 
 // Load Materials
 async function loadMaterials(departmentId) {
-
+console.log("Material Dept ID:", departmentId);
     try {
 
         const { data, error } = await supabase

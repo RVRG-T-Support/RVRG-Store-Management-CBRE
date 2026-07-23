@@ -94,13 +94,19 @@ async function loadRecentRequests() {
     
     try {
         const { data, error } = await supabase
-            .from('material_requests')
-            .select(`
-                ticket_no,
-                request_status,
-                requested_by,
-                created_at
-            `)
+        .from('material_requests')
+        .select(`
+        ticket_no,
+        request_status,
+        requested_by,
+        created_at,
+        materials (
+            material_name,
+            department_id
+            )
+    `)
+    .order('created_at', { ascending: false })
+    .limit(5);
             .order('created_at', { ascending: false })
             .limit(5); // Fetch only the 5 most recent[cite: 2]
 
@@ -113,7 +119,8 @@ async function loadRecentRequests() {
 
         tbody.innerHTML = '';
         data.forEach(req => {
-            const deptName = '-';
+            const deptName =
+                req.materials?.department_id || 'N/A';
             const tr = document.createElement('tr');
             
             tr.innerHTML = `

@@ -98,10 +98,11 @@ const { data, error } = await supabase
     .select(`
         ticket_no,
         request_status,
-        requested_by,
         created_at,
+        users_master!material_requests_requested_by_fkey (
+            full_name
+        ),
         materials!material_requests_material_id_fkey (
-            material_name,
             departments (
                 department_name
             )
@@ -125,7 +126,7 @@ const tr = document.createElement('tr');
 
 tr.innerHTML = `
                <td class="fw-bold text-primary">${req.ticket_no}</td>
-               <td>${req.requested_by || 'Unknown'}</td>
+               <td>${req.users_master?.full_name || 'Unknown'}</td>
                <td>${deptName}</td>
                <td>${getStatusBadge(req.request_status)}</td>
            `;

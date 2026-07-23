@@ -193,48 +193,93 @@ function handleMaterialChange(e){
 }
 
 // --- SUBMIT TICKET LOGIC ---
-
 async function submitMaterialRequest(e) {
-    e.preventDefault(); // Prevent page reload
-    
-    const user = getCurrentUser(); // From common.js/config.js
 
-    // Gather form values
-    const ticketType = document.getElementById('ticketType').value;
-    const location = document.getElementById('locationInput').value;
-    const departmentId = document.getElementById('departmentSelect').value;
-    const technicianId = document.getElementById('technicianSelect').value;
-    const materialId = document.getElementById('materialSelect').value;
-    const quantity = document.getElementById('requestQuantity').value;
-    const remarks = document.getElementById('requestRemarks').value;
+    e.preventDefault();
+
+    const user = getCurrentUser();
+
+    const locationType =
+        document.getElementById("ticketType").value;
+
+    const locationName =
+        document.getElementById("locationInput").value;
+
+    const technicianId =
+        document.getElementById("technicianSelect").value;
+
+    const materialId =
+        document.getElementById("materialSelect").value;
+
+    const qty =
+        document.getElementById("requestQuantity").value;
+
+    const remarks =
+        document.getElementById("requestRemarks").value;
 
     try {
-        // Generate a standard Ticket No (e.g., MR-2026-XXXX)
-        const year = new Date().getFullYear();
-        const randomId = Math.floor(1000 + Math.random() * 9000);
-        const ticketNo = `MR-${year}-${randomId}`;
 
-        // Insert into database
+        const year = new Date().getFullYear();
+
+        const random =
+            Math.floor(1000 + Math.random() * 9000);
+
+        const ticketNo =
+            `MR-${year}-${random}`;
+
         const { error } = await supabase
-            .from('material_requests')
+            .from("material_requests")
             .insert([{
+
                 ticket_no: ticketNo,
-                ticket_type: ticketType,
-                location: location,
-                department_id: departmentId,
-                technician_id: technicianId,
-                material_id: materialId,
-                requested_qty: parseInt(quantity),
+
+                location_type: locationType,
+
+                location_name: locationName,
+
+                technician_id: Number(technicianId),
+
+                material_id: Number(materialId),
+
+                requested_qty: Number(qty),
+
                 remarks: remarks,
-                status: 'PENDING',
-                requested_by: user.name
+
+                request_status: "PENDING",
+
+                requested_by: user.id
+
             }]);
 
         if (error) throw error;
 
-        showAlert(`Ticket ${ticketNo} generated successfully!`, 'success');
-        
-        // Reset form and refresh table
+        showAlert(
+            "Request submitted successfully.",
+            "success"
+        );
+
+        document
+            .getElementById("materialRequestForm")
+            .reset();
+
+        loadRecentRequests();
+
+    }
+
+    catch(err){
+
+        console.error(err);
+
+        showAlert(
+            err.message,
+            "danger"
+        );
+
+    }
+
+}
+
+// Reset form and refresh table
         e.target.reset();
         document.getElementById('unitPriceDisplay').innerText = '₹ 0.00';
         document.getElementById('gstNote').innerText = 'GST info will appear here';
@@ -249,46 +294,108 @@ async function submitMaterialRequest(e) {
 // --- RECENT REQUESTS TABLE LOGIC ---
 
 async function loadRecentRequests() {
-    const tableBody = document.getElementById('recentRequestsTable');
-    tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Loading requests...</td></tr>';
+
+    const table =
+        document.getElementById(
+            "recentRequestsTable"
+        );
+
+    table.innerHTML =
+        `<tr>
+            <td colspan="5">
+                Loading...
+            </td>
+        </tr>`;
 
     try {
-        // Fetch top 10 recent requests, joining material and technician names
-        const { data, error } = await supabase
-            .from('material_requests')
+
+        const { data, error } =
+            await supabase
+
+            .from("material_requests")
+
             .select(`
-                *,
-                materials (name),
-                technicians (name)
+                ticket_no,
+                location_name,
+                location_type,
+                requested_qty,
+                request_status,
+                created_at,
+                materials (
+                    material_name
+                )
             `)
-            .order('created_at', { ascending: false })
+
+            .order("created_at",
+                {ascending:false})
+
             .limit(10);
 
-        if (error) throw error;
+        if(error) throw error;
 
-        if (data.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No recent requests found.</td></tr>';
-            return;
-        }
+        table.innerHTML="";
 
-        tableBody.innerHTML = '';
-        data.forEach(req => {
-            const materialName = req.materials ? req.materials.name : 'Unknown Material';
-            const techName = req.technicians ? req.technicians.name : 'Unknown Tech';
-            
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td><span class="fw-bold text-primary">${req.ticket_no || 'N/A'}</span><br><small class="text-muted">${formatDate(req.created_at)}</small></td>
-                <td><strong>${req.ticket_type || 'N/A'}</strong><br><small>${req.location || ''}</small></td>
-                <td>${materialName}</td>
-                <td>${req.requested_qty}</td>
-                <td>${getStatusBadge(req.status)}</td>
+        data.forEach(req=>{
+
+            table.innerHTML += `
+
+            <tr>
+
+                <td>
+
+                    ${req.ticket_no}
+
+                </td>
+
+                <td>
+
+                    ${req.location_name}
+
+                </td>
+
+                <td>
+
+                    ${req.materials?.material_name ?? "-"}
+
+                </td>
+
+                <td>
+
+                    ${req.requested_qty}
+
+                </td>
+
+                <td>
+
+                    ${getStatusBadge(
+                        req.request_status
+                    )}
+
+                </td>
+
+            </tr>
+
             `;
-            tableBody.appendChild(tr);
+
         });
 
-    } catch (error) {
-        console.error("Error loading recent requests:", error.message);
-        tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Failed to load requests.</td></tr>';
     }
+
+    catch(err){
+
+        console.error(err);
+
+        table.innerHTML=
+        `<tr>
+            <td colspan="5"
+                class="text-danger">
+
+                Failed to load requests
+
+            </td>
+        </tr>`;
+
+    }
+
 }
+

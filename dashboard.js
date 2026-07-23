@@ -11,8 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!hasAccess) return;
 
     // Display User Info and Current Date
-    const user = getCurrentUser();
-    document.getElementById('currentUserName').innerText = `${user.name} (${user.role})`;
+    document.getElementById('currentUserName').innerText =`${currentUser.name} (${currentUser.role})`;
     document.getElementById('currentDateDisplay').innerText = formatDate(new Date());
 
     // Load all dashboard data concurrently
@@ -24,13 +23,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // --- MAIN DATA CONTROLLER ---
 
-async function loadDashboardData() {
     // Run these fetches in parallel to make the dashboard load instantly
-    await Promise.all([
-        loadMetrics(),
-        loadRecentRequests(),
-        loadLowStockAlerts()
-    ]);
+async function loadDashboardData() {
+
+    await loadMetrics().catch(console.error);
+
+    await loadRecentRequests().catch(console.error);
+
+    await loadLowStockAlerts().catch(console.error);
+
 }
 
 // --- METRICS LOGIC ---

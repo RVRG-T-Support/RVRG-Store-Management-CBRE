@@ -85,7 +85,7 @@ console.log("Technician Dept ID:", departmentId);
         `<option value="">Loading...</option>`;
 
     try {
-
+        console.log("Loading technicians for:", departmentId);
         const { data, error } = await supabase
             .from("technicians")
             .select("id, technician_name")
@@ -94,7 +94,7 @@ console.log("Technician Dept ID:", departmentId);
             .order("technician_name");
 
         if (error) throw error;
-
+        console.log(data);
         techSelect.innerHTML =
             `<option value="">Select Technician</option>`;
 
@@ -123,7 +123,7 @@ console.log("Technician Dept ID:", departmentId);
 async function loadMaterials(departmentId) {
 console.log("Material Dept ID:", departmentId);
     try {
-
+        console.log("Loading materials for:", departmentId);
         const { data, error } = await supabase
             .from("materials")
             .select(`
@@ -139,7 +139,7 @@ console.log("Material Dept ID:", departmentId);
             .order("material_name");
 
         if (error) throw error;
-
+        console.log(data);
         window.currentMaterials = data;
 
         const matSelect =

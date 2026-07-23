@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // --- DATA LOADING FUNCTIONS ---
+// Load Department
 
 async function loadDepartments() {
 
@@ -59,6 +60,8 @@ async function loadDepartments() {
 
 }
 
+// Handle Department Changes
+
 async function handleDepartmentChange(e) {
     const departmentId = e.target.value;
     
@@ -72,10 +75,11 @@ async function handleDepartmentChange(e) {
     ]);
 }
 
+// Load Technicans data
+
 async function loadTechnicians(departmentId) {
 
-    const techSelect =
-        document.getElementById("technicianSelect");
+    const techSelect = document.getElementById("technicianSelect");
 
     techSelect.innerHTML =
         `<option value="">Loading...</option>`;
@@ -86,7 +90,7 @@ async function loadTechnicians(departmentId) {
             .from("technicians")
             .select("id, technician_name")
             .eq("department_id", departmentId)
-            .eq("active", true)
+            .eq("is_active", true)
             .order("technician_name");
 
         if (error) throw error;
@@ -96,18 +100,14 @@ async function loadTechnicians(departmentId) {
 
         data.forEach(tech => {
 
-            techSelect.innerHTML += `
-
-                <option value="${tech.id}">
+            techSelect.innerHTML +=
+                `<option value="${tech.id}">
                     ${tech.technician_name}
-                </option>
-
-            `;
+                </option>`;
 
         });
 
     }
-
     catch (err) {
 
         console.error(err);
@@ -119,48 +119,77 @@ async function loadTechnicians(departmentId) {
 
 }
 
+// Load Materials
 async function loadMaterials(departmentId) {
+
     try {
+
         const { data, error } = await supabase
-            .from('materials')
-            .select('*')
-            .eq('department_id', departmentId)
-            .order('name', { ascending: true });
+            .from("materials")
+            .select(`
+                id,
+                material_name,
+                unit,
+                unit_cost,
+                price,
+                gst_type
+            `)
+            .eq("department_id", departmentId)
+            .eq("is_active", true)
+            .order("material_name");
 
         if (error) throw error;
 
-        const matSelect = document.getElementById('materialSelect');
-        matSelect.innerHTML = '<option value="" selected disabled>Select Material</option>';
-        
-        // Store material data globally for easy access when selecting
-        window.currentMaterials = data; 
-        
+        window.currentMaterials = data;
+
+        const matSelect =
+            document.getElementById("materialSelect");
+
+        matSelect.innerHTML =
+            `<option value="">Select Material</option>`;
+
         data.forEach(mat => {
-            // Assuming your table has a 'name' and 'material_id' column
-            matSelect.innerHTML += `<option value="${mat.material_id}">${mat.name}</option>`;
+
+            matSelect.innerHTML += `
+                <option value="${mat.id}">
+                    ${mat.material_name}
+                </option>
+            `;
+
         });
-    } catch (error) {
-        console.error("Error loading materials:", error.message);
+
     }
+
+    catch(err){
+
+        console.error(err);
+
+    }
+
 }
 
 // --- PRICE DISPLAY LOGIC ---
 
-function handleMaterialChange(e) {
-    const selectedMatId = e.target.value;
-    const materials = window.currentMaterials || [];
-    
-    // Find the selected material object
-    const selectedMat = materials.find(m => m.material_id == selectedMatId);
-    
-    if (selectedMat) {
-        // Display price (Assuming columns 'price' and 'gst_type' exist)
-        const price = selectedMat.price || 0;
-        const gstInfo = selectedMat.gst_type || 'Excluding GST'; // or 'Including GST'
-        
-        document.getElementById('unitPriceDisplay').innerText = formatCurrency(price);
-        document.getElementById('gstNote').innerText = `Price is ${gstInfo}`;
-    }
+function handleMaterialChange(e){
+
+    const materialId = Number(e.target.value);
+
+    const material =
+        window.currentMaterials.find(
+            m => m.id === materialId
+        );
+
+    if(!material) return;
+
+    document.getElementById("unitPriceDisplay")
+        .innerHTML =
+        "₹ " + Number(material.unit_cost).toFixed(2);
+
+    document.getElementById("gstNote")
+        .innerHTML =
+        "GST : " +
+        material.gst_type;
+
 }
 
 // --- SUBMIT TICKET LOGIC ---

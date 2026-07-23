@@ -205,8 +205,8 @@ async function submitMaterialRequest(e) {
     const locationName =
         document.getElementById("locationInput").value;
 
-    const technicianId =
-        document.getElementById("technicianSelect").value;
+    const technicianName =
+    document.getElementById("technicianName").value.trim();
 
     const materialId =
         document.getElementById("materialSelect").value;
@@ -237,7 +237,7 @@ async function submitMaterialRequest(e) {
 
                 location_name: locationName,
 
-                technician_id: Number(technicianId),
+                technician_name: technicianName,
 
                 material_id: Number(materialId),
 

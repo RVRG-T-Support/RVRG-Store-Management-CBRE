@@ -1,4 +1,4 @@
-// dashboard.js
+// dashboard.js//
 // Protect page
 const currentUser = getCurrentUser();
 

@@ -94,15 +94,21 @@ const tbody = document.getElementById('dashRecentRequests');
 
 try {
 const { data, error } = await supabase
-.from('material_requests')
-.select(`
-               ticket_no,
-               request_status,
-               requested_by,
-               created_at
-           `)
-.order('created_at', { ascending: false })
-.limit(5); // Fetch only the 5 most recent[cite: 2]
+    .from('material_requests')
+    .select(`
+        ticket_no,
+        request_status,
+        requested_by,
+        created_at,
+        materials!material_requests_material_id_fkey (
+            material_name,
+            departments (
+                department_name
+            )
+        )
+    `)
+    .order('created_at', { ascending: false })
+    .limit(5); // Fetch only the 5 most recent[cite: 2]
 
 if (error) throw error;
 
@@ -113,7 +119,8 @@ return;
 
 tbody.innerHTML = '';
 data.forEach(req => {
-const deptName = '-';
+const deptName =
+           req.materials?.departments?.department_name || 'N/A';
 const tr = document.createElement('tr');
 
 tr.innerHTML = `

@@ -301,12 +301,15 @@ const stockEntryNo =
         const stockEntryNo =
     `STE-${currentYear}-${String(entryId).padStart(6, "0")}`;
 
-await supabase
+const { error: updateNoError } = await supabase
     .from("stock_entry_header")
     .update({
         stock_entry_no: stockEntryNo
     })
     .eq("id", entryId);
+
+if (updateNoError)
+    throw updateNoError;
 
         // Step 2 & 3: Details and Ledger
         const detailsArray = [];
@@ -381,12 +384,17 @@ if (stockUpdateError)
 }
 
         confirmModalInstance.hide();
-        showAlert(
-    `Stock Entry ${stockEntryNo} saved successfully.`,
-    "success"
-);
+       showAlert(
+`Stock Entry Saved Successfully
+
+RVRG Ref No : ${stockEntryNo}
+
+Vendor Invoice : ${invoiceNo}`,
+"success");
         
         document.getElementById('stockEntryForm').reset();
+        document.getElementById('invoiceDate').value =
+        new Date().toISOString().split('T')[0];
         document.getElementById('stockEntryItems').innerHTML = '';
         document.getElementById('calculatedTotalDisplay').innerText = '₹ 0.00';
         document.getElementById('calculatedTotalDisplay').dataset.value = '0';

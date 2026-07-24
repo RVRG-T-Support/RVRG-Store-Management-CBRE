@@ -33,10 +33,14 @@ async function loadApprovedRequests() {
             .from('material_requests')
             .select(`
                 *,
-                materials (material_id, name, price),
-                departments (name)
-            `)
-            .in('status', ['APPROVED', 'PARTIALLY_ISSUED'])
+                materials!material_requests_material_id_fkey (
+                    material_name,
+                    material_code,
+                    unit_cost,
+                    department_id
+                )
+        `)
+        .in('request_status', ['APPROVED', 'PARTIALLY_ISSUED'])
             .order('created_at', { ascending: true });
 
         if (reqError) throw reqError;
@@ -49,7 +53,7 @@ async function loadApprovedRequests() {
         // Fetch current stock from the current_stock view
         const { data: stockData, error: stockError } = await supabase
             .from('current_stock')
-            .select('material_id, stock_qty');
+            .select('material_id, current_stock');
             
         if (stockError) throw stockError;
 
@@ -57,10 +61,10 @@ async function loadApprovedRequests() {
         
         requests.forEach(req => {
             const material = req.materials || {};
-            const deptName = req.departments ? req.departments.name : 'Unknown';
-            const unitCost = material.price || 0;
-            const issuedQty = req.issued_qty || 0;
-            const balance = req.requested_qty - issuedQty;
+
+            const deptName = "-";
+
+            const unitCost = Number(material.unit_cost || 0);
             
             // Find current stock for this material
             const stockRecord = stockData.find(s => s.material_id === req.material_id);
@@ -70,9 +74,9 @@ async function loadApprovedRequests() {
             tr.innerHTML = `
                 <td>${formatDate(req.created_at)}</td>
                 <td class="fw-bold">${req.ticket_no}</td>
-                <td><small>${req.location || 'N/A'}</small></td>
+                <td><small>${req.location_name || 'N/A'}</small></td>
                 <td>${deptName}</td>
-                <td>${material.material_id || ''}<br><strong>${material.name || 'N/A'}</strong></td>
+                <td>${material.material_code || ''}<br><strong>${material.material_name || 'N/A'}</strong></td>
                 <td>${req.requested_qty}</td>
                 <td>${issuedQty}</td>
                 <td class="table-warning fw-bold text-danger" id="balance-${req.id}">${balance}</td>
@@ -84,7 +88,7 @@ async function loadApprovedRequests() {
                            oninput="calculateAmount(${req.id}, ${unitCost}, ${balance}, ${currentStock})">
                 </td>
                 <td>
-                    <button class="btn btn-primary btn-sm fw-bold shadow-sm" onclick="processIssue(${req.id}, ${req.material_id}, ${req.technician_id})" id="btnIssue-${req.id}">
+                    <button class="btn btn-primary btn-sm fw-bold shadow-sm"onclick="processIssue(${req.id}, ${req.material_id})" id="btnIssue-${req.id}">
                         Issue
                     </button>
                 </td>
@@ -124,7 +128,7 @@ window.calculateAmount = function(requestId, unitCost, maxBalance, currentStock)
 
 // --- ISSUE PROCESS WORKFLOW ---
 
-window.processIssue = async function(requestId, materialId, technicianId) {
+window.processIssue = async function(requestId, materialId) {
     const inputEl = document.getElementById(`issueInput-${requestId}`);
     const issueQty = parseInt(inputEl.value);
     const balance = parseInt(document.getElementById(`balance-${requestId}`).innerText);
@@ -151,9 +155,9 @@ window.processIssue = async function(requestId, materialId, technicianId) {
             .insert([{
                 request_id: requestId,
                 material_id: materialId,
-                technician_id: technicianId,
+                technician_name: "",
                 issued_qty: issueQty,
-                issued_by: user.name
+                issued_by: user.id
             }])
             .select();
 
@@ -169,7 +173,7 @@ window.processIssue = async function(requestId, materialId, technicianId) {
                 quantity: -Math.abs(issueQty), // Negative for deduction
                 reference_id: newIssueId.toString(),
                 remarks: `Issued against ticket ID ${requestId}`,
-                recorded_by: user.name
+                recorded_by: user.id
             }]);
 
         if (ledgerError) throw ledgerError;
@@ -190,8 +194,7 @@ window.processIssue = async function(requestId, materialId, technicianId) {
             .from('material_requests')
             .update({ 
                 issued_qty: newTotalIssued,
-                status: newStatus,
-                updated_at: new Date().toISOString()
+                request_status: newStatus
             })
             .eq('id', requestId);
 

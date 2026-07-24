@@ -382,31 +382,7 @@ if (updateNoError)
 
         const { error: ledgerError } = await supabase.from('stock_ledger').insert(ledgerArray);
         if (ledgerError) throw ledgerError;
-        // Step 4: Update Current Stock
-
-for (const item of detailsArray) {
-
-    const { data: current } = await supabase
-        .from("current_stock")
-        .select("current_stock")
-        .eq("material_id", item.material_id)
-        .single();
-
-    const existingQty = Number(current?.current_stock || 0);
-
-    const { error: stockUpdateError } =
-await supabase
-    .from("current_stock")
-    .update({
-        current_stock: existingQty + item.quantity
-    })
-    .eq("material_id", item.material_id);
-
-if (stockUpdateError)
-    throw stockUpdateError;
-
-}
-
+    
         confirmModalInstance.hide();
        showAlert(
 `Stock Entry Saved Successfully

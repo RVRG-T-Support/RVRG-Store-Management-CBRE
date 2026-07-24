@@ -43,11 +43,14 @@ async function loadPendingApprovals() {
             .from('material_requests')
             .select(`
                 *,
-                materials (name),
-                technicians (name),
-                departments (name)
-            `)
-            .eq('status', 'PENDING')
+                materials!material_requests_material_id_fkey (
+                    material_name,
+                    departments (
+                        department_name
+            )
+        )
+    `)
+        .eq('request_status', 'PENDING')
             .order('created_at', { ascending: true }); // Oldest first
 
         if (error) throw error;
@@ -60,9 +63,14 @@ async function loadPendingApprovals() {
         tableBody.innerHTML = ''; // Clear table
         
         data.forEach(req => {
-            const materialName = req.materials ? req.materials.name : 'Unknown Material';
-            const techName = req.technicians ? req.technicians.name : 'Unknown Tech';
-            const deptName = req.departments ? req.departments.name : 'Unknown Dept';
+            const materialName =
+        req.materials?.material_name || '-';
+
+        const deptName =
+            req.materials?.departments?.department_name || '-';
+
+        const techName =
+            req.technician_name || '-';
             
             const tr = document.createElement('tr');
             tr.innerHTML = `
@@ -77,8 +85,8 @@ async function loadPendingApprovals() {
                 <td><span class="fw-semibold">${materialName}</span></td>
                 <td><h5><span class="badge bg-secondary">${req.requested_qty}</span></h5></td>
                 <td>
-                    ${req.ticket_type}<br>
-                    <small class="text-muted">${req.location || 'N/A'}</small>
+                    ${req.location_type}<br>
+                    <small class="text-muted">${req.location_name || 'N/A'}</small>
                 </td>
                 <td class="text-center">
                     <button class="btn btn-success btn-sm me-1 mb-1" onclick="approveRequest(${req.id}, '${req.ticket_no}')" title="Approve">
@@ -110,9 +118,9 @@ async function approveRequest(requestId, ticketNo) {
         const { error } = await supabase
             .from('material_requests')
             .update({ 
-                status: 'APPROVED',
-                approved_by: user.name, // Assuming you have this column or track it
-                updated_at: new Date().toISOString()
+                request_status: 'APPROVED',
+                approved_by: user.id, // Assuming you have this column or track it
+                approval_date: new Date().toISOString()
             })
             .eq('id', requestId);
 
@@ -151,10 +159,10 @@ async function processRejection() {
         const { error } = await supabase
             .from('material_requests')
             .update({ 
-                status: 'REJECTED',
+                request_status: 'REJECTED',
                 remarks: reason ? `Rejected: ${reason}` : 'Rejected without remarks',
-                approved_by: user.name,
-                updated_at: new Date().toISOString()
+                approved_by: user.id,
+                approval_date: new Date().toISOString()
             })
             .eq('id', currentRejectId);
 

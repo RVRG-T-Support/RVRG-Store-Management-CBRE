@@ -90,14 +90,29 @@ ${deptName} - ${mat.material_name}
             </select>
         </td>
         <td>
-            <input type="number" class="form-control form-control-sm item-row-input mx-auto qty-input" 
-                   required min="1" id="qty-${rowCount}" oninput="calculateRowTotal(${rowCount})">
-        </td>
-        <td>
-            <input type="number" step="0.01" class="form-control form-control-sm item-row-input mx-auto price-input" 
-                   required min="0" id="price-${rowCount}" oninput="calculateRowTotal(${rowCount})" 
-                   onkeydown="handleEnterKey(event, ${rowCount})">
-        </td>
+    <input type="number"
+           class="form-control form-control-sm item-row-input mx-auto qty-input"
+           required
+           min="1"
+           id="qty-${rowCount}"
+           oninput="calculateRowTotal(${rowCount})">
+</td>
+
+<td class="align-middle text-center fw-bold"
+    id="unit-${rowCount}">
+-
+</td>
+
+<td>
+    <input type="number"
+           step="0.01"
+           class="form-control form-control-sm item-row-input mx-auto price-input"
+           required
+           min="0"
+           id="price-${rowCount}"
+           oninput="calculateRowTotal(${rowCount})"
+           onkeydown="handleEnterKey(event, ${rowCount})">
+</td>
         <td class="align-middle fw-bold row-total" id="total-${rowCount}" data-value="0">₹ 0.00</td>
         <td class="align-middle">
             <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeRow(${rowCount})" title="Remove">
@@ -106,6 +121,18 @@ ${deptName} - ${mat.material_name}
         </td>
     `;
     tbody.appendChild(tr);
+    document
+    .getElementById(`material-${rowCount}`)
+    .addEventListener("change", function () {
+
+        const material = materialsData.find(
+            m => m.id == this.value
+        );
+
+        document.getElementById(`unit-${rowCount}`).innerText =
+            material?.unit || "-";
+
+    });
 
     // If Excel data is passed in, auto-fill the row
     if (prefillData) {

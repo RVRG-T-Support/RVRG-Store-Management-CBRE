@@ -256,6 +256,10 @@ function openConfirmationModal(e) {
     
     const invoiceNo = document.getElementById('invoiceNo').value.trim();
     const billedAmount = parseFloat(document.getElementById('billedAmount').value) || 0;
+    if (billedAmount <= 0) {
+    showAlert("Please enter the billed invoice amount.", "warning");
+    return;
+}
     const calculatedTotal = parseFloat(document.getElementById('calculatedTotalDisplay').dataset.value) || 0;
     const itemCount = document.querySelectorAll('.item-select').length;
 
@@ -336,6 +340,7 @@ if (updateNoError)
     throw updateNoError;
 
         // Step 2 & 3: Details and Ledger
+        const selectedMaterials = new Set();
         const detailsArray = [];
         const ledgerArray = [];
         const rows = document.querySelectorAll('#stockEntryItems tr');
@@ -343,8 +348,24 @@ if (updateNoError)
         rows.forEach(row => {
             const rowId = row.id.split('-')[1];
             const materialId = document.getElementById(`material-${rowId}`).value;
+            if (!materialId) {
+    throw new Error("Please select a material.");
+}
+
+if (selectedMaterials.has(materialId)) {
+    throw new Error("Duplicate materials are not allowed in one invoice.");
+}
+
+selectedMaterials.add(materialId);
             const qty = parseFloat(document.getElementById(`qty-${rowId}`).value);
             const price = parseFloat(document.getElementById(`price-${rowId}`).value);
+            if (qty <= 0) {
+    throw new Error("Quantity must be greater than zero.");
+}
+
+if (price <= 0) {
+    throw new Error("Unit Price must be greater than zero.");
+}
             const amount = qty * price;
 
     detailsArray.push({
@@ -403,7 +424,7 @@ Vendor Invoice : ${invoiceNo}`,
 
     } catch (error) {
         console.error("Save Error:", error.message);
-        showAlert("Failed to save stock entry. Check console.", "error");
+        showAlert(error.message, "error");
     } finally {
         btnConfirm.disabled = false;
         btnConfirm.innerHTML = 'Confirm & Save';

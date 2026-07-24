@@ -70,82 +70,107 @@ async function generateReport(e) {
 // --- DATA FETCHING FUNCTIONS ---
 
 async function fetchConsumptionData(fromDate, toDate, departmentName, areaType) {
-    // Querying material_issue_register joined with requests, materials, and departments
+
     let query = supabase
-        .from('material_issue_register')
+        .from("material_issue_register")
         .select(`
-            id,
+            ticket_no,
+            location_type,
+            location_name,
+            issued_date,
             issued_qty,
-            created_at,
-            material_requests!inner ( ticket_no, ticket_type, location, departments!inner (name) ),
-            materials ( name, price )
+            unit_cost,
+            materials!material_issue_register_material_id_fkey(
+                material_name,
+                department_id,
+                departments(
+                    department_name
+                )
+            )
         `)
-        .gte('created_at', fromDate)
-        .lte('created_at', toDate)
-        .order('created_at', { ascending: false });
+        .gte("issued_date", fromDate)
+        .lte("issued_date", toDate)
+        .order("issued_date", { ascending: false });
 
     const { data, error } = await query;
+
     if (error) throw error;
 
-    // Supabase filtering on deeply nested joined tables can be complex, 
-    // so we apply the specific department and area filters locally here.
-    let filteredData = data;
+    let filtered = data;
 
-    if (departmentName !== 'ALL') {
-        filteredData = filteredData.filter(item => item.material_requests.departments.name === departmentName);
-    }
-    
-    if (areaType !== 'ALL') {
-        filteredData = filteredData.filter(item => item.material_requests.ticket_type === areaType);
+    if (departmentName !== "ALL") {
+        filtered = filtered.filter(
+            x => x.materials?.departments?.department_name === departmentName
+        );
     }
 
-    // Map to a standardized format for the table
-    return filteredData.map(item => ({
-        date: item.created_at,
-        reference: item.material_requests.ticket_no,
-        material: item.materials.name,
-        department: item.material_requests.departments.name,
-        area: item.material_requests.ticket_type,
-        quantity: item.issued_qty,
-        value: item.issued_qty * (item.materials.price || 0)
+    if (areaType !== "ALL") {
+        filtered = filtered.filter(
+            x => x.location_type === areaType
+        );
+    }
+
+    return filtered.map(row => ({
+        date: row.issued_date,
+        reference: row.ticket_no,
+        material: row.materials?.material_name || "-",
+        department: row.materials?.departments?.department_name || "-",
+        area: row.location_type,
+        quantity: row.issued_qty,
+        value: Number(row.issued_qty) * Number(row.unit_cost)
     }));
+
 }
 
 async function fetchPurchaseData(fromDate, toDate, departmentName) {
-    // Querying stock_entry_details joined with header, materials, and departments
+
     let query = supabase
-        .from('stock_entry_details')
+        .from("stock_entry_details")
         .select(`
-            id,
             quantity,
-            amount,
-            created_at,
-            stock_entry_header!inner ( invoice_no ),
-            materials!inner ( name, departments!inner (name) )
+            purchase_price,
+            line_total,
+            stock_entry_header!inner(
+                invoice_no,
+                invoice_date
+            ),
+            materials!stock_entry_details_material_id_fkey(
+                material_name,
+                department_id,
+                departments(
+                    department_name
+                )
+            )
         `)
-        .gte('created_at', fromDate)
-        .lte('created_at', toDate)
-        .order('created_at', { ascending: false });
+        .gte("stock_entry_header.invoice_date", fromDate)
+        .lte("stock_entry_header.invoice_date", toDate)
+        .order("invoice_date", {
+            foreignTable: "stock_entry_header",
+            ascending: false
+        });
 
     const { data, error } = await query;
+
     if (error) throw error;
 
-    let filteredData = data;
+    let filtered = data;
 
-    if (departmentName !== 'ALL') {
-        filteredData = filteredData.filter(item => item.materials.departments.name === departmentName);
+    if (departmentName !== "ALL") {
+        filtered = filtered.filter(
+            x => x.materials?.departments?.department_name === departmentName
+        );
     }
 
-    // Map to a standardized format for the table
-    return filteredData.map(item => ({
-        date: item.created_at,
-        reference: item.stock_entry_header.invoice_no,
-        material: item.materials.name,
-        department: item.materials.departments.name,
-        area: 'N/A (Stock In)', // Area doesn't apply to purchases
-        quantity: item.quantity,
-        value: item.amount || 0
+    return filtered.map(row => ({
+        date: row.stock_entry_header.invoice_date,
+        reference: row.stock_entry_header.invoice_no,
+        material: row.materials?.material_name || "-",
+        department: row.materials?.departments?.department_name || "-",
+        area: "Stock Purchase",
+        quantity: row.quantity,
+        value: Number(row.line_total || 0)
     }));
+
 }
 
 // --- RENDERING LOGIC ---

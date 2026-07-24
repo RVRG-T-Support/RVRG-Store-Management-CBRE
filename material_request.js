@@ -69,7 +69,7 @@ async function handleDepartmentChange(e) {
     document.getElementById('unitPriceDisplay').innerText = '₹ 0.00';
     document.getElementById('gstNote').innerText = 'GST info will appear here';
     
-    await loadMaterials(departmentId);
+    await loadMaterials(Number(departmentId));
 }
 
 // Load Materials
@@ -264,9 +264,9 @@ async function loadRecentRequests() {
                 requested_qty,
                 request_status,
                 created_at,
-                materials (
-                    material_name
-                )
+                materials!material_requests_material_id_fkey (
+    material_name
+)
             `)
 
             .order("created_at",

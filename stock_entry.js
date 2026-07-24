@@ -41,12 +41,14 @@ async function loadMaterials() {
             .select(`
     id,
     material_name,
-    department_id,
     material_code,
+    unit,
+    department_id,
     departments(
         department_name
     )
 `)
+.order("material_name", { ascending: true });
 .order('material_name', { ascending: true });
             
         if (error) throw error;

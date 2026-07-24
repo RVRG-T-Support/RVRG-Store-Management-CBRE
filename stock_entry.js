@@ -139,6 +139,8 @@ ${deptName} - ${mat.material_name}
         const matMatch = materialsData.find(m => m.id == prefillData.Material_ID);
         if (matMatch) {
             document.getElementById(`material-${rowCount}`).value = matMatch.id;
+            document.getElementById(`unit-${rowCount}`).innerText =
+matMatch.unit || "-";
         }
         document.getElementById(`qty-${rowCount}`).value = prefillData.Quantity || 0;
         document.getElementById(`price-${rowCount}`).value = prefillData.Unit_Price || 0;
@@ -296,12 +298,6 @@ async function saveStockEntry() {
 
 const currentYear = new Date().getFullYear();
 
-const { count } = await supabase
-    .from("stock_entry_header")
-    .select("*", { count: "exact", head: true });
-
-const stockEntryNo =
-    `STE-${currentYear}-${String((count || 0) + 1).padStart(6, "0")}`;
         // Step 1: Insert Header
         const { data: headerData, error: headerError } = await supabase
             .from('stock_entry_header')

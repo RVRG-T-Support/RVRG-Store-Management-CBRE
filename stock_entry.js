@@ -38,8 +38,16 @@ async function loadMaterials() {
     try {
         const { data, error } = await supabase
             .from('materials')
-            .select('material_id, name, departments (name)')
-            .order('name', { ascending: true });
+            .select(`
+    id,
+    material_name,
+    department_id,
+    material_code,
+    departments(
+        department_name
+    )
+`)
+.order('material_name', { ascending: true });
             
         if (error) throw error;
         
@@ -63,8 +71,13 @@ function addRow(prefillData = null) {
 
     let optionsHtml = '<option value="" selected disabled>Select Material...</option>';
     materialsData.forEach(mat => {
-        const deptName = mat.departments ? mat.departments.name : 'Unknown';
-        optionsHtml += `<option value="${mat.material_id}">${deptName} - ${mat.name}</option>`;
+        const deptName =
+    mat.departments?.department_name || "-";
+
+optionsHtml +=
+`<option value="${mat.id}">
+${deptName} - ${mat.material_name}
+</option>`;
     });
 
     tr.innerHTML = `
@@ -95,7 +108,7 @@ function addRow(prefillData = null) {
     // If Excel data is passed in, auto-fill the row
     if (prefillData) {
         // Try to match by Material_ID exactly
-        const matMatch = materialsData.find(m => m.material_id == prefillData.Material_ID);
+        const matMatch = materialsData.find(m => m.id == prefillData.Material_ID);
         if (matMatch) {
             document.getElementById(`material-${rowCount}`).value = matMatch.material_id;
         }
@@ -255,13 +268,13 @@ async function saveStockEntry() {
         const { data: headerData, error: headerError } = await supabase
             .from('stock_entry_header')
             .insert([{
-                invoice_no: invoiceNo,
-                invoice_date: invoiceDate,
-                gst_type: gstType,
-                transportation_cost: transportCost,
-                total_amount: totalAmount,
-                entered_by: user.name
-            }])
+    invoice_no: invoiceNo,
+    invoice_date: invoiceDate,
+    supplier_name: "N/A",
+    transport_cost: transportCost,
+    remarks: "",
+    created_by: user.id
+}])
             .select();
 
         if (headerError) throw headerError;
@@ -279,22 +292,34 @@ async function saveStockEntry() {
             const price = parseFloat(document.getElementById(`price-${rowId}`).value);
             const amount = qty * price;
 
-            detailsArray.push({
-                stock_entry_id: entryId,
-                material_id: materialId,
-                quantity: qty,
-                unit_price: price,
-                amount: amount
-            });
+    detailsArray.push({
+    stock_entry_id: entryId,
+    material_id: Number(materialId),
+    quantity: qty,
+    purchase_price: price,
+    gst_type: "INCLUDED",
+    gst_percentage: Number(gstType),
+    line_total: amount
+});
 
-            ledgerArray.push({
-                material_id: materialId,
-                transaction_type: 'STOCK_IN',
-                quantity: qty,
-                reference_id: entryId.toString(),
-                remarks: `Invoice: ${invoiceNo}`,
-                recorded_by: user.name
-            });
+    ledgerArray.push({
+    material_id: Number(materialId),
+
+    transaction_type: "STOCK_IN",
+
+    quantity: qty,
+
+    reference_no: invoiceNo,
+
+    request_id: null,
+
+    remarks: `Invoice ${invoiceNo}`,
+
+    created_by: user.id,
+
+    transaction_date: new Date().toISOString()
+});
+            
         });
 
         const { error: detailsError } = await supabase.from('stock_entry_details').insert(detailsArray);

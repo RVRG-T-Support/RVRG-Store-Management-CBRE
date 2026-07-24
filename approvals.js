@@ -45,11 +45,9 @@ async function loadPendingApprovals() {
                 *,
                 materials!material_requests_material_id_fkey (
                     material_name,
-                    departments (
-                        department_name
-            )
-        )
-    `)
+                    department_id
+                )
+        `)
         .eq('request_status', 'PENDING')
             .order('created_at', { ascending: true }); // Oldest first
 
@@ -66,9 +64,9 @@ async function loadPendingApprovals() {
             const materialName =
         req.materials?.material_name || '-';
 
-        const deptName =
-            req.materials?.departments?.department_name || '-';
+        const deptName = "-";
 
+    
         const techName =
             req.technician_name || '-';
             
@@ -133,7 +131,7 @@ async function approveRequest(requestId, ticketNo) {
 
     } catch (error) {
         console.error("Error approving request:", error.message);
-        showAlert("Failed to approve request.", "error");
+        showAlert("Failed to approve request.", "danger");
     }
 }
 
@@ -177,7 +175,7 @@ async function processRejection() {
 
     } catch (error) {
         console.error("Error rejecting request:", error.message);
-        showAlert("Failed to reject request.", "error");
+        showAlert("Failed to reject request.", "danger");
     } finally {
         currentRejectId = null; // Reset
     }

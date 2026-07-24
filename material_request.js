@@ -190,6 +190,8 @@ async function submitMaterialRequest(e) {
 
                 location_name: locationName,
 
+                technician_id: null,
+
                 technician_name: technicianName,
 
                 material_id: Number(materialId),

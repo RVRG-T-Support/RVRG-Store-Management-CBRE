@@ -110,7 +110,7 @@ ${deptName} - ${mat.material_name}
         // Try to match by Material_ID exactly
         const matMatch = materialsData.find(m => m.id == prefillData.Material_ID);
         if (matMatch) {
-            document.getElementById(`material-${rowCount}`).value = matMatch.material_id;
+            document.getElementById(`material-${rowCount}`).value = matMatch.id;
         }
         document.getElementById(`qty-${rowCount}`).value = prefillData.Quantity || 0;
         document.getElementById(`price-${rowCount}`).value = prefillData.Unit_Price || 0;
@@ -250,7 +250,7 @@ function openConfirmationModal(e) {
     confirmModalInstance.show();
 }
 
-// --- SAVE WORKFLOW ---
+// --- SAVE STOCK ENTRY ---
 async function saveStockEntry() {
     const btnConfirm = document.getElementById('btnConfirmSave');
     btnConfirm.disabled = true;
@@ -264,16 +264,35 @@ async function saveStockEntry() {
     const totalAmount = parseFloat(document.getElementById('billedAmount').value) || 0;
 
     try {
+        // Generate Stock Entry Number
+
+const currentYear = new Date().getFullYear();
+
+const { count } = await supabase
+    .from("stock_entry_header")
+    .select("*", { count: "exact", head: true });
+
+const stockEntryNo =
+    `STE-${currentYear}-${String((count || 0) + 1).padStart(6, "0")}`;
         // Step 1: Insert Header
         const { data: headerData, error: headerError } = await supabase
             .from('stock_entry_header')
             .insert([{
+
+    stock_entry_no: stockEntryNo,
+
     invoice_no: invoiceNo,
+
     invoice_date: invoiceDate,
+
     supplier_name: "N/A",
+
     transport_cost: transportCost,
+
     remarks: "",
+
     created_by: user.id
+
 }])
             .select();
 
@@ -327,9 +346,32 @@ async function saveStockEntry() {
 
         const { error: ledgerError } = await supabase.from('stock_ledger').insert(ledgerArray);
         if (ledgerError) throw ledgerError;
+        // Step 4: Update Current Stock
+
+for (const item of detailsArray) {
+
+    const { data: current } = await supabase
+        .from("current_stock")
+        .select("current_stock")
+        .eq("material_id", item.material_id)
+        .single();
+
+    const existingQty = Number(current?.current_stock || 0);
+
+    await supabase
+        .from("current_stock")
+        .update({
+            current_stock: existingQty + item.quantity
+        })
+        .eq("material_id", item.material_id);
+
+}
 
         confirmModalInstance.hide();
-        showAlert(`Invoice ${invoiceNo} saved successfully. Stock updated!`, 'success');
+        showAlert(
+    `Stock Entry ${stockEntryNo} saved successfully.`,
+    "success"
+);
         
         document.getElementById('stockEntryForm').reset();
         document.getElementById('stockEntryItems').innerHTML = '';

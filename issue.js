@@ -206,13 +206,22 @@ const { data: issueData, error: issueError } = await supabase
         const { error: ledgerError } = await supabase
             .from('stock_ledger')
             .insert([{
-                material_id: materialId,
-                transaction_type: 'ISSUE',
-                quantity: -Math.abs(issueQty), // Negative for deduction
-                reference_id: newIssueId.toString(),
-                remarks: `Issued against ticket ID ${requestId}`,
-                recorded_by: user.id
-            }]);
+    material_id: materialId,
+
+    transaction_type: 'ISSUE',
+
+    quantity: -Math.abs(issueQty),
+
+    reference_no: newIssueId.toString(),
+
+    request_id: requestId,
+
+    remarks: `Issued against ticket ${requestId}`,
+
+    created_by: user.name,
+
+    transaction_date: new Date().toISOString()
+}]);
 
         if (ledgerError) throw ledgerError;
 

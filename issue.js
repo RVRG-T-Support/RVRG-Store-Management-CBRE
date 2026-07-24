@@ -218,7 +218,7 @@ const { data: issueData, error: issueError } = await supabase
 
     remarks: `Issued against ticket ${requestId}`,
 
-    created_by: user.name,
+    created_by: user.id,
 
     transaction_date: new Date().toISOString()
 }]);

@@ -69,54 +69,7 @@ async function handleDepartmentChange(e) {
     document.getElementById('unitPriceDisplay').innerText = '₹ 0.00';
     document.getElementById('gstNote').innerText = 'GST info will appear here';
     
-    await Promise.all([
-        loadTechnicians(departmentId),
-        loadMaterials(departmentId)
-    ]);
-}
-
-// Load Technicans data
-
-async function loadTechnicians(departmentId) {
-console.log("Technician Dept ID:", departmentId);
-    const techSelect = document.getElementById("technicianSelect");
-
-    techSelect.innerHTML =
-        `<option value="">Loading...</option>`;
-
-    try {
-        console.log("Loading technicians for:", departmentId);
-        const { data, error } = await supabase
-            .from("technicians")
-            .select("id, technician_name")
-            .eq("department_id", departmentId)
-            .eq("is_active", true)
-            .order("technician_name");
-
-        if (error) throw error;
-        console.log(data);
-        techSelect.innerHTML =
-            `<option value="">Select Technician</option>`;
-
-        data.forEach(tech => {
-
-            techSelect.innerHTML +=
-                `<option value="${tech.id}">
-                    ${tech.technician_name}
-                </option>`;
-
-        });
-
-    }
-    catch (err) {
-
-        console.error(err);
-
-        techSelect.innerHTML =
-            `<option value="">No Technician</option>`;
-
-    }
-
+    await loadMaterials(departmentId);
 }
 
 // Load Materials

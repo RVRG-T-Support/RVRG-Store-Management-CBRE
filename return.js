@@ -42,17 +42,18 @@ async function fetchIssues(ticketFilter) {
         // Start building the query on material_issue_register
         let query = supabase
             .from('material_issue_register')
-            .select(`
-                id,
-                issued_qty,
-                created_at,
-                material_id,
-                technician_id,
-                material_requests!inner ( ticket_no ),
-                materials ( name ),
-                technicians ( name )
-            `)
-            .order('created_at', { ascending: false });
+        .select(`
+    id,
+    ticket_no,
+    material_id,
+    technician_name,
+    issued_qty,
+    issued_date,
+    materials!material_issue_register_material_id_fkey(
+        material_name
+    )
+`)
+.order('issued_date', { ascending: false });    
 
         // Apply ticket filter if provided
         if (ticketFilter) {
@@ -73,13 +74,13 @@ async function fetchIssues(ticketFilter) {
         tableBody.innerHTML = ''; // Clear table
         
         issues.forEach(issue => {
-            const ticketNo = issue.material_requests ? issue.material_requests.ticket_no : 'Unknown';
-            const materialName = issue.materials ? issue.materials.name : 'Unknown';
-            const techName = issue.technicians ? issue.technicians.name : 'Unknown';
+            const ticketNo = issue.ticket_no;
+const materialName = issue.materials?.material_name || "-";
+const techName = issue.technician_name || "-";
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td class="fw-bold">${ticketNo}<br><small class="text-muted fw-normal">${formatDate(issue.created_at)}</small></td>
+                <td class="fw-bold">${ticketNo}<br><small class="text-muted fw-normal">${formatDate(issue.issued_date)}</small></td>
                 <td>${materialName}</td>
                 <td>${techName}</td>
                 <td class="table-info fw-bold" id="issued-${issue.id}">${issue.issued_qty}</td>
@@ -154,7 +155,13 @@ window.processReturn = async function(issueId, materialId) {
                 material_id: materialId,
                 returned_qty: returnQty,
                 remarks: remarks || 'Unused material returned',
-                returned_by: user.name
+                return_condition: "GOOD",
+
+received_by: user.id,
+
+return_date: new Date().toISOString(),
+
+remarks: remarks || "Unused material returned"
             }])
             .select();
 
@@ -164,14 +171,16 @@ window.processReturn = async function(issueId, materialId) {
         // Step 2: Update stock_ledger (RETURN type) -> adds back to inventory
         const { error: ledgerError } = await supabase
             .from('stock_ledger')
-            .insert([{
-                material_id: materialId,
-                transaction_type: 'RETURN',
-                quantity: Math.abs(returnQty), // Positive number for adding to stock
-                reference_id: newReturnId.toString(),
-                remarks: `Returned from issue ID ${issueId}. ${remarks}`,
-                recorded_by: user.name
-            }]);
+    .insert([{
+    material_id: materialId,
+    transaction_type: "RETURN",
+    quantity: Math.abs(returnQty),
+    reference_no: `RET-${newReturnId}`,
+    request_id: null,
+    remarks: `Returned from Issue ${issueId}. ${remarks}`,
+    created_by: user.id,
+    transaction_date: new Date().toISOString()
+    }]);
 
         if (ledgerError) throw ledgerError;
 

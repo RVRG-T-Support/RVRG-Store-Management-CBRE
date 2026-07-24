@@ -53,7 +53,7 @@ async function loadApprovedRequests() {
         // Fetch current stock from the current_stock view
         const { data: stockData, error: stockError } = await supabase
             .from('current_stock')
-            .select('material_id, current_stock');
+            stockRecord.current_stock;
             
         if (stockError) throw stockError;
 
@@ -65,10 +65,19 @@ async function loadApprovedRequests() {
             const deptName = "-";
 
             const unitCost = Number(material.unit_cost || 0);
-            
+
+            const issuedQty = Number(req.issued_qty || 0);
+
+            const balance = Number(req.requested_qty) - issuedQty;
+
             // Find current stock for this material
-            const stockRecord = stockData.find(s => s.material_id === req.material_id);
-            const currentStock = stockRecord ? stockRecord.stock_qty : 0;
+            const stockRecord = stockData.find(
+                s => s.material_id === req.material_id
+            );
+
+            const currentStock = stockRecord
+                ? Number(stockRecord.current_stock)
+                : 0;
 
             const tr = document.createElement('tr');
             tr.innerHTML = `

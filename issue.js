@@ -162,53 +162,43 @@ window.processIssue = async function(requestId, materialId) {
 
     try {
         // Step 1: Insert into material_issue_register
-        const { data: issueData, error: issueError } = await supabase
-            const { data: requestInfo, error: requestError } = await supabase
-                .from("material_requests")
-                .select(`
-                    ticket_no,
-                    location_name,
-                    location_type,
-                    technician_name,
-                    materials!material_requests_material_id_fkey (
-                        unit_cost
-                    )
-                `)
-                .eq("id", requestId)
-                .single();
+        // Step 1: Fetch request details
+const { data: requestInfo, error: requestError } = await supabase
+    .from("material_requests")
+    .select(`
+        ticket_no,
+        location_name,
+        location_type,
+        technician_name,
+        materials!material_requests_material_id_fkey (
+            unit_cost
+        )
+    `)
+    .eq("id", requestId)
+    .single();
 
-        if (requestError) throw requestError;
+if (requestError) throw requestError;
 
-        const unitCost = Number(requestInfo.materials.unit_cost || 0);
-        const totalCost = unitCost * issueQty;
-            .from('material_issue_register')
-            .insert([{
+const unitCost = Number(requestInfo.materials?.unit_cost || 0);
+const totalCost = unitCost * issueQty;
 
-    request_id: requestId,
-
-    material_id: materialId,
-
-    ticket_no: requestInfo.ticket_no,
-
-    location_name: requestInfo.location_name,
-
-    location_type: requestInfo.location_type,
-
-    technician_name: requestInfo.technician_name,
-
-    issued_qty: issueQty,
-
-    unit_cost: unitCost,
-
-    total_cost: totalCost,
-
-    remarks: "Material Issued",
-
-    issued_by: user.name
-
-}])
-            .select();
-
+// Step 2: Insert into material_issue_register
+const { data: issueData, error: issueError } = await supabase
+    .from("material_issue_register")
+    .insert([{
+        request_id: requestId,
+        material_id: materialId,
+        ticket_no: requestInfo.ticket_no,
+        location_name: requestInfo.location_name,
+        location_type: requestInfo.location_type,
+        technician_name: requestInfo.technician_name,
+        issued_qty: issueQty,
+        unit_cost: unitCost,
+        total_cost: totalCost,
+        remarks: "Material Issued",
+        issued_by: user.name
+    }])
+    .select();
         if (issueError) throw issueError;
         const newIssueId = issueData[0].id;
 

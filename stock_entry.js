@@ -279,7 +279,7 @@ const stockEntryNo =
             .from('stock_entry_header')
             .insert([{
 
-    stock_entry_no: stockEntryNo,
+    stock_entry_no: "",
 
     invoice_no: invoiceNo,
 
@@ -298,6 +298,15 @@ const stockEntryNo =
 
         if (headerError) throw headerError;
         const entryId = headerData[0].id;
+        const stockEntryNo =
+    `STE-${currentYear}-${String(entryId).padStart(6, "0")}`;
+
+await supabase
+    .from("stock_entry_header")
+    .update({
+        stock_entry_no: stockEntryNo
+    })
+    .eq("id", entryId);
 
         // Step 2 & 3: Details and Ledger
         const detailsArray = [];
@@ -358,12 +367,16 @@ for (const item of detailsArray) {
 
     const existingQty = Number(current?.current_stock || 0);
 
-    await supabase
-        .from("current_stock")
-        .update({
-            current_stock: existingQty + item.quantity
-        })
-        .eq("material_id", item.material_id);
+    const { error: stockUpdateError } =
+await supabase
+    .from("current_stock")
+    .update({
+        current_stock: existingQty + item.quantity
+    })
+    .eq("material_id", item.material_id);
+
+if (stockUpdateError)
+    throw stockUpdateError;
 
 }
 

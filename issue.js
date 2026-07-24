@@ -52,9 +52,12 @@ async function loadApprovedRequests() {
 
         // Fetch current stock from the current_stock view
         const { data: stockData, error: stockError } = await supabase
-            .from('current_stock')
-            stockRecord.current_stock;
-            
+            .from("current_stock")
+            .select(`
+                material_id,
+                current_stock
+        `);
+
         if (stockError) throw stockError;
 
         tableBody.innerHTML = ''; // Clear table
@@ -75,9 +78,9 @@ async function loadApprovedRequests() {
                 s => s.material_id === req.material_id
             );
 
-            const currentStock = stockRecord
-                ? Number(stockRecord.current_stock)
-                : 0;
+            const currentStock = Number(
+                stockRecord?.current_stock || 0
+            );
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
@@ -144,11 +147,11 @@ window.processIssue = async function(requestId, materialId) {
     const user = getCurrentUser();
 
     if (!issueQty || issueQty <= 0) {
-        showAlert("Please enter a valid issue quantity.", "error");
+        showAlert("Please enter a valid issue quantity.", "danger");
         return;
     }
     if (issueQty > balance) {
-        showAlert("Cannot issue more than the requested balance.", "error");
+        showAlert("Cannot issue more than the requested balance.", "danger");
         return;
     }
 
@@ -217,6 +220,6 @@ window.processIssue = async function(requestId, materialId) {
 
     } catch (error) {
         console.error("Transaction Error:", error.message);
-        showAlert("Failed to complete issue process. Check console.", "error");
+        showAlert("Failed to complete issue process. Check console.", "danger");
     }
 };

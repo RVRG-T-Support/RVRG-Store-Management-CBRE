@@ -57,7 +57,7 @@ async function fetchIssues(ticketFilter) {
 
         // Apply ticket filter if provided
         if (ticketFilter) {
-            query = query.eq('material_requests.ticket_no', ticketFilter);
+            query = query.eq('ticket_no', ticketFilter);
         } else {
             query = query.limit(20); // Just load last 20 issues if no filter
         }
@@ -154,7 +154,6 @@ window.processReturn = async function(issueId, materialId) {
                 issue_id: issueId,
                 material_id: materialId,
                 returned_qty: returnQty,
-                remarks: remarks || 'Unused material returned',
                 return_condition: "GOOD",
 
 received_by: user.id,

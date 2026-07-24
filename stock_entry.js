@@ -37,19 +37,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function loadMaterials() {
     try {
         const { data, error } = await supabase
-            .from('materials')
-            .select(`
-    id,
-    material_name,
-    material_code,
-    unit,
-    department_id,
-    departments(
-        department_name
-    )
-`)
-.order("material_name", { ascending: true });
-.order('material_name', { ascending: true });
+    .from("materials")
+    .select(`
+        id,
+        material_name,
+        material_code,
+        unit,
+        department_id,
+        departments(
+            department_name
+        )
+    `)
+    .order("material_name", { ascending: true });
             
         if (error) throw error;
         

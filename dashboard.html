@@ -29,10 +29,10 @@
             margin-bottom: 5px;
             border-radius: 5px;
         }
-        .sidebar .nav-link:hover, .sidebar .nav-link.active {
-            background-color: #e9ecef;
-            color: #0d6efd;
-        }
+        .sidebar .nav-link:hover{ .sidebar .nav-link.active {
+             background:#E8F5F2;
+    color:#012A2D;
+}
         .sidebar .nav-link.active{
             background:#E8F5F2;
             color:#012A2D;
@@ -62,7 +62,7 @@
             <!-- UPDATED LOGO SECTION -->
             <a class="navbar-brand fw-bold d-flex align-items-center" href="dashboard.html">
                 <!-- RVRG Logo -->
-                <img src="RVRG LOGO.jpg" alt="RVRG Logo" height="45" class="bg-white rounded p-1 me-2 shadow-sm">
+                <img src="RVRG LOGO.jpg" alt="RVRG Logo" height="45" class="bg-white rounded p-1 me-3 shadow-sm">
                 
                 <!-- System Title -->
                 <div class="d-none d-sm-block">
@@ -75,10 +75,14 @@
             <!-- END LOGO SECTION -->
 
             <div class="d-flex align-items-center text-white">
-                <span class="me-3"><i class="fa-solid fa-bell"><img src="cbre_green.jpg"
+                <img src="cbre_green.jpg"
      alt="CBRE Logo"
      height="40"
-     class="bg-white rounded p-1 me-4 shadow-sm"></i></span>
+     class="bg-white rounded p-1 me-3 shadow-sm">
+
+<span class="me-3">
+    <i class="fa-solid fa-bell"></i>
+</span>
                 <span class="me-3" id="userBadge">
                     <div class="dropdown">
                         <a class="text-white text-decoration-none dropdown-toggle"
@@ -202,12 +206,13 @@
                                 <div class="table-responsive">
                                     <table class="table table-hover align-middle mb-0 text-center">
                                         <thead class="table-light">
-                                                <th>Ticket No</th>
-                                                <th>Requested By</th>
-                                                <th>Department</th>
-                                                <th>Status</th>
-                                            </tr>
-                                        </thead>
+    <tr>
+        <th>Ticket No</th>
+        <th>Requested By</th>
+        <th>Department</th>
+        <th>Status</th>
+    </tr>
+</thead>
                                         <tbody id="dashRecentRequests">
                                             <tr><td colspan="4" class="text-center text-muted py-4">Loading...</td></tr>
                                         </tbody>

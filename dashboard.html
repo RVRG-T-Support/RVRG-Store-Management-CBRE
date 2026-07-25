@@ -22,15 +22,16 @@
             border-right: 1px solid #dee2e6;
         }
         .sidebar .nav-link {
-            color: #495057;
+            color:#012A2D;
             font-weight: 500;
             padding: 10px 20px;
             margin-bottom: 5px;
             border-radius: 5px;
         }
-        .sidebar .nav-link:hover, .sidebar .nav-link.active {
-            background-color: #e9ecef;
-            color: #0d6efd;
+        .sidebar .nav-link.active{
+            background:#E8F5F2;
+            color:#012A2D;
+            border-left:4px solid #17E88F;
         }
         .metric-card {
             border-left: 5px solid;
@@ -132,7 +133,7 @@
             <div class="col-md-10 py-4 px-4">
                 
                 <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h4 class="fw-bold text-dark"><i class="fa-solid fa-gauge-high me-2"></i>Dashboard Overview</h4>
+                    <h4 class="fw-bold" style="color:#012A2D;"><i class="fa-solid fa-gauge-high me-2"></i>Dashboard Overview</h4>
                     <span class="text-muted fw-semibold" id="currentDateDisplay">Date Loading...</span>
                 </div>
 
@@ -143,7 +144,7 @@
                         <div class="card metric-card border-primary-left shadow-sm h-100">
                             <div class="card-body position-relative">
                                 <h6 class="text-muted fw-bold mb-2">Total Inventory Value</h6>
-                                <h3 class="mb-0 fw-bold text-dark" id="dashTotalValue">₹ 0.00</h3>
+                                <h3 class="mb-0 fw-bold" style="color:#012A2D;" id="dashTotalValue">₹ 0.00</h3>
                                 <i class="fa-solid fa-indian-rupee-sign position-absolute top-50 end-0 translate-middle-y me-4 metric-icon text-primary"></i>
                             </div>
                         </div>
@@ -154,7 +155,7 @@
                         <div class="card metric-card border-warning-left shadow-sm h-100">
                             <div class="card-body position-relative">
                                 <h6 class="text-muted fw-bold mb-2">Pending Requests</h6>
-                                <h3 class="mb-0 fw-bold text-dark" id="dashPendingRequests">0</h3>
+                                <h3 class="mb-0 fw-bold" style="color:#012A2D;" id="dashPendingRequests">0</h3>
                                 <i class="fa-solid fa-clock position-absolute top-50 end-0 translate-middle-y me-4 metric-icon text-warning"></i>
                             </div>
                         </div>
@@ -165,7 +166,7 @@
                         <div class="card metric-card border-danger-left shadow-sm h-100" style="border-left-color: #dc3545;">
                             <div class="card-body position-relative">
                                 <h6 class="text-muted fw-bold mb-2">Low Stock Items</h6>
-                                <h3 class="mb-0 fw-bold text-dark" id="dashLowStock">0</h3>
+                                <h3 class="mb-0 fw-bold" style="color:#012A2D;" id="dashLowStock">0</h3>
                                 <i class="fa-solid fa-triangle-exclamation position-absolute top-50 end-0 translate-middle-y me-4 metric-icon text-danger"></i>
                             </div>
                         </div>
@@ -176,7 +177,7 @@
                         <div class="card metric-card border-success-left shadow-sm h-100">
                             <div class="card-body position-relative">
                                 <h6 class="text-muted fw-bold mb-2">Active Items</h6>
-                                <h3 class="mb-0 fw-bold text-dark" id="dashActiveItems">0</h3>
+                                <h3 class="mb-0 fw-bold" style="color:#012A2D;" id="dashActiveItems">0</h3>
                                 <i class="fa-solid fa-box-open position-absolute top-50 end-0 translate-middle-y me-4 metric-icon text-success"></i>
                             </div>
                         </div>
@@ -196,7 +197,11 @@
                             <div class="card-body p-0">
                                 <div class="table-responsive">
                                     <table class="table table-hover align-middle mb-0 text-center">
-                                        <thead class="table-light">
+                                        <thead thead{
+    background:#F4F7F8;
+    color:#012A2D;
+    font-weight:600;
+}
                                             <tr>
                                                 <th>Ticket No</th>
                                                 <th>Requested By</th>

@@ -125,7 +125,7 @@ window.calculateAmount = function(requestId, unitCost, maxBalance, currentStock)
     let issueQty = parseInt(inputEl.value) || 0;
 
     // Validation styling
-    if (issueQty > maxBalance || issueQty > currentStock) {
+    if (issueQty <= 0 || issueQty > maxBalance || issueQty > currentStock) {
         inputEl.classList.add('is-invalid');
         btnEl.disabled = true;
     } else {
@@ -210,7 +210,7 @@ const { data: issueData, error: issueError } = await supabase
 
     transaction_type: 'ISSUE',
 
-    quantity: -Math.abs(issueQty),
+    quantity: Math.abs(issueQty),
 
     reference_no: newIssueId.toString(),
 
@@ -255,6 +255,6 @@ const { data: issueData, error: issueError } = await supabase
 
     } catch (error) {
         console.error("Transaction Error:", error.message);
-        showAlert("Failed to complete issue process. Check console.", "danger");
+        showAlert(error.message, "danger");
     }
 };

@@ -32,6 +32,7 @@
         .sidebar .nav-link:hover, .sidebar .nav-link.active {
             background-color: #e9ecef;
             color: #0d6efd;
+        }
         .sidebar .nav-link.active{
             background:#E8F5F2;
             color:#012A2D;
@@ -62,16 +63,6 @@
             <a class="navbar-brand fw-bold d-flex align-items-center" href="dashboard.html">
                 <!-- RVRG Logo -->
                 <img src="RVRG LOGO.jpg" alt="RVRG Logo" height="45" class="bg-white rounded p-1 me-2 shadow-sm">
-                <img src="cbre_green.jpg"
-     alt="CBRE"
-     height="42"
-     class="bg-white rounded p-1 me-3 shadow-sm">
-                
-                <!-- Divider -->
-                <span class="text-secondary mx-1 fs-4">|</span>
-                
-                <!-- CBRE Logo -->
-                <img src="cbre_green.jpg" alt="CBRE Logo" height="45" class="bg-white rounded p-1 ms-2 me-3 shadow-sm">
                 
                 <!-- System Title -->
                 <div class="d-none d-sm-block">
@@ -84,7 +75,10 @@
             <!-- END LOGO SECTION -->
 
             <div class="d-flex align-items-center text-white">
-                <span class="me-3"><i class="fa-solid fa-bell"></i></span>
+                <span class="me-3"><i class="fa-solid fa-bell"><img src="cbre_green.jpg"
+     alt="CBRE Logo"
+     height="40"
+     class="bg-white rounded p-1 me-4 shadow-sm"></i></span>
                 <span class="me-3" id="userBadge">
                     <div class="dropdown">
                         <a class="text-white text-decoration-none dropdown-toggle"
@@ -207,12 +201,7 @@
                             <div class="card-body p-0">
                                 <div class="table-responsive">
                                     <table class="table table-hover align-middle mb-0 text-center">
-                                        <thead thead{
-    background:#F4F7F8;
-    color:#012A2D;
-    font-weight:600;
-}
-                                            <tr>
+                                        <thead class="table-light">
                                                 <th>Ticket No</th>
                                                 <th>Requested By</th>
                                                 <th>Department</th>

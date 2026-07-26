@@ -7,7 +7,7 @@ window.location.replace("index.html");
 
 document.addEventListener('DOMContentLoaded', () => {
 // 1. Security Check: Allow all valid roles to view the dashboard[cite: 2]
-const hasAccess = checkUserAccess(['ADMIN', 'FM', 'AFM', 'APM', 'STOREKEEPER', 'TECH_SUPERVISOR']);
+const hasAccess = checkUserAccess(['ADMIN', 'FM', 'AFM', 'Sravan Kumar Gala', 'STOREKEEPER', 'TECH_SUPERVISOR']);
 if (!hasAccess) return;
 
 // Display User Info and Current Date

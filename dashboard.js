@@ -113,20 +113,23 @@ try {
 const { data, error } = await supabase
     .from('material_requests')
     .select(`
-        ticket_no,
-        request_status,
-        created_at,
-        users_master!material_requests_requested_by_fkey (
-            full_name
-        ),
-        materials!material_requests_material_id_fkey (
-            departments (
-                department_name
-            )
+    ticket_no,
+    request_status,
+    created_at,
+    users_master!material_requests_requested_by_fkey(
+        full_name
+    ),
+    materials!material_requests_material_id_fkey(
+        departments(
+            department_name
         )
-    `)
+    ),
+    approver:users_master!material_requests_approved_by_fkey(
+        full_name
+    )
+`)
     .order('created_at', { ascending: false })
-    .limit(5); // Fetch only the 5 most recent[cite: 2]
+    .limit(10); // Fetch only the 5 most recent[cite: 2]
 
 if (error) throw error;
 

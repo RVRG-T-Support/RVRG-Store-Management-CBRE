@@ -12,8 +12,25 @@ if (!hasAccess) return;
 
 // Display User Info and Current Date
 document.getElementById('currentUserName').innerText =`${currentUser.name} (${currentUser.role})`;
-document.getElementById('currentDateDisplay').innerText = formatDate(new Date());
+function updateDateTime() {
+    const now = new Date();
 
+    document.getElementById("currentDateDisplay").innerText =
+        now.toLocaleDateString("en-GB", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric"
+        }) +
+        " | " +
+        now.toLocaleTimeString("en-IN", {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit"
+        });
+}
+
+updateDateTime();
+setInterval(updateDateTime, 1000);
 // Load all dashboard data concurrently
 loadDashboardData();
 

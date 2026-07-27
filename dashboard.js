@@ -145,11 +145,12 @@ const deptName =
 const tr = document.createElement('tr');
 
 tr.innerHTML = `
-               <td class="fw-bold text-primary">${req.ticket_no}</td>
-               <td>${req.users_master?.full_name || 'Unknown'}</td>
-               <td>${deptName}</td>
-               <td>${getStatusBadge(req.request_status)}</td>
-           `;
+    <td class="fw-bold text-primary">${req.ticket_no}</td>
+    <td>${req.users_master?.full_name || '-'}</td>
+    <td>${req.approver?.full_name || '-'}</td>
+    <td>${deptName}</td>
+    <td>${getStatusBadge(req.request_status)}</td>
+`;
 tbody.appendChild(tr);
 });
 

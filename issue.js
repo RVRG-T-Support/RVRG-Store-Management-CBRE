@@ -40,7 +40,7 @@ async function loadApprovedRequests() {
                     department_id
                 )
         `)
-        .in('request_status', ['APPROVED', 'PARTIALLY_ISSUED'])
+        .eq('request_status', 'APPROVED')
             .order('created_at', { ascending: true });
 
         if (reqError) throw reqError;
@@ -95,8 +95,9 @@ async function loadApprovedRequests() {
                 <td>${formatCurrency(unitCost)}</td>
                 <td class="fw-bold text-success" id="amount-${req.id}">₹ 0.00</td>
                 <td class="bg-primary-subtle">
-                    <input type="number" class="form-control form-control-sm issue-input mx-auto" 
-                           id="issueInput-${req.id}" min="1" max="${balance}" 
+                    <td class="text-center fw-bold text-primary">
+    ${balance}
+</td>
                            oninput="calculateAmount(${req.id}, ${unitCost}, ${balance}, ${currentStock})">
                 </td>
                 <td>
@@ -142,7 +143,7 @@ window.calculateAmount = function(requestId, unitCost, maxBalance, currentStock)
 
 window.processIssue = async function(requestId, materialId) {
     const inputEl = document.getElementById(`issueInput-${requestId}`);
-    const issueQty = parseInt(inputEl.value);
+    const issueQty = balance;
     const balance = parseInt(document.getElementById(`balance-${requestId}`).innerText);
     const user = getCurrentUser();
 
@@ -150,13 +151,14 @@ window.processIssue = async function(requestId, materialId) {
         showAlert("Please enter a valid issue quantity.", "danger");
         return;
     }
-    if (issueQty > balance) {
+    max="${balance}" {
         showAlert("Cannot issue more than the requested balance.", "danger");
         return;
     }
 
-    const newStatus = (issueQty === balance) ? 'ISSUED' : 'PARTIALLY_ISSUED';
-    const confirmMsg = `Are you sure you want to issue ${issueQty} items?\nThis will mark the ticket as ${newStatus}.`;
+    const newStatus = 'ISSUED';
+    const confirmMsg =
+`Issue ${issueQty} item(s) and close this request?`;
     
     if (!confirm(confirmMsg)) return;
 

@@ -42,62 +42,6 @@ return false;
 return true;
 }
 
-// 2. Dynamic Global Sidebar Injection
-function injectGlobalNavigation() {
-const user = getCurrentUser();
-if (!user) return;
-
-const navItems = [
-{ name:'Dashboard', icon:'fa-house-chimney', link:'dashboard.html', roles:['ADMIN','FM','AFM','STOREKEEPER','STORE','TECH_SUPERVISOR'] },
-
-{ name:'Material Entry', icon:'fa-box-open', link:'materials.html', roles:['ADMIN','FM','AFM','STOREKEEPER','STORE'] },
-
-{ name:'Raise Request', icon:'fa-file-signature', link:'material_request.html', roles:['ADMIN','FM','AFM','STOREKEEPER','STORE'] },
-
-{ name:'Approvals', icon:'fa-clipboard-check', link:'approvals.html', roles:['ADMIN','FM','AFM'] },
-
-{ name:'Issue Materials', icon:'fa-right-from-bracket', link:'issue.html', roles:['ADMIN','FM','AFM','STOREKEEPER','STORE'] },
-
-{ name:'Returns', icon:'fa-rotate-left', link:'return.html', roles:['ADMIN','FM','AFM','STOREKEEPER','STORE'] },
-
-{ name:'Stock Entry', icon:'fa-truck-ramp-box', link:'stock_entry.html', roles:['ADMIN','FM','AFM','STOREKEEPER','STORE'] },
-
-{ name:'Reports', icon:'fa-chart-line', link:'reports.html', roles:['ADMIN','FM','AFM','STOREKEEPER','STORE','TECH_SUPERVISOR'] }
-];
-
-let navHtml = '<ul class="nav flex-column">';
-navItems.forEach(item => {
-if (item.roles.includes(user.role)) {
-const isActive = window.location.pathname.includes(item.link) ? 'active' : '';
-navHtml += `
-               <li class="nav-item">
-                   <a class="nav-link ${isActive} text-dark" href="${item.link}">
-                       <i class="fa-solid ${item.icon} me-2" style="width: 25px;"></i> ${item.name}
-                   </a>
-               </li>`;
-}
-});
-navHtml += `
-       <li class="nav-item mt-4">
-           <a class="nav-link text-danger" href="#" onclick="logout()">
-               <i class="fa-solid fa-right-from-bracket me-2" style="width: 25px;"></i> Logout
-           </a>
-       </li>
-   `;
-
-const sidebarContainer = document.getElementById('globalSidebar');
-if (sidebarContainer) {
-sidebarContainer.innerHTML = navHtml;
-}
-
-const userBadge = document.getElementById('currentUserName');
-if (userBadge) {
-userBadge.innerText = `${user.name} (${user.role})`;
-}
-}
-
-document.addEventListener('DOMContentLoaded', injectGlobalNavigation);
-
 // 3. Formatting Utilities
 function formatCurrency(amount) {
 if (amount === null || amount === undefined) return '₹ 0.00';

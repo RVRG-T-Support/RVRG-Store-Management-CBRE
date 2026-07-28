@@ -94,17 +94,17 @@ async function loadApprovedRequests() {
                 <td class="table-warning fw-bold text-danger" id="balance-${req.id}">${balance}</td>
                 <td>${formatCurrency(unitCost)}</td>
                 <td class="fw-bold text-success" id="amount-${req.id}">₹ 0.00</td>
-                <td class="bg-primary-subtle">
-                    <td class="text-center fw-bold text-primary">
-    ${balance}
-</td>
+                <td class="fw-bold text-primary">
+                    ${balance}
+                </td>
                            oninput="calculateAmount(${req.id}, ${unitCost}, ${balance}, ${currentStock})">
                 </td>
                 <td>
-                    <button class="btn btn-primary btn-sm fw-bold shadow-sm"onclick="processIssue(${req.id}, ${req.material_id})" id="btnIssue-${req.id}">
-                        Issue
-                    </button>
-                </td>
+    <button class="btn btn-success btn-sm fw-bold shadow-sm"
+            onclick="processIssue(${req.id}, ${req.material_id}, ${balance})">
+        Issue All
+    </button>
+</td>
                 <td class="table-info fw-bold ${currentStock < balance ? 'text-danger' : 'text-dark'}">${currentStock}</td>
             `;
             tableBody.appendChild(tr);
@@ -141,24 +141,17 @@ window.calculateAmount = function(requestId, unitCost, maxBalance, currentStock)
 
 // --- ISSUE PROCESS WORKFLOW ---
 
-window.processIssue = async function(requestId, materialId) {
-    const inputEl = document.getElementById(`issueInput-${requestId}`);
+window.processIssue = async function(requestId, materialId, balance) {
     const issueQty = balance;
-    const balance = parseInt(document.getElementById(`balance-${requestId}`).innerText);
     const user = getCurrentUser();
 
-    if (!issueQty || issueQty <= 0) {
-        showAlert("Please enter a valid issue quantity.", "danger");
-        return;
-    }
     max="${balance}" {
         showAlert("Cannot issue more than the requested balance.", "danger");
         return;
     }
 
     const newStatus = 'ISSUED';
-    const confirmMsg =
-`Issue ${issueQty} item(s) and close this request?`;
+    const confirmMsg = `Issue all ${issueQty} item(s) and close this request?`;
     
     if (!confirm(confirmMsg)) return;
 

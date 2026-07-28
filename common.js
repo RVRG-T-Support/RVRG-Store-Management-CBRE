@@ -107,17 +107,7 @@ function formatDate(dateString) {
 if (!dateString) return '-';
 return new Date(dateString).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 }
-function getStatusBadge(status) {
-const s = (status || '').toUpperCase();
-const badges = {
-'APPROVED': 'bg-success text-white',
-'PENDING': 'bg-warning text-dark',
-'REJECTED': 'bg-danger text-white',
-'ISSUED': 'bg-info text-dark',
-'PARTIALLY_ISSUED': 'bg-primary text-white'
-};
-return `<span class="badge ${badges[s] || 'bg-secondary'}">${s}</span>`;
-}
+
 function showAlert(message, type = 'info') {
 alert(`[${type.toUpperCase()}]: ${message}`);
 }

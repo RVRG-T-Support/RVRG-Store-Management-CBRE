@@ -117,29 +117,6 @@ async function loadApprovedRequests() {
     }
 }
 
-// --- DYNAMIC UI CALCULATIONS ---
-
-window.calculateAmount = function(requestId, unitCost, maxBalance, currentStock) {
-    const inputEl = document.getElementById(`issueInput-${requestId}`);
-    const amountEl = document.getElementById(`amount-${requestId}`);
-    const btnEl = document.getElementById(`btnIssue-${requestId}`);
-    
-    let issueQty = parseInt(inputEl.value) || 0;
-
-    // Validation styling
-    if (issueQty <= 0 || issueQty > maxBalance || issueQty > currentStock) {
-        inputEl.classList.add('is-invalid');
-        btnEl.disabled = true;
-    } else {
-        inputEl.classList.remove('is-invalid');
-        btnEl.disabled = false;
-    }
-
-    // Calculate and display amount
-    const totalAmount = issueQty * unitCost;
-    amountEl.innerText = formatCurrency(totalAmount);
-};
-
 // --- ISSUE PROCESS WORKFLOW ---
 
 window.processIssue = async function(requestId, materialId, balance) {

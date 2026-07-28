@@ -48,16 +48,21 @@ const user = getCurrentUser();
 if (!user) return;
 
 const navItems = [
-{ name: 'Dashboard', icon: 'fa-house-chimney', link: 'dashboard.html', roles: ['ADMIN', 'FM', 'AFM', 'STORE', 'TECH_SUPERVISOR'] },
-{ name: 'Raise Request', icon: 'fa-file-signature', link: 'material_request.html', roles: ['ADMIN', 'FM', 'AFM', 'STORE', 'TECH_SUPERVISOR'] },
-{ name: 'Approvals', icon: 'fa-clipboard-check', link: 'approvals.html', roles: ['ADMIN', 'FM', 'AFM'] },
-{ name: 'ICR Approvals', icon: 'fa-check-to-slot', link: 'icr_approval.html', roles: ['ADMIN', 'FM', 'AFM'] },
-{ name: 'Issue Materials', icon: 'fa-right-from-bracket', link: 'issue.html', roles: ['ADMIN', 'FM', 'AFM', 'STORE'] },
-{ name: 'Returns', icon: 'fa-rotate-left', link: 'return.html', roles: ['ADMIN', 'FM', 'AFM', 'STORE'] },
-{ name: 'Stock Entry', icon: 'fa-truck-ramp-box', link: 'stock_entry.html', roles: ['ADMIN', 'FM', 'AFM', 'STORE'] },
-{ name: 'Inventory Correction', icon: 'fa-scale-balanced', link: 'inventory_correction.html', roles: ['ADMIN', 'FM', 'AFM', 'STORE'] },
-{ name: 'Reports', icon: 'fa-chart-line', link: 'reports.html', roles: ['ADMIN', 'FM', 'AFM', 'STORE', 'TECH_SUPERVISOR'] },
-{ name: 'Master Data', icon: 'fa-database', link: 'masters.html', roles: ['ADMIN', 'FM'] }
+{ name:'Dashboard', icon:'fa-house-chimney', link:'dashboard.html', roles:['ADMIN','FM','AFM','STOREKEEPER','STORE','TECH_SUPERVISOR'] },
+
+{ name:'Material Entry', icon:'fa-box-open', link:'materials.html', roles:['ADMIN','FM','AFM','STOREKEEPER','STORE'] },
+
+{ name:'Raise Request', icon:'fa-file-signature', link:'material_request.html', roles:['ADMIN','FM','AFM','STOREKEEPER','STORE'] },
+
+{ name:'Approvals', icon:'fa-clipboard-check', link:'approvals.html', roles:['ADMIN','FM','AFM'] },
+
+{ name:'Issue Materials', icon:'fa-right-from-bracket', link:'issue.html', roles:['ADMIN','FM','AFM','STOREKEEPER','STORE'] },
+
+{ name:'Returns', icon:'fa-rotate-left', link:'return.html', roles:['ADMIN','FM','AFM','STOREKEEPER','STORE'] },
+
+{ name:'Stock Entry', icon:'fa-truck-ramp-box', link:'stock_entry.html', roles:['ADMIN','FM','AFM','STOREKEEPER','STORE'] },
+
+{ name:'Reports', icon:'fa-chart-line', link:'reports.html', roles:['ADMIN','FM','AFM','STOREKEEPER','STORE','TECH_SUPERVISOR'] }
 ];
 
 let navHtml = '<ul class="nav flex-column">';

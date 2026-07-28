@@ -28,7 +28,7 @@ async function loadApprovedRequests() {
     tableBody.innerHTML = '<tr><td colspan="13" class="text-center text-muted py-4">Loading approved requests...</td></tr>';
 
     try {
-        // Fetch APPROVED and PARTIALLY_ISSUED requests
+        // Fetch APPROVED requests
         const { data: requests, error: reqError } = await supabase
             .from('material_requests')
             .select(`
@@ -209,7 +209,8 @@ const { data: issueData, error: issueError } = await supabase
             .from('material_requests')
             .update({ 
                 issued_qty: newTotalIssued,
-                request_status: newStatus
+                request_status: newStatus,
+                issue_date: new Date().toISOString()
             })
             .eq('id', requestId);
 

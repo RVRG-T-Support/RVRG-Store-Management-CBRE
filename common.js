@@ -42,6 +42,7 @@ return false;
 return true;
 }
 
+
 // 3. Formatting Utilities
 function formatCurrency(amount) {
 if (amount === null || amount === undefined) return '₹ 0.00';

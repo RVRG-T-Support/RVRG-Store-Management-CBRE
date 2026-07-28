@@ -42,6 +42,34 @@ return false;
 return true;
 }
 
+// Get status abdge
+
+function getStatusBadge(status) {
+
+    if (!status) {
+        return '<span class="badge bg-secondary">Unknown</span>';
+    }
+
+    const badges = {
+
+        PENDING: "warning",
+
+        APPROVED: "primary",
+
+        ISSUED: "success",
+
+        REJECTED: "danger",
+
+        RETURNED: "info",
+
+        CANCELLED: "secondary"
+
+    };
+
+    const color = badges[status] || "secondary";
+
+    return `<span class="badge bg-${color}">${status}</span>`;
+}
 
 // 3. Formatting Utilities
 function formatCurrency(amount) {

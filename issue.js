@@ -97,6 +97,7 @@ async function loadApprovedRequests() {
                 <td class="fw-bold text-primary">
     ${balance}
 </td>
+
 <td>
     <button class="btn btn-success btn-sm fw-bold shadow-sm"
             onclick="processIssue(${req.id}, ${req.material_id}, ${balance})">

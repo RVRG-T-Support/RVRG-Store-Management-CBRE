@@ -95,10 +95,14 @@ async function loadApprovedRequests() {
                 <td>${formatCurrency(unitCost)}</td>
                 <td class="fw-bold text-success" id="amount-${req.id}">₹ 0.00</td>
                 <td class="fw-bold text-primary">
-                    ${balance}
-                </td>
-                           oninput="calculateAmount(${req.id}, ${unitCost}, ${balance}, ${currentStock})">
-                </td>
+    ${balance}
+</td>
+<td>
+    <button class="btn btn-success btn-sm fw-bold shadow-sm"
+            onclick="processIssue(${req.id}, ${req.material_id}, ${balance})">
+        Issue All
+    </button>
+</td>
                 <td>
     <button class="btn btn-success btn-sm fw-bold shadow-sm"
             onclick="processIssue(${req.id}, ${req.material_id}, ${balance})">
@@ -144,11 +148,6 @@ window.calculateAmount = function(requestId, unitCost, maxBalance, currentStock)
 window.processIssue = async function(requestId, materialId, balance) {
     const issueQty = balance;
     const user = getCurrentUser();
-
-    max="${balance}" {
-        showAlert("Cannot issue more than the requested balance.", "danger");
-        return;
-    }
 
     const newStatus = 'ISSUED';
     const confirmMsg = `Issue all ${issueQty} item(s) and close this request?`;

@@ -16,7 +16,15 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('materialRequestForm').addEventListener('submit', submitMaterialRequest);
     document.getElementById('btnRefreshTable').addEventListener('click', loadRecentRequests);
 });
+const hasAccess = checkUserAccess([
+    'ADMIN',
+    'FM',
+    'AFM',
+    'STOREKEEPER',
+    'STORE'
+]);
 
+if (!hasAccess) return;
 // --- DATA LOADING FUNCTIONS ---
 // Load Department
 

@@ -93,18 +93,14 @@ async function loadApprovedRequests() {
                 <td>${issuedQty}</td>
                 <td class="table-warning fw-bold text-danger" id="balance-${req.id}">${balance}</td>
                 <td>${formatCurrency(unitCost)}</td>
-                <td class="fw-bold text-success" id="amount-${req.id}">₹ 0.00</td>
+                <td class="fw-bold text-success">
+    ${formatCurrency(balance * unitCost)}
+</td>
                 <td class="fw-bold text-primary">
     ${balance}
 </td>
 
 <td>
-    <button class="btn btn-success btn-sm fw-bold shadow-sm"
-            onclick="processIssue(${req.id}, ${req.material_id}, ${balance})">
-        Issue All
-    </button>
-</td>
-                <td>
     <button class="btn btn-success btn-sm fw-bold shadow-sm"
             onclick="processIssue(${req.id}, ${req.material_id}, ${balance})">
         Issue All

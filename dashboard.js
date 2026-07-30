@@ -11,7 +11,11 @@ const hasAccess = checkUserAccess(['ADMIN', 'FM', 'AFM', 'STOREKEEPER', 'TECH_SU
 if (!hasAccess) return;
 
 // Display User Info and Current Date
-document.getElementById('currentUserName').innerText =`${currentUser.name} (${currentUser.role})`;
+const userName = document.getElementById("currentUserName");
+
+if (userName) {
+    userName.innerText = `${currentUser.name} (${currentUser.role})`;
+}
 function updateDateTime() {
     const now = new Date();
 

@@ -201,13 +201,13 @@ function startClock() {
 
     if (!label) return;
 
-    setInterval(() => {
+    function updateClock() {
+        label.innerHTML = new Date().toLocaleString("en-IN");
+    }
 
-        label.innerHTML =
-            new Date().toLocaleString("en-IN");
+    updateClock();
 
-    },1000);
-
+    setInterval(updateClock, 1000);
 }
 
 document.addEventListener("DOMContentLoaded",()=>{

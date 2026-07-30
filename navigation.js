@@ -92,8 +92,24 @@ function renderSidebar() {
         <div class="sidebar">
 
             <div class="sidebar-title">
-                RVRG
-            </div>
+
+    <img src="RVRG LOGO.jpg"
+         alt="RVRG"
+         class="sidebar-logo">
+
+    <div class="sidebar-brand">
+
+        <div class="sidebar-heading">
+            RVRG Store Management
+        </div>
+
+        <div class="sidebar-subtitle">
+            Developed by CBRE
+        </div>
+
+    </div>
+
+</div>
 
             <ul class="nav flex-column">
     `;
@@ -161,19 +177,27 @@ function renderHeader() {
 
     <div class="header-left">
 
-        <button id="menuToggle">
+    <button id="menuToggle">
+        <i class="fa-solid fa-bars"></i>
+    </button>
 
-            <i class="fa-solid fa-bars"></i>
+    <img src="RVRG LOGO.jpg"
+         alt="Logo"
+         class="header-logo">
 
-        </button>
+    <div class="header-title">
 
-        <h4>
+        <div class="title-main">
+            RVRG Store Management
+        </div>
 
-            RVRG Store Management Enterprise Edition
-
-        </h4>
+        <div class="title-sub">
+            Enterprise Edition
+        </div>
 
     </div>
+
+</div>
 
     <div class="header-center">
 
@@ -183,11 +207,19 @@ function renderHeader() {
 
     <div class="header-right">
 
-        <strong>${user.name}</strong>
+    <img src="cbre_green.jpg"
+         class="cbre-logo"
+         alt="CBRE">
 
-        <small>${user.role}</small>
+    <i class="fa-solid fa-bell notification-icon"></i>
 
-    </div>
+    <i class="fa-solid fa-circle-user"></i>
+
+    <strong>${user.name}</strong>
+
+    <small>(${user.role})</small>
+
+</div>
 
 </div>
 

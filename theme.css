@@ -79,18 +79,62 @@ body{
 .header-left{
 
     display:flex;
-
     align-items:center;
-
-    gap:15px;
+    gap:10px;
 
 }
 
-.header-left h4{
+.header-title{
 
-    margin:0;
+    display:flex;
+    flex-direction:column;
+
+}
+
+.title-main{
 
     font-size:20px;
+    font-weight:700;
+    color:#fff;
+    line-height:1.1;
+
+}
+
+.title-sub{
+
+    font-size:11px;
+    color:#17E88F;
+    font-weight:600;
+
+}
+.header-logo{
+
+    width:42px;
+    height:42px;
+    object-fit:contain;
+    border-radius:4px;
+    background:#fff;
+    padding:3px;
+
+}
+
+.cbre-logo{
+
+    width:36px;
+    height:36px;
+    object-fit:contain;
+    background:#fff;
+    padding:3px;
+    border-radius:4px;
+    margin-right:14px;
+
+}
+
+.notification-icon{
+
+    margin-right:14px;
+    color:#fff;
+    cursor:pointer;
 
 }
 
@@ -102,7 +146,10 @@ body{
 
 .header-right{
 
-    text-align:right;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    color:#fff;
 
 }
 
@@ -110,26 +157,49 @@ body{
 /* SIDEBAR */
 /* ========================================= */
 
-.sidebar{
+.sidebar-title{
 
-    position:fixed;
+    display:flex;
+    align-items:center;
+    gap:10px;
 
-    top:65px;
+    padding:14px 16px;
 
-    left:0;
+    border-bottom:1px solid var(--border);
 
-    width:250px;
+}
+.sidebar-logo{
 
-    bottom:0;
-
-    background:var(--sidebar-bg);
-
-    border-right:1px solid var(--border);
-
-    overflow-y:auto;
+    width:42px;
+    height:42px;
+    object-fit:contain;
+    flex-shrink:0;
 
 }
 
+.sidebar-brand{
+
+    display:flex;
+    flex-direction:column;
+
+}
+
+.sidebar-heading{
+
+    font-size:17px;
+    font-weight:700;
+    color:var(--text);
+    line-height:1.2;
+
+}
+
+.sidebar-subtitle{
+
+    font-size:11px;
+    color:var(--primary);
+    font-weight:600;
+
+}
 .sidebar-title{
 
     font-size:24px;
@@ -186,7 +256,7 @@ body{
 
 .main-content{
 
-    margin-left:250px;
+    margin-left:235px;
 
     margin-top:65px;
 

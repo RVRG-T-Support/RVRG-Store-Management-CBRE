@@ -33,8 +33,8 @@ function updateDateTime() {
         });
 }
 
-updateDateTime();
-setInterval(updateDateTime, 1000);
+//updateDateTime();
+//setInterval(updateDateTime, 1000);
 // Load all dashboard data concurrently
 loadDashboardData();
 

@@ -47,11 +47,24 @@ body{
 /* ========================================= */
 
 .app-header{
+    position:fixed;
+    top:0;
+    left:0;
+    right:0;
     height:60px;
+    background:var(--header-bg);
+    color:#fff;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
     padding:0 16px;
+    z-index:1000;
+    box-shadow:0 2px 10px rgba(0,0,0,.15);
 }
 
 .header-left{
+    display:flex;
+    align-items:center;
     gap:8px;
 }
 .header-title{
@@ -114,12 +127,26 @@ body{
 }
 
 .header-right{
+    display:flex;
+    align-items:center;
     gap:14px;
+    color:#fff;
 }
 
 /* ========================================= */
 /* SIDEBAR */
 /* ========================================= */
+
+.sidebar{
+    position:fixed;
+    top:60px;
+    left:0;
+    width:235px;
+    bottom:0;
+    background:var(--sidebar-bg);
+    border-right:1px solid var(--border);
+    overflow-y:auto;
+}
 
 .sidebar-title{
 

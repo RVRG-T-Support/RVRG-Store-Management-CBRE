@@ -93,10 +93,6 @@ function renderSidebar() {
 
             <div class="sidebar-title">
 
-    <img src="RVRG LOGO.jpg"
-         alt="RVRG"
-         class="sidebar-logo">
-
     <div class="sidebar-brand">
 
         <div class="sidebar-heading">

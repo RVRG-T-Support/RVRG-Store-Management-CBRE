@@ -15,10 +15,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // If a STORE user tries to load this, they get redirected to the dashboard.
     const hasAccess = checkUserAccess(['ADMIN', 'FM', 'AFM']);
     if (!hasAccess) return;
-
-    // Display current user name in the navbar
-    document.getElementById('currentUserName').innerText =
-    `${currentUser.name} (${currentUser.role})`;
     
     // Initialize Bootstrap Modal
     rejectModalInstance = new bootstrap.Modal(document.getElementById('rejectModal'));

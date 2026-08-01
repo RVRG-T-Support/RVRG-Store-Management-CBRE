@@ -92,7 +92,7 @@ function renderSidebar() {
         <div class="sidebar">
 
 
-            <ul class="nav flex-column">
+            <ul class="nav flex-column flex-grow-1">
     `;
 
     menu.forEach(item => {

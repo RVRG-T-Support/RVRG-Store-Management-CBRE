@@ -137,7 +137,7 @@ function renderSidebar() {
 
     html += `
 
-        <li class="mt-auto">
+        <li style="margin-top:40px;">
 
             <a href="#" class="nav-link text-danger" onclick="logout()">
 

@@ -249,3 +249,304 @@ class="form-control">
 </div>
 
 </div>
+
+<div class="row">
+
+<div class="col-md-4 mb-3">
+
+<label class="form-label">
+
+Item Type
+
+</label>
+
+<select
+id="itemType"
+class="form-select">
+
+<option value="">Select Item Type</option>
+
+<option>Consumable</option>
+
+<option>Spare</option>
+
+<option>Tool</option>
+
+<option>Equipment</option>
+
+<option>Chemical</option>
+
+<option>Safety Item</option>
+
+</select>
+
+</div>
+
+<div class="col-md-4 mb-3">
+
+<label class="form-label">
+
+Specification
+
+</label>
+
+<input
+type="text"
+id="specification"
+class="form-control"
+placeholder="Example : 32A">
+
+</div>
+
+<div class="col-md-4 mb-3">
+
+<label class="form-label">
+
+Item Size
+
+</label>
+
+<input
+type="text"
+id="itemSize"
+class="form-control"
+placeholder="Example : 1 Inch">
+
+</div>
+
+</div>
+
+<div class="row">
+
+<div class="col-md-3 mb-3">
+
+<label class="form-label">
+
+Unit
+
+<span class="required">*</span>
+
+</label>
+
+<select
+id="unit"
+class="form-select">
+
+<option value="">Select Unit</option>
+
+<option>Nos</option>
+
+<option>Bag</option>
+
+<option>Kg</option>
+
+<option>Ltr</option>
+
+<option>Meter</option>
+
+<option>Roll</option>
+
+<option>Box</option>
+
+<option>Packet</option>
+
+<option>Set</option>
+
+</select>
+
+</div>
+
+<div class="col-md-3 mb-3">
+
+<label class="form-label">
+
+Minimum Stock
+
+</label>
+
+<input
+type="number"
+id="minimumStock"
+class="form-control"
+value="0">
+
+</div>
+
+<div class="col-md-3 mb-3">
+
+<label class="form-label">
+
+Rack Location
+
+</label>
+
+<input
+type="text"
+id="rackLocation"
+class="form-control">
+
+</div>
+
+<div class="col-md-3 mb-3">
+
+<label class="form-label">
+
+Status
+
+</label>
+
+<select
+id="status"
+class="form-select">
+
+<option value="ACTIVE">ACTIVE</option>
+
+<option value="INACTIVE">INACTIVE</option>
+
+</select>
+
+</div>
+
+</div>
+
+<div class="row">
+
+<div class="col-md-3 mb-3">
+
+<label class="form-label">
+
+Unit Cost (₹)
+
+</label>
+
+<input
+type="number"
+step="0.01"
+id="unitCost"
+class="form-control">
+
+</div>
+
+<div class="col-md-3 mb-3">
+
+<label class="form-label">
+
+GST Type
+
+</label>
+
+<select
+id="gstType"
+class="form-select">
+
+<option value="INCLUDED">Included</option>
+
+<option value="EXCLUDED">Excluded</option>
+
+</select>
+
+</div>
+
+<div class="col-md-3 mb-3">
+
+<label class="form-label">
+
+GST %
+
+</label>
+
+<input
+type="number"
+id="gstPercentage"
+class="form-control"
+value="18">
+
+</div>
+
+<div class="col-md-3 mb-3">
+
+<label class="form-label">
+
+Material Short Name
+
+</label>
+
+<input
+type="text"
+id="materialShortName"
+class="form-control"
+placeholder="MCB / SW / CMT">
+
+</div>
+
+</div>
+
+<div class="mb-3">
+
+<label class="form-label">
+
+Description
+
+</label>
+
+<textarea
+id="description"
+class="form-control"
+rows="3"></textarea>
+
+</div>
+
+<hr>
+
+<div class="text-end">
+
+<button
+type="button"
+class="btn btn-success"
+id="btnSave">
+
+<i class="fa-solid fa-floppy-disk"></i>
+
+Save
+
+</button>
+
+<button
+type="button"
+class="btn btn-warning"
+id="btnUpdate">
+
+<i class="fa-solid fa-pen"></i>
+
+Update
+
+</button>
+
+<button
+type="reset"
+class="btn btn-secondary">
+
+<i class="fa-solid fa-eraser"></i>
+
+Clear
+
+</button>
+
+<button
+type="button"
+class="btn btn-danger"
+id="btnDelete">
+
+<i class="fa-solid fa-trash"></i>
+
+Delete
+
+</button>
+
+</div>
+
+</form>
+
+</div>
+
+</div>

@@ -143,11 +143,13 @@ body{
     position:fixed;
     top:60px;
     left:0;
-    width:250px;
     bottom:0;
-    background:var(--sidebar-bg);
-    border-right:1px solid var(--border);
-    overflow-y:auto;
+    width:250px;
+    background:#fff;
+    border-right:1px solid #dee2e6;
+
+    display:flex;
+    flex-direction:column;
 }
 
 .sidebar-title{

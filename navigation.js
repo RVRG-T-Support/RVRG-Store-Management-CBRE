@@ -91,21 +91,6 @@ function renderSidebar() {
     let html = `
         <div class="sidebar">
 
-            <div class="sidebar-title">
-
-    <div class="sidebar-brand">
-
-        <div class="sidebar-heading">
-            RVRG Store Management
-        </div>
-
-        <div class="sidebar-subtitle">
-            Developed by CBRE
-        </div>
-
-    </div>
-
-</div>
 
             <ul class="nav flex-column">
     `;

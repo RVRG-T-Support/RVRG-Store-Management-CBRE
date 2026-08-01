@@ -188,7 +188,7 @@ function renderHeader() {
         </div>
 
         <div class="title-sub">
-            Enterprise Edition
+             Developed by CBRE
         </div>
 
     </div>

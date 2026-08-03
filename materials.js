@@ -103,14 +103,140 @@ function registerEvents(){
 // GENERATE MATERIAL CODE
 //====================================================
 
-function generateMaterialCode(){
+async function generateMaterialCode(){
 
-    showAlert(
+    try{
 
-        "Automatic Material Code Generator will be implemented in Part-2.",
+        const dept=document.getElementById("department");
 
-        "info"
+        const materialName=document
+            .getElementById("materialName")
+            .value
+            .trim();
 
-    );
+        const shortName=document
+            .getElementById("materialShortName")
+            .value
+            .trim()
+            .toUpperCase();
+
+        const specification=document
+            .getElementById("specification")
+            .value
+            .trim()
+            .toUpperCase();
+
+        if(dept.selectedIndex<=0){
+
+            showAlert("Select Department","warning");
+
+            return;
+
+        }
+
+        if(materialName==""){
+
+            showAlert("Enter Material Name","warning");
+
+            return;
+
+        }
+
+        let prefix=
+            dept.options[
+                dept.selectedIndex
+            ].dataset.prefix;
+
+        if(!prefix){
+
+            showAlert("Department Prefix Missing","danger");
+
+            return;
+
+        }
+
+        let code=prefix;
+
+        if(shortName!=""){
+
+            code+="-"+cleanCode(shortName);
+
+        }
+
+        if(specification!=""){
+
+            code+="-"+cleanCode(specification);
+
+        }
+
+        code=await getUniqueMaterialCode(code);
+
+        document
+            .getElementById("materialCode")
+            .value=code;
+
+    }
+
+    catch(error){
+
+        console.error(error);
+
+        showAlert(error.message,"danger");
+
+    }
+
+}
+
+//====================================================
+// CLEAN CODE
+//====================================================
+
+function cleanCode(text){
+
+    return text
+
+        .replace(/\s+/g,"-")
+
+        .replace(/\//g,"-")
+
+        .replace(/[^\w-]/g,"")
+
+        .toUpperCase();
+
+}
+
+//====================================================
+// CHECK DUPLICATE CODE
+//====================================================
+
+async function getUniqueMaterialCode(baseCode){
+
+    let finalCode=baseCode;
+
+    let count=1;
+
+    while(true){
+
+        const {data,error}=await supabase
+
+            .from("materials")
+
+            .select("id")
+
+            .eq("material_code",finalCode);
+
+        if(error) throw error;
+
+        if(data.length==0){
+
+            return finalCode;
+
+        }
+
+        finalCode=baseCode+"-"+String(count).padStart(2,"0");
+
+        count++;
+
+    }
 
 }

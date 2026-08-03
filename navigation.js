@@ -15,7 +15,14 @@ function getNavigationItems(role) {
         },
 
         {
-            name: "Material Entry",
+            name:'Material Categories',
+            icon:'fa-tags',
+            link:'material_categories.html',
+            roles:['ADMIN','FM','AFM','STOREKEEPER','STORE']
+        },
+
+        {
+            name: "Material Master",
             icon: "fa-box-open",
             link: "materials.html",
             roles: ["ADMIN","FM","AFM","STOREKEEPER","STORE"]

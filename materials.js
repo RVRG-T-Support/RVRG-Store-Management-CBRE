@@ -86,6 +86,94 @@ async function loadDepartments(){
 }
 
 //====================================================
+// LOAD MATERIAL CATEGORIES
+//====================================================
+
+async function loadCategories(){
+
+    const deptId=
+        document.getElementById("department").value;
+
+    const category=
+        document.getElementById("category");
+
+    category.innerHTML=
+    `<option value="">Select Category</option>`;
+
+    document.getElementById(
+        "materialShortName"
+    ).value="";
+
+    if(!deptId)
+        return;
+
+    const {data,error}=await supabase
+
+        .from("material_categories")
+
+        .select("*")
+
+        .eq("department_id",deptId)
+
+        .eq("is_active",true)
+
+        .order("category_name");
+
+    if(error)
+        throw error;
+
+    data.forEach(item=>{
+
+        category.innerHTML+=`
+
+        <option
+
+        value="${item.id}"
+
+        data-short="${item.short_code}">
+
+        ${item.category_name}
+
+        </option>
+
+        `;
+
+    });
+
+}
+
+//====================================================
+// CATEGORY CHANGED
+//====================================================
+
+function categoryChanged(){
+
+    const category=
+        document.getElementById("category");
+
+    if(category.selectedIndex<=0){
+
+        document
+        .getElementById(
+        "materialShortName"
+        ).value="";
+
+        return;
+
+    }
+
+    document
+    .getElementById(
+    "materialShortName"
+    ).value=
+
+    category.options[
+    category.selectedIndex
+    ].dataset.short;
+
+}
+
+//====================================================
 // EVENTS
 //====================================================
 

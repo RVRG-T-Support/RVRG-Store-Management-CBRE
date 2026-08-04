@@ -9,24 +9,18 @@ const currentUser = getCurrentUser();
 document.addEventListener("DOMContentLoaded", initializePage);
 
 async function initializePage() {
-
     try {
-
         await loadDepartments();
-
         initializeDefaults();
-
         registerEvents();
-
     }
-    catch (error) {
+   catch (error) {
 
-        console.error(error);
+    console.error("Material Master Error:", error);
 
-        showAlert("Unable to load Material Master", "danger");
+    alert(error.message);
 
-    }
-
+}
 }
 
 //====================================================

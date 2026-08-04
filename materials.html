@@ -115,7 +115,8 @@ Import Excel
 
 </button>
 
-<button class="btn btn-outline-secondary" id="btnExportExcel">
+<button class="btn btn-outline-secondary"
+id="btnExportExcel">
 
 <i class="fa-solid fa-download"></i>
 
@@ -123,6 +124,14 @@ Export Excel
 
 </button>
 
+<button class="btn btn-warning"
+id="btnManageMaterials">
+
+<i class="fa-solid fa-pen-to-square"></i>
+
+Manage Materials
+
+</button>
 </div>
 
 <div class="card page-card">
@@ -840,6 +849,47 @@ Import Materials
 
 </div>
 
+<div class="offcanvas offcanvas-end"
+tabindex="-1"
+id="manageMaterialsCanvas">
+
+<div class="offcanvas-header">
+
+<h5>
+
+Manage Materials
+
+</h5>
+
+<button
+class="btn-close"
+data-bs-dismiss="offcanvas">
+</button>
+
+</div>
+
+<div class="offcanvas-body">
+
+<div class="mb-3">
+
+<input
+id="manageSearch"
+class="form-control"
+placeholder="Search Material">
+
+</div>
+
+<div
+id="manageMaterialList">
+
+Loading...
+
+</div>
+
+</div>
+
+</div>
+    
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

@@ -179,34 +179,55 @@ function categoryChanged(){
 
 function registerEvents(){
 
+    // Generate Material Code
     document
-
         .getElementById("btnGenerateCode")
+        .addEventListener("click", generateMaterialCode);
 
-        .addEventListener("click",generateMaterialCode);
+    // Department Changed
     document
+        .getElementById("department")
+        .addEventListener("change", loadCategories);
 
-.getElementById("department")
+    // Category Changed
+    document
+        .getElementById("category")
+        .addEventListener("change", categoryChanged);
 
-.addEventListener("change",loadCategories);
+    // Save
+    document
+        .getElementById("btnSave")
+        .addEventListener("click", saveMaterial);
 
-document
+    // Refresh
+    document
+        .getElementById("btnRefresh")
+        .addEventListener("click", initializePage);
 
-.getElementById("category")
+    // New Material
+    document
+        .getElementById("btnNewMaterial")
+        .addEventListener("click", clearMaterialForm);
 
-.addEventListener("change",categoryChanged);
+    // Manage Materials
+    document
+        .getElementById("btnManageMaterials")
+        .addEventListener("click", openMaterialManager);
 
-document
+    // Export Excel
+    document
+        .getElementById("btnExportExcel")
+        .addEventListener("click", exportMaterials);
 
-.getElementById("btnManageMaterials")
+    // Download Template
+    document
+        .getElementById("btnDownloadTemplate")
+        .addEventListener("click", downloadTemplate);
 
-.addEventListener(
-
-"click",
-
-openMaterialManager
-
-);
+    // Import Excel
+    document
+        .getElementById("btnImportExcel")
+        .addEventListener("click", openImportDialog);
 
 }
 

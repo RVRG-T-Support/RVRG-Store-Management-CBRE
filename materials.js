@@ -3,8 +3,7 @@
 // RVRG Store Management Enterprise
 //====================================================
 
-const supabase = window.supabaseClient;
-
+var supabase = window.supabaseClient;
 const currentUser = getCurrentUser();
 
 document.addEventListener("DOMContentLoaded", initializePage);

@@ -184,6 +184,151 @@ function registerEvents(){
         .getElementById("btnGenerateCode")
 
         .addEventListener("click",generateMaterialCode);
+    document
+
+.getElementById("department")
+
+.addEventListener("change",loadCategories);
+
+document
+
+.getElementById("category")
+
+.addEventListener("change",categoryChanged);
+
+document
+
+.getElementById("btnManageMaterials")
+
+.addEventListener(
+
+"click",
+
+openMaterialManager
+
+);
+
+}
+
+//====================================================
+// OPEN MATERIAL MANAGER
+//====================================================
+
+async function openMaterialManager(){
+
+    const canvas=new bootstrap.Offcanvas(
+
+        document.getElementById(
+
+        "manageMaterialsCanvas"
+
+        )
+
+    );
+
+    canvas.show();
+
+    await loadManageMaterials();
+
+}
+
+//====================================================
+// LOAD MATERIAL MANAGER
+//====================================================
+
+async function loadManageMaterials(){
+
+    const {data,error}=await supabase
+
+        .from("materials")
+
+        .select(`
+
+        id,
+
+        material_code,
+
+        material_name,
+
+        status
+
+        `)
+
+        .order(
+
+        "material_code"
+
+        );
+
+    if(error)
+
+        throw error;
+
+    let html="";
+
+    data.forEach(item=>{
+
+        html+=`
+
+        <div class="card mb-2">
+
+        <div class="card-body p-2">
+
+        <b>
+
+        ${item.material_code}
+
+        </b>
+
+        <br>
+
+        ${item.material_name}
+
+        <br>
+
+        <button
+
+        class="btn btn-sm btn-primary mt-2"
+
+        onclick="editMaterial(${item.id})">
+
+        Edit
+
+        </button>
+
+        <button
+
+        class="btn btn-sm btn-secondary mt-2"
+
+        onclick="copyMaterial(${item.id})">
+
+        Copy
+
+        </button>
+
+        <button
+
+        class="btn btn-sm btn-danger mt-2"
+
+        onclick="inactiveMaterial(${item.id})">
+
+        Inactive
+
+        </button>
+
+        </div>
+
+        </div>
+
+        `;
+
+    });
+
+    document.getElementById(
+
+    "manageMaterialList"
+
+    ).innerHTML=html;
 
 }
 

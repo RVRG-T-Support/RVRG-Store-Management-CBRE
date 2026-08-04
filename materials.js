@@ -494,3 +494,48 @@ async function getUniqueMaterialCode(baseCode){
     }
 
 }
+
+//====================================================
+// TEMP PLACEHOLDERS
+//====================================================
+
+function clearMaterialForm(){
+
+    document.getElementById("materialForm").reset();
+
+    initializeDefaults();
+
+    document.getElementById("materialCode").value="";
+    document.getElementById("materialShortName").value="";
+    document.getElementById("category").innerHTML =
+        '<option value="">Select Category</option>';
+
+}
+
+function exportMaterials(){
+
+    showAlert("Export Excel - Coming in Part 5","info");
+
+}
+
+function downloadTemplate(){
+
+    showAlert("Download Template - Coming in Part 6","info");
+
+}
+
+function openImportDialog(){
+
+    const modal = new bootstrap.Modal(
+        document.getElementById("importModal")
+    );
+
+    modal.show();
+
+}
+
+async function saveMaterial(){
+
+    showAlert("Save Material - Coming in Part 3","info");
+
+}

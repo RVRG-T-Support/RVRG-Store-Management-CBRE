@@ -242,105 +242,231 @@ async function openMaterialManager(){
 }
 
 //====================================================
-// LOAD MATERIAL MANAGER
+// LOAD MANAGE MATERIALS
 //====================================================
 
 async function loadManageMaterials(){
 
-    const {data,error}=await supabase
+    try{
+
+        const {data,error}=await supabase
 
         .from("materials")
 
         .select(`
-
-        id,
-
-        material_code,
-
-        material_name,
-
-        status
-
+            id,
+            material_code,
+            material_name,
+            category,
+            brand,
+            status
         `)
 
-        .order(
+        .order("material_code");
 
-        "material_code"
+        if(error) throw error;
 
-        );
+        let html=`
 
-    if(error)
+        <table class="table table-sm table-hover align-middle">
 
-        throw error;
+        <thead class="table-success">
 
-    let html="";
+        <tr>
 
-    data.forEach(item=>{
+            <th>Code</th>
 
-        html+=`
+            <th>Material</th>
 
-        <div class="card mb-2">
+            <th>Category</th>
 
-        <div class="card-body p-2">
+            <th>Brand</th>
 
-        <b>
+            <th>Status</th>
 
-        ${item.material_code}
+            <th width="180">Action</th>
 
-        </b>
+        </tr>
 
-        <br>
+        </thead>
 
-        ${item.material_name}
-
-        <br>
-
-        <button
-
-        class="btn btn-sm btn-primary mt-2"
-
-        onclick="editMaterial(${item.id})">
-
-        Edit
-
-        </button>
-
-        <button
-
-        class="btn btn-sm btn-secondary mt-2"
-
-        onclick="copyMaterial(${item.id})">
-
-        Copy
-
-        </button>
-
-        <button
-
-        class="btn btn-sm btn-danger mt-2"
-
-        onclick="inactiveMaterial(${item.id})">
-
-        Inactive
-
-        </button>
-
-        </div>
-
-        </div>
+        <tbody>
 
         `;
 
-    });
+        data.forEach(item=>{
 
-    document.getElementById(
+            html+=`
 
-    "manageMaterialList"
+            <tr>
 
-    ).innerHTML=html;
+            <td>
+
+                ${item.material_code}
+
+            </td>
+
+            <td>
+
+                ${item.material_name}
+
+            </td>
+
+            <td>
+
+                ${item.category??"-"}
+
+            </td>
+
+            <td>
+
+                ${item.brand??"-"}
+
+            </td>
+
+            <td>
+
+                <span class="badge bg-${item.status=="ACTIVE"?"success":"secondary"}">
+
+                ${item.status}
+
+                </span>
+
+            </td>
+
+            <td>
+
+                <button
+                class="btn btn-sm btn-primary"
+                onclick="editMaterial(${item.id})">
+
+                <i class="fa fa-pen"></i>
+
+                </button>
+
+                <button
+                class="btn btn-sm btn-info"
+                onclick="copyMaterial(${item.id})">
+
+                <i class="fa fa-copy"></i>
+
+                </button>
+
+                <button
+                class="btn btn-sm btn-danger"
+                onclick="inactiveMaterial(${item.id})">
+
+                <i class="fa fa-ban"></i>
+
+                </button>
+
+            </td>
+
+            </tr>
+
+            `;
+
+        });
+
+        html+=`
+
+        </tbody>
+
+        </table>
+
+        `;
+
+        document.getElementById(
+
+        "manageMaterialList"
+
+        ).innerHTML=html;
+
+    }
+
+    catch(error){
+
+        console.error(error);
+
+        showAlert(error.message,"danger");
+
+    }
 
 }
 
+//====================================================
+// EDIT MATERIAL
+//====================================================
+
+async function editMaterial(id){
+
+    try{
+
+        const {data,error}=await supabase
+
+        .from("materials")
+
+        .select("*")
+
+        .eq("id",id)
+
+        .single();
+
+        if(error) throw error;
+
+        document.getElementById("materialCode").value=data.material_code;
+
+        document.getElementById("materialName").value=data.material_name;
+
+        document.getElementById("department").value=data.department_id;
+
+        await loadCategories();
+
+        document.getElementById("category").value=data.category_id;
+
+        categoryChanged();
+
+        document.getElementById("brand").value=data.brand??"";
+
+        document.getElementById("itemType").value=data.item_type??"";
+
+        document.getElementById("specification").value=data.specification??"";
+
+        document.getElementById("itemSize").value=data.item_size??"";
+
+        document.getElementById("unit").value=data.unit;
+
+        document.getElementById("minimumStock").value=data.minimum_stock;
+
+        document.getElementById("rackLocation").value=data.rack_location??"";
+
+        document.getElementById("status").value=data.status;
+
+        document.getElementById("unitCost").value=data.unit_cost;
+
+        document.getElementById("gstType").value=data.gst_type;
+
+        document.getElementById("gstPercentage").value=data.gst_percentage;
+
+        document.getElementById("description").value=data.description??"";
+
+        bootstrap.Offcanvas.getInstance(
+
+        document.getElementById("manageMaterialsCanvas")
+
+        ).hide();
+
+    }
+
+    catch(error){
+
+        console.error(error);
+
+        showAlert(error.message,"danger");
+
+    }
+
+}
 //====================================================
 // GENERATE MATERIAL CODE
 //====================================================

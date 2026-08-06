@@ -522,8 +522,141 @@ function openImportDialog(){
 
 }
 
+//====================================================
+// SAVE MATERIAL
+//====================================================
+
 async function saveMaterial(){
 
-    showAlert("Save Material - Coming in Part 3","info");
+    try{
+
+        // Validation
+
+        if(document.getElementById("department").value==""){
+
+            showAlert("Select Department","warning");
+            return;
+
+        }
+
+        if(document.getElementById("category").value==""){
+
+            showAlert("Select Category","warning");
+            return;
+
+        }
+
+        if(document.getElementById("materialName").value.trim()==""){
+
+            showAlert("Enter Material Name","warning");
+            return;
+
+        }
+
+        if(document.getElementById("materialCode").value.trim()==""){
+
+            await generateMaterialCode();
+
+        }
+
+        const material={
+
+            material_code:
+                document.getElementById("materialCode").value.trim(),
+
+            material_name:
+                document.getElementById("materialName").value.trim(),
+
+            department_id:
+                Number(document.getElementById("department").value),
+
+            category:
+                document.getElementById("category").value,
+
+            brand:
+                document.getElementById("brand").value.trim(),
+
+            item_type:
+                document.getElementById("itemType").value,
+
+            specification:
+                document.getElementById("specification").value.trim(),
+
+            item_size:
+                document.getElementById("itemSize").value.trim(),
+
+            unit:
+                document.getElementById("unit").value,
+
+            minimum_stock:
+                Number(document.getElementById("minimumStock").value || 0),
+
+            rack_location:
+                document.getElementById("rackLocation").value.trim(),
+
+            status:
+                document.getElementById("status").value,
+
+            unit_cost:
+                Number(document.getElementById("unitCost").value || 0),
+
+            gst_type:
+                document.getElementById("gstType").value,
+
+            gst_percentage:
+                Number(document.getElementById("gstPercentage").value || 0),
+
+            material_short_name:
+                document.getElementById("materialShortName").value,
+
+            description:
+                document.getElementById("description").value.trim(),
+
+            is_active:true
+
+        };
+
+        // Duplicate Check
+
+        const {data:duplicate}=await supabase
+
+            .from("materials")
+
+            .select("id")
+
+            .eq("material_code",material.material_code);
+
+        if(duplicate.length){
+
+            showAlert("Material Code already exists","danger");
+
+            return;
+
+        }
+
+        const {error}=await supabase
+
+            .from("materials")
+
+            .insert(material);
+
+        if(error)
+            throw error;
+
+        showAlert("Material Saved Successfully","success");
+
+        clearMaterialForm();
+
+        await loadManageMaterials();
+
+    }
+
+    catch(error){
+
+        console.error(error);
+
+        showAlert(error.message,"danger");
+
+    }
 
 }

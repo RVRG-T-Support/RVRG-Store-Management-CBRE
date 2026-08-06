@@ -48,15 +48,10 @@ async function loadDepartments(){
     department.innerHTML=
     `<option value="">Select Department</option>`;
 
-    const {data,error}=await supabase
-
-        .from("departments")
-
-        .select("id,department_name,prefix")
-
-        .eq("is_active",true)
-
-        .order("department_name");
+    const { data, error } = await supabase
+    .from("departments")
+    .select("id, department_name, prefix")
+    .order("department_name");
 
     if(error) throw error;
 

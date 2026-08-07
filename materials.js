@@ -74,6 +74,55 @@ async function loadDepartments(){
 }
 
 //====================================================
+// LOAD MANAGE DEPARTMENTS
+//====================================================
+
+async function loadManageDepartments(){
+
+    try{
+
+        const {data,error}=await supabase
+
+        .from("departments")
+
+        .select("id, department_name")
+
+        .order("department_name");
+
+        if(error) throw error;
+
+        const ddl=document.getElementById("manageDepartment");
+
+        ddl.innerHTML=
+        `<option value="">All Departments</option>`;
+
+        data.forEach(dept=>{
+
+            ddl.innerHTML+=`
+
+            <option value="${dept.id}">
+
+                ${dept.department_name}
+
+            </option>
+
+            `;
+
+        });
+
+    }
+
+    catch(error){
+
+        console.error(error);
+
+        showAlert(error.message,"danger");
+
+    }
+
+}
+
+//====================================================
 // LOAD MATERIAL CATEGORIES
 //====================================================
 
@@ -217,6 +266,22 @@ function registerEvents(){
         .getElementById("btnImportExcel")
         .addEventListener("click", openImportDialog);
 
+//======================================
+// MANAGE MATERIAL FILTERS
+//======================================
+
+document
+.getElementById("manageSearch")
+.addEventListener("keyup", loadManageMaterials);
+
+document
+.getElementById("manageDepartment")
+.addEventListener("change", loadManageMaterials);
+
+document
+.getElementById("manageStatus")
+.addEventListener("change", loadManageMaterials);
+
 }
 
 //====================================================
@@ -225,19 +290,21 @@ function registerEvents(){
 
 async function openMaterialManager(){
 
+    await loadManageDepartments();
+
+    await loadManageMaterials();
+
     const canvas=new bootstrap.Offcanvas(
 
         document.getElementById(
 
-        "manageMaterialsCanvas"
+            "manageMaterialsCanvas"
 
         )
 
     );
 
     canvas.show();
-
-    await loadManageMaterials();
 
 }
 
@@ -249,32 +316,84 @@ async function loadManageMaterials(){
 
     try{
 
-        const {data,error}=await supabase
+        const search =
+        document.getElementById("manageSearch").value.trim();
 
-        .from("materials")
+        const department =
+        document.getElementById("manageDepartment").value;
 
-        .select(`
-            id,
-            material_code,
-            material_name,
-            category,
-            brand,
+        const status =
+        document.getElementById("manageStatus").value;
+
+        let query = supabase
+
+            .from("materials")
+
+            .select(`
+                id,
+                material_code,
+                material_name,
+                category,
+                brand,
+                department_id,
+                status
+            `)
+
+            .order("material_code");
+
+        if(search!=""){
+
+            query=query.or(
+
+            `material_code.ilike.%${search}%,
+
+             material_name.ilike.%${search}%,
+
+             brand.ilike.%${search}%`
+
+            );
+
+        }
+
+        if(department!=""){
+
+            query=query.eq(
+
+            "department_id",
+
+            department
+
+            );
+
+        }
+
+        if(status!=""){
+
+            query=query.eq(
+
+            "status",
+
             status
-        `)
 
-        .order("material_code");
+            );
+
+        }
+
+        const {data,error}=await query;
 
         if(error) throw error;
 
         let html=`
 
-        <table class="table table-sm table-hover align-middle">
+        <div class="table-responsive">
+
+        <table class="table table-hover table-bordered align-middle">
 
         <thead class="table-success">
 
         <tr>
 
-            <th>Code</th>
+            <th width="130">Code</th>
 
             <th>Material</th>
 
@@ -282,9 +401,9 @@ async function loadManageMaterials(){
 
             <th>Brand</th>
 
-            <th>Status</th>
+            <th width="90">Status</th>
 
-            <th width="180">Action</th>
+            <th width="170">Action</th>
 
         </tr>
 
@@ -294,6 +413,26 @@ async function loadManageMaterials(){
 
         `;
 
+        if(data.length==0){
+
+            html+=`
+
+            <tr>
+
+            <td colspan="6"
+
+            class="text-center text-muted">
+
+            No Materials Found
+
+            </td>
+
+            </tr>
+
+            `;
+
+        }
+
         data.forEach(item=>{
 
             html+=`
@@ -302,63 +441,73 @@ async function loadManageMaterials(){
 
             <td>
 
-                ${item.material_code}
+            ${item.material_code}
 
             </td>
 
             <td>
 
-                ${item.material_name}
+            ${item.material_name}
 
             </td>
 
             <td>
 
-                ${item.category??"-"}
+            ${item.category ?? "-"}
 
             </td>
 
             <td>
 
-                ${item.brand??"-"}
+            ${item.brand ?? "-"}
 
             </td>
 
             <td>
 
-                <span class="badge bg-${item.status=="ACTIVE"?"success":"secondary"}">
+            <span class="badge bg-${
+            item.status=="ACTIVE"
+            ?"success"
+            :"secondary"
+            }">
 
-                ${item.status}
+            ${item.status}
 
-                </span>
+            </span>
 
             </td>
 
             <td>
 
-                <button
-                class="btn btn-sm btn-primary"
-                onclick="editMaterial(${item.id})">
+            <button
 
-                <i class="fa fa-pen"></i>
+            class="btn btn-sm btn-primary"
 
-                </button>
+            onclick="editMaterial(${item.id})">
 
-                <button
-                class="btn btn-sm btn-info"
-                onclick="copyMaterial(${item.id})">
+            <i class="fa fa-pen"></i>
 
-                <i class="fa fa-copy"></i>
+            </button>
 
-                </button>
+            <button
 
-                <button
-                class="btn btn-sm btn-danger"
-                onclick="inactiveMaterial(${item.id})">
+            class="btn btn-sm btn-info"
 
-                <i class="fa fa-ban"></i>
+            onclick="copyMaterial(${item.id})">
 
-                </button>
+            <i class="fa fa-copy"></i>
+
+            </button>
+
+            <button
+
+            class="btn btn-sm btn-danger"
+
+            onclick="inactiveMaterial(${item.id})">
+
+            <i class="fa fa-ban"></i>
+
+            </button>
 
             </td>
 
@@ -374,9 +523,13 @@ async function loadManageMaterials(){
 
         </table>
 
+        </div>
+
         `;
 
-        document.getElementById(
+        document
+
+        .getElementById(
 
         "manageMaterialList"
 

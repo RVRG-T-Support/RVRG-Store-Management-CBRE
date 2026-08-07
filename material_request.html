@@ -9,18 +9,16 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- FontAwesome Icons -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="theme.css">
 </head>
-<body class="bg-light">
-    <!-- Global Sidebar -->
-<div id="globalSidebar"></div>
+<body>
 
-<!-- Main Content -->
+<div id="appHeader"></div>
+<div id="globalSidebar"></div>
 <div class="main-content">
 
     <!-- Top Navigation Bar -->
-    
-
-    <div class="container my-4">
+    <div class="container-fluid">
         <div class="row">
             
             <!-- LEFT COLUMN: Material Request Form -->
@@ -146,10 +144,10 @@
 
     <!-- 2. Dependencies (Supabase CDN, Config, Common JS) -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="config.js"></script>
-    <script src="common.js"></script>
-    <!-- 3. Logic script for this module -->
-    <script src="material_request.js"></script>
+<script src="config.js"></script>
+<script src="common.js"></script>
+<script src="navigation.js"></script>
+<script src="material_request.js"></script>
 </div>
 </body>
 </html>

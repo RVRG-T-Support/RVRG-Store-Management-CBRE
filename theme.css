@@ -256,3 +256,15 @@ body{
     cursor:pointer;
 
 }
+
+/* ==========================================
+   Manage Materials Offcanvas
+========================================== */
+
+#manageMaterialsCanvas{
+
+    width:900px !important;
+
+    max-width:95vw;
+
+}

@@ -343,15 +343,10 @@ async function loadManageMaterials(){
 
         if(search!=""){
 
-            query=query.or(
-
-            `material_code.ilike.%${search}%,
-
-             material_name.ilike.%${search}%,
-
-             brand.ilike.%${search}%`
-
-            );
+           query = query.or(
+    `material_code.ilike.%${search}%,material_name.ilike.%${search}%,brand.ilike.%${search}%`
+);
+            ;
 
         }
 

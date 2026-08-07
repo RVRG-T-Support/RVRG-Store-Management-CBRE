@@ -870,21 +870,60 @@ data-bs-dismiss="offcanvas">
 
 <div class="offcanvas-body">
 
-<div class="mb-3">
+    <div class="row g-2 mb-3">
 
-<input
-id="manageSearch"
-class="form-control"
-placeholder="Search Material">
+        <div class="col-12">
 
-</div>
+            <input
+            id="manageSearch"
+            class="form-control"
+            placeholder="Search Material Code / Name / Brand">
 
-<div
-id="manageMaterialList">
+        </div>
 
-Loading...
+        <div class="col-6">
 
-</div>
+            <select
+            id="manageDepartment"
+            class="form-select">
+
+                <option value="">
+                    All Departments
+                </option>
+
+            </select>
+
+        </div>
+
+        <div class="col-6">
+
+            <select
+            id="manageStatus"
+            class="form-select">
+
+                <option value="">
+                    All Status
+                </option>
+
+                <option value="ACTIVE">
+                    Active
+                </option>
+
+                <option value="INACTIVE">
+                    Inactive
+                </option>
+
+            </select>
+
+        </div>
+
+    </div>
+
+    <div id="manageMaterialList">
+
+        Loading Materials...
+
+    </div>
 
 </div>
 

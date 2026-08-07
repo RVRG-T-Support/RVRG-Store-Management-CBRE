@@ -5,17 +5,70 @@ const currentUser = getCurrentUser();
 if (!currentUser)
     window.location.replace("index.html");
 
-document.addEventListener('DOMContentLoaded', () => {
-    // 1. Initialize page data
-    loadDepartments();
-    loadRecentRequests();
+document.addEventListener(
+    "DOMContentLoaded",
+    initializePage
+);
 
-    // 2. Set up Event Listeners
-    document.getElementById('departmentSelect').addEventListener('change', handleDepartmentChange);
-    document.getElementById('materialSelect').addEventListener('change', handleMaterialChange);
-    document.getElementById('materialRequestForm').addEventListener('submit', submitMaterialRequest);
-    document.getElementById('btnRefreshTable').addEventListener('click', loadRecentRequests);
-});
+async function initializePage(){
+
+    try{
+
+        await loadDepartments();
+
+        registerEvents();
+
+        await loadRecentRequests();
+
+    }
+
+    catch(error){
+
+        console.error(error);
+
+        showAlert(
+            error.message,
+            "danger"
+        );
+
+    }
+
+}
+//====================================================
+// REGISTER EVENTS
+//====================================================
+
+function registerEvents(){
+
+    document
+    .getElementById("departmentSelect")
+    .addEventListener(
+        "change",
+        handleDepartmentChange
+    );
+
+    document
+    .getElementById("materialSelect")
+    .addEventListener(
+        "change",
+        handleMaterialChange
+    );
+
+    document
+    .getElementById("materialRequestForm")
+    .addEventListener(
+        "submit",
+        submitMaterialRequest
+    );
+
+    document
+    .getElementById("btnRefreshTable")
+    .addEventListener(
+        "click",
+        loadRecentRequests
+    );
+
+}
 const hasAccess = checkUserAccess([
     'ADMIN',
     'FM',

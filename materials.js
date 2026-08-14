@@ -1564,9 +1564,72 @@ function exportMaterials(){
 
 }
 
+//====================================================
+// DOWNLOAD MATERIAL MASTER EXCEL TEMPLATE
+//====================================================
+
 function downloadTemplate(){
 
-    showAlert("Download Template - Coming in Part 6","info");
+    try{
+
+        const templateData = [
+
+            {
+                Department: "",
+                Category: "",
+                Material_Name: "",
+                Brand: "",
+                Item_Type: "",
+                Item_Size: "",
+                Specification: "",
+                Unit: "",
+                Minimum_Stock: 0,
+                Rack_Location: "",
+                Unit_Cost: "",
+                GST_Type: "INCLUDED",
+                GST_Percentage: 18,
+                Description: ""
+            }
+
+        ];
+
+        const ws =
+            XLSX.utils.json_to_sheet(templateData);
+
+        const wb =
+            XLSX.utils.book_new();
+
+        XLSX.utils.book_append_sheet(
+            wb,
+            ws,
+            "Material_Master"
+        );
+
+        XLSX.writeFile(
+            wb,
+            "RVRG_Material_Master_Template.xlsx"
+        );
+
+        showAlert(
+            "Material Master Template Downloaded",
+            "success"
+        );
+
+    }
+
+    catch(error){
+
+        console.error(
+            "Template Download Error:",
+            error
+        );
+
+        showAlert(
+            "Unable to download template. Please check whether Excel library is loaded.",
+            "danger"
+        );
+
+    }
 
 }
 

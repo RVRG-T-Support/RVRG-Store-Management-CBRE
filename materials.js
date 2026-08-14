@@ -236,7 +236,7 @@ function registerEvents(){
         .getElementById("btnSave")
         .addEventListener("click", saveMaterial);
     
-    // Update //
+    // Update
     document
     .getElementById("btnUpdate")
     .addEventListener("click", updateMaterial);
@@ -546,6 +546,219 @@ Inactive
     }
 
 }
+
+//====================================================
+// UPDATE MATERIAL
+//====================================================
+
+async function updateMaterial(){
+
+    try{
+
+        const materialId =
+            document.getElementById("materialId").value;
+
+        if(!materialId){
+
+            showAlert(
+                "No material selected for update",
+                "danger"
+            );
+
+            return;
+        }
+
+        // Required fields
+
+        if(
+            document.getElementById("department").value === ""
+        ){
+
+            showAlert(
+                "Select Department",
+                "warning"
+            );
+
+            return;
+        }
+
+        if(
+            document.getElementById("category").value === ""
+        ){
+
+            showAlert(
+                "Select Category",
+                "warning"
+            );
+
+            return;
+        }
+
+        if(
+            document.getElementById("materialName").value.trim() === ""
+        ){
+
+            showAlert(
+                "Enter Material Name",
+                "warning"
+            );
+
+            return;
+        }
+
+        // Category
+
+        const categoryElement =
+            document.getElementById("category");
+
+        const categoryId =
+            Number(categoryElement.value);
+
+        const categoryName =
+            categoryElement.options[
+                categoryElement.selectedIndex
+            ].text;
+
+        // Searchable text
+
+        const searchableText = (
+
+            document.getElementById("materialCode").value + " " +
+
+            document.getElementById("materialName").value + " " +
+
+            categoryName + " " +
+
+            document.getElementById("brand").value + " " +
+
+            document.getElementById("specification").value + " " +
+
+            document.getElementById("itemSize").value
+
+        ).toUpperCase();
+
+        // Update Supabase
+
+        const {error} = await supabase
+
+            .from("materials")
+
+            .update({
+
+                material_name:
+                    document.getElementById("materialName").value.trim(),
+
+                department_id:
+                    Number(
+                        document.getElementById("department").value
+                    ),
+
+                category_id:
+                    categoryId,
+
+                category:
+                    categoryName,
+
+                material_short_name:
+                    document
+                        .getElementById("materialShortName")
+                        .value
+                        .trim(),
+
+                brand:
+                    document.getElementById("brand").value.trim(),
+
+                item_type:
+                    document.getElementById("itemType").value,
+
+                specification:
+                    document
+                        .getElementById("specification")
+                        .value
+                        .trim(),
+
+                item_size:
+                    document
+                        .getElementById("itemSize")
+                        .value
+                        .trim(),
+
+                unit:
+                    document.getElementById("unit").value,
+
+                minimum_stock:
+                    Number(
+                        document.getElementById("minimumStock").value || 0
+                    ),
+
+                rack_location:
+                    document
+                        .getElementById("rackLocation")
+                        .value
+                        .trim(),
+
+                status:
+                    document.getElementById("status").value,
+
+                unit_cost:
+                    Number(
+                        document.getElementById("unitCost").value || 0
+                    ),
+
+                gst_type:
+                    document.getElementById("gstType").value,
+
+                gst_percentage:
+                    Number(
+                        document.getElementById("gstPercentage").value || 0
+                    ),
+
+                description:
+                    document
+                        .getElementById("description")
+                        .value
+                        .trim(),
+
+                searchable_text:
+                    searchableText
+
+            })
+
+            .eq("id", materialId);
+
+        if(error)
+            throw error;
+
+        showAlert(
+            "Material Updated Successfully",
+            "success"
+        );
+
+        // Return to New Material mode
+
+        clearMaterialForm();
+
+        // Refresh material list
+
+        await loadManageMaterials();
+
+    }
+
+    catch(error){
+
+        console.error(
+            "Update Material Error:",
+            error
+        );
+
+        showAlert(
+            error.message,
+            "danger"
+        );
+
+    }
+
+}
 //====================================================
 // GENERATE MATERIAL CODE
 //====================================================
@@ -553,6 +766,17 @@ Inactive
 async function generateMaterialCode(){
 
     try{
+                // Do not regenerate code while editing
+        const materialId =
+            document.getElementById("materialId").value;
+
+        if(materialId){
+            showAlert(
+                "Material Code cannot be changed while editing.",
+                "warning"
+            );
+            return;
+        }
 
         const dept =
             document.getElementById("department");
@@ -731,6 +955,7 @@ async function editMaterial(id){
 
         document.getElementById("materialCode").value=
             data.material_code || "";
+        document.getElementById("btnGenerateCode").disabled=true;
 
         document.getElementById("materialName").value=
             data.material_name || "";
@@ -1066,32 +1291,58 @@ async function getUniqueMaterialCode(baseCode){
 }
 
 //====================================================
-// TEMP PLACEHOLDERS
+// CLEAR / NEW MATERIAL
 //====================================================
 
 function clearMaterialForm(){
 
-    document.getElementById("materialForm").reset();
-
-    document.getElementById("materialId").value="";
+    document
+        .getElementById("materialForm")
+        .reset();
 
     initializeDefaults();
 
-    document.getElementById("materialCode").value="";
+    // Clear hidden database ID
+    document
+        .getElementById("materialId")
+        .value="";
 
-    document.getElementById("materialShortName").value="";
+    // Clear generated values
+    document
+        .getElementById("materialCode")
+        .value="";
 
-    document.getElementById("category").innerHTML =
+    document
+        .getElementById("materialShortName")
+        .value="";
+
+    // Reset category
+    document
+        .getElementById("category")
+        .innerHTML =
         '<option value="">Select Category</option>';
 
-    // Return to New Material mode
-    document.getElementById("btnSave").style.display="inline-block";
+    // Enable Generate Code for new material
+    document
+        .getElementById("btnGenerateCode")
+        .disabled=false;
 
-    document.getElementById("btnClear").style.display="inline-block";
+    // New Material button state
+    document
+        .getElementById("btnSave")
+        .style.display="inline-block";
 
-    document.getElementById("btnUpdate").style.display="none";
+    document
+        .getElementById("btnClear")
+        .style.display="inline-block";
 
-    document.getElementById("btnDelete").style.display="none";
+    document
+        .getElementById("btnUpdate")
+        .style.display="none";
+
+    document
+        .getElementById("btnDelete")
+        .style.display="none";
 
 }
 

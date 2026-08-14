@@ -231,10 +231,15 @@ function registerEvents(){
         .getElementById("category")
         .addEventListener("change", categoryChanged);
 
-    // Save
+    // Save //
     document
         .getElementById("btnSave")
         .addEventListener("click", saveMaterial);
+    
+    // Update //
+    document
+    .getElementById("btnUpdate")
+    .addEventListener("click", updateMaterial);
 
     // Refresh
     document
@@ -648,89 +653,195 @@ document.getElementById("btnDelete")
     }
 
 }
+
 //====================================================
-// GENERATE MATERIAL CODE
+// UPDATE MATERIAL
 //====================================================
 
-async function generateMaterialCode(){
+async function updateMaterial(){
 
     try{
 
-        const dept=document.getElementById("department");
+        // Get Material ID
+        const materialId =
+            document.getElementById("materialId").value;
 
-        const materialName=document
-            .getElementById("materialName")
-            .value
-            .trim();
+        if(!materialId){
 
-        const shortName=document
-            .getElementById("materialShortName")
-            .value
-            .trim()
-            .toUpperCase();
-
-        const specification=document
-            .getElementById("specification")
-            .value
-            .trim()
-            .toUpperCase();
-
-        if(dept.selectedIndex<=0){
-
-            showAlert("Select Department","warning");
+            showAlert(
+                "No material selected for update",
+                "danger"
+            );
 
             return;
-
         }
 
-        if(materialName==""){
+        // Validation
+        if(
+            document.getElementById("department").value === ""
+        ){
 
-            showAlert("Enter Material Name","warning");
+            showAlert(
+                "Select Department",
+                "warning"
+            );
 
             return;
-
         }
 
-        let prefix=
-            dept.options[
-                dept.selectedIndex
-            ].dataset.prefix;
+        if(
+            document.getElementById("category").value === ""
+        ){
 
-        if(!prefix){
-
-            showAlert("Department Prefix Missing","danger");
+            showAlert(
+                "Select Category",
+                "warning"
+            );
 
             return;
-
         }
 
-        let code=prefix;
+        if(
+            document.getElementById("materialName").value.trim() === ""
+        ){
 
-        if(shortName!=""){
+            showAlert(
+                "Enter Material Name",
+                "warning"
+            );
 
-            code+="-"+cleanCode(shortName);
-
+            return;
         }
 
-        if(specification!=""){
+        // Category information
+        const categoryElement =
+            document.getElementById("category");
 
-            code+="-"+cleanCode(specification);
+        const categoryId =
+            Number(categoryElement.value);
 
-        }
+        const categoryName =
+            categoryElement.options[
+                categoryElement.selectedIndex
+            ].text;
 
-        code=await getUniqueMaterialCode(code);
+        // Searchable text
+        const searchableText = (
 
-        document
-            .getElementById("materialCode")
-            .value=code;
+            document.getElementById("materialCode").value + " " +
+
+            document.getElementById("materialName").value + " " +
+
+            categoryName + " " +
+
+            document.getElementById("brand").value + " " +
+
+            document.getElementById("specification").value + " " +
+
+            document.getElementById("itemSize").value
+
+        ).toUpperCase();
+
+        // Update database
+        const {error} = await supabase
+
+            .from("materials")
+
+            .update({
+
+                material_name:
+                    document.getElementById("materialName").value.trim(),
+
+                department_id:
+                    Number(
+                        document.getElementById("department").value
+                    ),
+
+                category_id:
+                    categoryId,
+
+                category:
+                    categoryName,
+
+                material_short_name:
+                    document.getElementById("materialShortName").value.trim(),
+
+                brand:
+                    document.getElementById("brand").value.trim(),
+
+                item_type:
+                    document.getElementById("itemType").value,
+
+                specification:
+                    document.getElementById("specification").value.trim(),
+
+                item_size:
+                    document.getElementById("itemSize").value.trim(),
+
+                unit:
+                    document.getElementById("unit").value,
+
+                minimum_stock:
+                    Number(
+                        document.getElementById("minimumStock").value || 0
+                    ),
+
+                rack_location:
+                    document.getElementById("rackLocation").value.trim(),
+
+                status:
+                    document.getElementById("status").value,
+
+                unit_cost:
+                    Number(
+                        document.getElementById("unitCost").value || 0
+                    ),
+
+                gst_type:
+                    document.getElementById("gstType").value,
+
+                gst_percentage:
+                    Number(
+                        document.getElementById("gstPercentage").value || 0
+                    ),
+
+                description:
+                    document.getElementById("description").value.trim(),
+
+                searchable_text:
+                    searchableText
+
+            })
+
+            .eq("id", materialId);
+
+        if(error)
+            throw error;
+
+        showAlert(
+            "Material Updated Successfully",
+            "success"
+        );
+
+        // Reset form to New Material mode
+        clearMaterialForm();
+
+        // Refresh Manage Materials data
+        await loadManageMaterials();
 
     }
 
     catch(error){
 
-        console.error(error);
+        console.error(
+            "Update Material Error:",
+            error
+        );
 
-        showAlert(error.message,"danger");
+        showAlert(
+            error.message,
+            "danger"
+        );
 
     }
 

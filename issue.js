@@ -21,6 +21,17 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btnRefreshIssueList').addEventListener('click', loadApprovedRequests);
 });
 
+//====================================================
+// ISSUE MATERIAL - SUPABASE CLIENT
+//====================================================
+
+const supabaseClient =
+    window.supabaseClient ||
+    window.supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_ANON_KEY
+);
+
 // --- DATA LOADING LOGIC ---
 
 async function loadApprovedRequests() {

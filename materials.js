@@ -624,14 +624,18 @@ async function editMaterial(id){
         }
 
         // Switch buttons
-        document.getElementById("btnSave")
-            .style.display="none";
 
-        document.getElementById("btnUpdate")
-            .style.display="inline-block";
+document.getElementById("btnSave")
+    .style.display="none";
 
-        document.getElementById("btnDelete")
-            .style.display="inline-block";
+document.getElementById("btnClear")
+    .style.display="none";
+
+document.getElementById("btnUpdate")
+    .style.display="inline-block";
+
+document.getElementById("btnDelete")
+    .style.display="inline-block";
 
     }
 

@@ -10,9 +10,15 @@ document.addEventListener("DOMContentLoaded", initializePage);
 
 async function initializePage() {
     try {
+
         await loadDepartments();
+
         initializeDefaults();
+
         registerEvents();
+
+        // Load Material Master List
+        await loadManageMaterials();
     }
    catch (error) {
 

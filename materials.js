@@ -17,9 +17,11 @@ async function initializePage() {
 
         registerEvents();
 
-        // Load Material Master List
-        
-        await loadManageMaterials();
+       // Load Main Material Master List
+await loadMaterialList();
+
+// Load Manage Materials
+await loadManageMaterials();
     }
    catch (error) {
 
@@ -320,6 +322,209 @@ async function openMaterialManager(){
 
 }
 
+//====================================================
+// LOAD MAIN MATERIAL MASTER LIST
+//====================================================
+
+async function loadMaterialList(){
+
+    try{
+
+        const search =
+            document.getElementById("searchMaterial").value.trim();
+
+        const department =
+            document.getElementById("filterDepartment").value;
+
+        const status =
+            document.getElementById("filterStatus").value;
+
+        const {
+            data: departments,
+            error: departmentError
+        } = await supabase
+            .from("departments")
+            .select("id, department_name")
+            .order("department_name");
+
+        if(departmentError) throw departmentError;
+
+        const departmentMap = {};
+
+        (departments || []).forEach(dept => {
+
+            departmentMap[String(dept.id)] =
+                dept.department_name;
+
+        });
+
+        let query = supabase
+            .from("materials")
+            .select(`
+                id,
+                material_code,
+                material_name,
+                department_id,
+                category,
+                brand,
+                unit,
+                unit_cost,
+                minimum_stock,
+                rack_location,
+                status
+            `)
+            .order("material_code");
+
+        if(search){
+
+            query = query.or(
+                `material_code.ilike.%${search}%,material_name.ilike.%${search}%,brand.ilike.%${search}%`
+            );
+
+        }
+
+        if(department){
+
+            query = query.eq(
+                "department_id",
+                department
+            );
+
+        }
+
+        if(status){
+
+            query = query.eq(
+                "status",
+                status
+            );
+
+        }
+
+        const {data,error} = await query;
+
+        if(error) throw error;
+
+        const tbody =
+            document.getElementById("materialTableBody");
+
+        const recordCount =
+            document.getElementById("recordCount");
+
+        if(!tbody) return;
+
+        if(!data || data.length === 0){
+
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="11"
+                        class="text-center text-muted">
+                        No Materials Found
+                    </td>
+                </tr>
+            `;
+
+            if(recordCount)
+                recordCount.textContent = "0 Records";
+
+            return;
+        }
+
+        let html = "";
+
+        data.forEach(item => {
+
+            const departmentName =
+                departmentMap[
+                    String(item.department_id)
+                ] || "-";
+
+            html += `
+                <tr>
+
+                    <td>${item.material_code || "-"}</td>
+
+                    <td>${item.material_name || "-"}</td>
+
+                    <td>${departmentName}</td>
+
+                    <td>${item.category || "-"}</td>
+
+                    <td>${item.brand || "-"}</td>
+
+                    <td>${item.unit || "-"}</td>
+
+                    <td>₹${item.unit_cost ?? 0}</td>
+
+                    <td>${item.minimum_stock ?? 0}</td>
+
+                    <td>${item.rack_location || "-"}</td>
+
+                    <td>
+                        <span class="badge ${
+                            item.status === "ACTIVE"
+                            ? "bg-success"
+                            : "bg-secondary"
+                        }">
+                            ${item.status || "-"}
+                        </span>
+                    </td>
+
+                    <td>
+
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-primary"
+                            onclick="editMaterial(${item.id})">
+
+                            <i class="fa-solid fa-pen"></i>
+
+                        </button>
+
+                    </td>
+
+                </tr>
+            `;
+
+        });
+
+        tbody.innerHTML = html;
+
+        if(recordCount){
+
+            recordCount.textContent =
+                `${data.length} Records`;
+
+        }
+
+    }
+
+    catch(error){
+
+        console.error(
+            "Main Material List Error:",
+            error
+        );
+
+        const tbody =
+            document.getElementById("materialTableBody");
+
+        if(tbody){
+
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="11"
+                        class="text-center text-danger">
+                        Unable to load Material Master
+                    </td>
+                </tr>
+            `;
+
+        }
+
+    }
+
+}
 //====================================================
 // LOAD MANAGE MATERIALS
 //====================================================

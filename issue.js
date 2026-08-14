@@ -40,7 +40,7 @@ async function loadApprovedRequests() {
 
     try {
         // Fetch APPROVED requests
-        const { data: requests, error: reqError } = await supabase
+        const { data: requests, error: reqError } = await supabaseClient
             .from('material_requests')
             .select(`
                 *,
@@ -62,7 +62,7 @@ async function loadApprovedRequests() {
         }
 
         // Fetch current stock from the current_stock view
-        const { data: stockData, error: stockError } = await supabase
+        const { data: stockData, error: stockError } = await supabaseClient
             .from("current_stock")
             .select(`
                 material_id,

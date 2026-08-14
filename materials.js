@@ -18,6 +18,7 @@ async function initializePage() {
         registerEvents();
 
         // Load Material Master List
+        
         await loadManageMaterials();
     }
    catch (error) {

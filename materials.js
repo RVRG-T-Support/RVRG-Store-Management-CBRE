@@ -798,12 +798,25 @@ function clearMaterialForm(){
 
     document.getElementById("materialForm").reset();
 
+    document.getElementById("materialId").value="";
+
     initializeDefaults();
 
     document.getElementById("materialCode").value="";
+
     document.getElementById("materialShortName").value="";
+
     document.getElementById("category").innerHTML =
         '<option value="">Select Category</option>';
+
+    // Return to New Material mode
+    document.getElementById("btnSave").style.display="inline-block";
+
+    document.getElementById("btnClear").style.display="inline-block";
+
+    document.getElementById("btnUpdate").style.display="none";
+
+    document.getElementById("btnDelete").style.display="none";
 
 }
 
@@ -874,8 +887,14 @@ async function saveMaterial(){
             material_name:
                 document.getElementById("materialName").value.trim(),
 
-            department_id:
-                Number(document.getElementById("department").value),
+            category_id:
+                Number(document.getElementById("category").value),
+
+            category:
+                document.getElementById("category")
+                            .options[
+                document.getElementById("category").selectedIndex
+                ].text,
 
             category:
                 document.getElementById("category").value,
@@ -918,6 +937,18 @@ async function saveMaterial(){
 
             description:
                 document.getElementById("description").value.trim(),
+            searchable_text:
+(
+    document.getElementById("materialCode").value + " " +
+    document.getElementById("materialName").value + " " +
+    document.getElementById("category")
+        .options[
+            document.getElementById("category").selectedIndex
+        ].text + " " +
+    document.getElementById("brand").value + " " +
+    document.getElementById("specification").value + " " +
+    document.getElementById("itemSize").value
+).toUpperCase(),
 
             is_active:true
 

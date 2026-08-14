@@ -1558,12 +1558,175 @@ function clearMaterialForm(){
 
 }
 
-function exportMaterials(){
+//====================================================
+// EXPORT MATERIAL MASTER TO EXCEL
+//====================================================
 
-    showAlert("Export Excel - Coming in Part 5","info");
+async function exportMaterials(){
+
+    try{
+
+        const { data, error } = await supabase
+
+            .from("materials")
+
+            .select(`
+                material_code,
+                material_name,
+                department_id,
+                category,
+                brand,
+                item_type,
+                specification,
+                item_size,
+                unit,
+                minimum_stock,
+                rack_location,
+                status,
+                unit_cost,
+                gst_type,
+                gst_percentage,
+                description
+            `)
+
+            .order("material_code");
+
+        if(error)
+            throw error;
+
+
+        // Load department names
+
+        const {
+            data: departments,
+            error: departmentError
+        } = await supabase
+
+            .from("departments")
+
+            .select("id, department_name");
+
+        if(departmentError)
+            throw departmentError;
+
+
+        const departmentMap = {};
+
+        (departments || []).forEach(dept => {
+
+            departmentMap[String(dept.id)] =
+                dept.department_name;
+
+        });
+
+
+        // Convert database data to Excel format
+
+        const excelData = (data || []).map(item => ({
+
+            "Material Code":
+                item.material_code || "",
+
+            "Material Name":
+                item.material_name || "",
+
+            "Department":
+                departmentMap[
+                    String(item.department_id)
+                ] || "",
+
+            "Category":
+                item.category || "",
+
+            "Brand":
+                item.brand || "",
+
+            "Item Type":
+                item.item_type || "",
+
+            "Specification":
+                item.specification || "",
+
+            "Item Size":
+                item.item_size || "",
+
+            "Unit":
+                item.unit || "",
+
+            "Minimum Stock":
+                item.minimum_stock ?? 0,
+
+            "Rack Location":
+                item.rack_location || "",
+
+            "Status":
+                item.status || "",
+
+            "Unit Cost":
+                item.unit_cost ?? 0,
+
+            "GST Type":
+                item.gst_type || "",
+
+            "GST %":
+                item.gst_percentage ?? 0,
+
+            "Description":
+                item.description || ""
+
+        }));
+
+
+        // Create Excel worksheet
+
+        const worksheet =
+            XLSX.utils.json_to_sheet(excelData);
+
+
+        // Create workbook
+
+        const workbook =
+            XLSX.utils.book_new();
+
+
+        XLSX.utils.book_append_sheet(
+            workbook,
+            worksheet,
+            "Material Master"
+        );
+
+
+        // Download
+
+        XLSX.writeFile(
+            workbook,
+            "RVRG_Material_Master.xlsx"
+        );
+
+
+        showAlert(
+            `${excelData.length} materials exported successfully`,
+            "success"
+        );
+
+    }
+
+    catch(error){
+
+        console.error(
+            "Export Material Error:",
+            error
+        );
+
+        showAlert(
+            "Unable to export Material Master: " +
+            error.message,
+            "danger"
+        );
+
+    }
 
 }
-
 //====================================================
 // DOWNLOAD MATERIAL MASTER EXCEL TEMPLATE
 //====================================================

@@ -474,35 +474,35 @@ async function loadManageMaterials(){
 
             <td>
 
-            <button
+<button
+class="btn btn-sm btn-primary me-1"
+onclick="editMaterial(${item.id})">
 
-            class="btn btn-sm btn-primary"
+<i class="fa-solid fa-pen"></i>
 
-            onclick="editMaterial(${item.id})">
+Edit
 
-            <i class="fa fa-pen"></i>
+</button>
 
-            </button>
+<button
+class="btn btn-sm btn-secondary me-1"
+onclick="copyMaterial(${item.id})">
 
-            <button
+<i class="fa-solid fa-copy"></i>
 
-            class="btn btn-sm btn-info"
+Copy
 
-            onclick="copyMaterial(${item.id})">
+</button>
 
-            <i class="fa fa-copy"></i>
+<button
+class="btn btn-sm btn-danger"
+onclick="inactiveMaterial(${item.id})">
 
-            </button>
+<i class="fa-solid fa-ban"></i>
 
-            <button
+Inactive
 
-            class="btn btn-sm btn-danger"
-
-            onclick="inactiveMaterial(${item.id})">
-
-            <i class="fa fa-ban"></i>
-
-            </button>
+</button>
 
             </td>
 
@@ -551,64 +551,93 @@ async function editMaterial(id){
     try{
 
         const {data,error}=await supabase
-
-        .from("materials")
-
-        .select("*")
-
-        .eq("id",id)
-
-        .single();
+            .from("materials")
+            .select("*")
+            .eq("id",id)
+            .single();
 
         if(error) throw error;
 
-        document.getElementById("materialCode").value=data.material_code;
+        document.getElementById("materialId").value=data.id;
 
-        document.getElementById("materialName").value=data.material_name;
+        document.getElementById("materialCode").value=
+            data.material_code || "";
 
-        document.getElementById("department").value=data.department_id;
+        document.getElementById("materialName").value=
+            data.material_name || "";
+
+        document.getElementById("department").value=
+            data.department_id;
 
         await loadCategories();
 
-        document.getElementById("category").value=data.category_id;
+        document.getElementById("category").value=
+            data.category_id;
 
         categoryChanged();
 
-        document.getElementById("brand").value=data.brand??"";
+        document.getElementById("brand").value=
+            data.brand || "";
 
-        document.getElementById("itemType").value=data.item_type??"";
+        document.getElementById("itemType").value=
+            data.item_type || "";
 
-        document.getElementById("specification").value=data.specification??"";
+        document.getElementById("specification").value=
+            data.specification || "";
 
-        document.getElementById("itemSize").value=data.item_size??"";
+        document.getElementById("itemSize").value=
+            data.item_size || "";
 
-        document.getElementById("unit").value=data.unit;
+        document.getElementById("unit").value=
+            data.unit || "";
 
-        document.getElementById("minimumStock").value=data.minimum_stock;
+        document.getElementById("minimumStock").value=
+            data.minimum_stock || 0;
 
-        document.getElementById("rackLocation").value=data.rack_location??"";
+        document.getElementById("rackLocation").value=
+            data.rack_location || "";
 
-        document.getElementById("status").value=data.status;
+        document.getElementById("status").value=
+            data.status || "ACTIVE";
 
-        document.getElementById("unitCost").value=data.unit_cost;
+        document.getElementById("unitCost").value=
+            data.unit_cost || 0;
 
-        document.getElementById("gstType").value=data.gst_type;
+        document.getElementById("gstType").value=
+            data.gst_type || "INCLUDED";
 
-        document.getElementById("gstPercentage").value=data.gst_percentage;
+        document.getElementById("gstPercentage").value=
+            data.gst_percentage || 18;
 
-        document.getElementById("description").value=data.description??"";
+        document.getElementById("description").value=
+            data.description || "";
 
-        bootstrap.Offcanvas.getInstance(
+        // Close Manage Materials
+        const canvasElement =
+            document.getElementById("manageMaterialsCanvas");
 
-        document.getElementById("manageMaterialsCanvas")
+        const canvas =
+            bootstrap.Offcanvas.getInstance(canvasElement);
 
-        ).hide();
+        if(canvas){
+            canvas.hide();
+        }
+
+        // Switch buttons
+        document.getElementById("btnSave")
+            .style.display="none";
+
+        document.getElementById("btnUpdate")
+            .style.display="inline-block";
+
+        document.getElementById("btnDelete")
+            .style.display="inline-block";
 
     }
 
     catch(error){
 
-        console.error(error);
+        console.error("Edit Material Error:",error);
 
         showAlert(error.message,"danger");
 

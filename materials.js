@@ -546,6 +546,170 @@ Inactive
     }
 
 }
+//====================================================
+// GENERATE MATERIAL CODE
+//====================================================
+
+async function generateMaterialCode(){
+
+    try{
+
+        const dept =
+            document.getElementById("department");
+
+        const materialName =
+            document.getElementById("materialName")
+                .value
+                .trim();
+
+        const shortName =
+            document.getElementById("materialShortName")
+                .value
+                .trim()
+                .toUpperCase();
+
+        const specification =
+            document.getElementById("specification")
+                .value
+                .trim()
+                .toUpperCase();
+
+        if(dept.selectedIndex <= 0){
+
+            showAlert(
+                "Select Department",
+                "warning"
+            );
+
+            return;
+        }
+
+        if(materialName == ""){
+
+            showAlert(
+                "Enter Material Name",
+                "warning"
+            );
+
+            return;
+        }
+
+        let prefix =
+            dept.options[
+                dept.selectedIndex
+            ].dataset.prefix;
+
+        if(!prefix){
+
+            showAlert(
+                "Department Prefix Missing",
+                "danger"
+            );
+
+            return;
+        }
+
+        let code = prefix;
+
+        if(shortName != ""){
+
+            code += "-" + cleanCode(shortName);
+
+        }
+
+        if(specification != ""){
+
+            code += "-" + cleanCode(specification);
+
+        }
+
+        code =
+            await getUniqueMaterialCode(code);
+
+        document
+            .getElementById("materialCode")
+            .value = code;
+
+    }
+
+    catch(error){
+
+        console.error(
+            "Generate Material Code Error:",
+            error
+        );
+
+        showAlert(
+            error.message,
+            "danger"
+        );
+
+    }
+
+}
+
+
+//====================================================
+// CLEAN CODE
+//====================================================
+
+function cleanCode(text){
+
+    return text
+
+        .replace(/\s+/g,"-")
+
+        .replace(/\//g,"-")
+
+        .replace(/[^\w-]/g,"")
+
+        .toUpperCase();
+
+}
+
+
+//====================================================
+// GET UNIQUE MATERIAL CODE
+//====================================================
+
+async function getUniqueMaterialCode(baseCode){
+
+    let finalCode = baseCode;
+
+    let count = 1;
+
+    while(true){
+
+        const {data,error} = await supabase
+
+            .from("materials")
+
+            .select("id")
+
+            .eq(
+                "material_code",
+                finalCode
+            );
+
+        if(error)
+            throw error;
+
+        if(data.length == 0){
+
+            return finalCode;
+
+        }
+
+        finalCode =
+            baseCode +
+            "-" +
+            String(count).padStart(2,"0");
+
+        count++;
+
+    }
+
+}
 
 //====================================================
 // EDIT MATERIAL

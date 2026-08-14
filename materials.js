@@ -9,6 +9,7 @@ const currentUser = getCurrentUser();
 document.addEventListener("DOMContentLoaded", initializePage);
 
 async function initializePage() {
+
     try {
 
         await loadDepartments();
@@ -16,6 +17,24 @@ async function initializePage() {
         initializeDefaults();
 
         registerEvents();
+
+        // Load main Material Master List
+        await loadMaterialList();
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "Material Master Error:",
+            error
+        );
+
+        alert(error.message);
+
+    }
+
+}
 
         // Load Material Master List
         
@@ -937,6 +956,180 @@ async function getUniqueMaterialCode(baseCode){
             String(count).padStart(2,"0");
 
         count++;
+
+    }
+
+}
+//====================================================
+// LOAD MATERIAL MASTER LIST
+//====================================================
+
+async function loadMaterialList(){
+
+    try{
+
+        const { data, error } = await supabase
+            .from("materials")
+            .select(`
+                id,
+                material_code,
+                material_name,
+                department_id,
+                category,
+                brand,
+                unit,
+                unit_cost,
+                minimum_stock,
+                rack_location,
+                status
+            `)
+            .order("material_code");
+
+        if(error) throw error;
+
+        const tbody =
+            document.getElementById("materialTableBody");
+
+        if(!tbody) return;
+
+        if(!data || data.length === 0){
+
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="11"
+                        class="text-center text-muted">
+                        No Materials Found
+                    </td>
+                </tr>
+            `;
+
+            return;
+        }
+
+        let html = "";
+
+        data.forEach(item => {
+
+            html += `
+                <tr>
+
+                    <td>
+                        ${item.material_code || "-"}
+                    </td>
+
+                    <td>
+                        ${item.material_name || "-"}
+                    </td>
+
+                    <td>
+                        ${item.department_id || "-"}
+                    </td>
+
+                    <td>
+                        ${item.category || "-"}
+                    </td>
+
+                    <td>
+                        ${item.brand || "-"}
+                    </td>
+
+                    <td>
+                        ${item.unit || "-"}
+                    </td>
+
+                    <td>
+                        ₹${item.unit_cost ?? 0}
+                    </td>
+
+                    <td>
+                        ${item.minimum_stock ?? 0}
+                    </td>
+
+                    <td>
+                        ${item.rack_location || "-"}
+                    </td>
+
+                    <td>
+                        <span class="badge ${
+                            item.status === "ACTIVE"
+                            ? "bg-success"
+                            : "bg-secondary"
+                        }">
+                            ${item.status || "-"}
+                        </span>
+                    </td>
+
+                    <td>
+
+                        <button
+                            class="btn btn-sm btn-primary"
+                            onclick="editMaterial(${item.id})"
+                            title="Edit">
+
+                            <i class="fa-solid fa-pen"></i>
+
+                        </button>
+
+                        <button
+                            class="btn btn-sm btn-info"
+                            onclick="copyMaterial(${item.id})"
+                            title="Copy">
+
+                            <i class="fa-solid fa-copy"></i>
+
+                        </button>
+
+                        <button
+                            class="btn btn-sm btn-danger"
+                            onclick="inactiveMaterial(${item.id})"
+                            title="Inactive">
+
+                            <i class="fa-solid fa-ban"></i>
+
+                        </button>
+
+                    </td>
+
+                </tr>
+            `;
+
+        });
+
+        tbody.innerHTML = html;
+
+    }
+
+    catch(error){
+
+        console.error(
+            "Material List Error:",
+            error
+        );
+
+        const tbody =
+            document.getElementById(
+                "materialTableBody"
+            );
+
+        if(tbody){
+
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="11"
+                        class="text-center text-danger">
+
+                        Unable to load Material Master
+
+                    </td>
+                </tr>
+            `;
+
+        }
+
+        showAlert(
+            error.message,
+            "danger"
+        );
 
     }
 

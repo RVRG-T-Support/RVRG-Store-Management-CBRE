@@ -13,11 +13,9 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log("Current User:", getCurrentUser());
     return;
 }
-
-    // Display current user name
-    const user = getCurrentUser();
-    document.getElementById('currentUserName').innerText = `${user.name} (${user.role})`;
-
+    
+// User information is handled by navigation.js
+    
     // Load initial data
     loadApprovedRequests();
 

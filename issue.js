@@ -8,7 +8,11 @@ if (!currentUser)
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Security Check: STORE, ADMIN, FM, AFM can access this module
     const hasAccess = checkUserAccess(['ADMIN', 'FM', 'AFM', 'STORE']);
-    if (!hasAccess) return;
+    if (!hasAccess) {
+    console.error("ISSUE PAGE ACCESS DENIED");
+    console.log("Current User:", getCurrentUser());
+    return;
+}
 
     // Display current user name
     const user = getCurrentUser();

@@ -14,11 +14,66 @@ return null;
 return JSON.parse(userString);
 }
 
+//====================================================
+// VALIDATE ACTIVE USER SESSION
+//====================================================
+
+async function validateActiveSession() {
+
+    const user = getCurrentUser();
+
+    if (!user) return false;
+
+    try {
+
+        const { data, error } = await supabase
+
+            .from("users_master")
+
+            .select("id, is_active")
+
+            .eq("id", user.id)
+
+            .single();
+
+
+        if (error || !data || data.is_active !== true) {
+
+            localStorage.removeItem("RVRG_ACTIVE_USER");
+
+            alert(
+                "Your account has been deactivated. Please contact the administrator."
+            );
+
+            window.location.replace("index.html");
+
+            return false;
+        }
+
+
+        return true;
+
+
+    } catch (error) {
+
+        console.error(
+            "Session Validation Error:",
+            error
+        );
+
+        return false;
+
+    }
+
+}
+
 // Protect page
 const loggedInUser = getCurrentUser();
 
 if (!loggedInUser)
     window.location.replace("index.html");
+// Validate that the logged-in user is still active
+validateActiveSession();
 
 function logout() {
 

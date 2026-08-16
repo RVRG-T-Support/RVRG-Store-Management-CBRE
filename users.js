@@ -208,7 +208,7 @@ function renderUsers(users) {
 
                 <button
                     class="btn btn-sm btn-secondary"
-                    disabled>
+                        onclick="copyUser(${user.id})">
 
                     <i class="fa-solid fa-copy"></i>
                     Copy
@@ -692,5 +692,99 @@ function clearUserForm() {
 
     document.getElementById("btnUpdateUser")
         .style.display = "none";
+
+}
+
+//====================================================
+// COPY USER
+//====================================================
+
+async function copyUser(id) {
+
+    try {
+
+        const {
+            data,
+            error
+        } = await supabaseClient
+
+            .from("users_master")
+
+            .select(`
+                full_name,
+                email,
+                role,
+                is_active
+            `)
+
+            .eq("id", id)
+
+            .single();
+
+
+        if (error)
+            throw error;
+
+
+        // Clear existing ID
+        document.getElementById("userId").value = "";
+
+
+        // Copy user information
+        document.getElementById("fullName").value =
+            data.full_name || "";
+
+        document.getElementById("email").value =
+            data.email || "";
+
+
+        // Username MUST be new
+        document.getElementById("username").value = "";
+
+        // Password MUST be entered again
+        document.getElementById("password").value = "";
+
+
+        document.getElementById("role").value =
+            data.role || "STOREKEEPER";
+
+        document.getElementById("isActive").value =
+            String(data.is_active);
+
+
+        // Save mode
+        document.getElementById("btnSaveUser")
+            .style.display = "inline-block";
+
+        document.getElementById("btnUpdateUser")
+            .style.display = "none";
+
+
+        // Username enabled
+        document.getElementById("username")
+            .disabled = false;
+
+
+        // Scroll to form
+        document.getElementById("fullName")
+            .scrollIntoView({
+                behavior: "smooth",
+                block: "center"
+            });
+
+
+    } catch (error) {
+
+        console.error(
+            "Copy User Error:",
+            error
+        );
+
+        showAlert(
+            error.message,
+            "danger"
+        );
+
+    }
 
 }

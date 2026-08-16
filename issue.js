@@ -222,13 +222,12 @@ const { data: issueData, error: issueError } = await supabase
         const newTotalIssued = previousIssued + issueQty;
 
         const { error: updateError } = await supabase
-            .from('material_requests')
-            .update({ 
-                issued_qty: newTotalIssued,
-                request_status: newStatus,
-                issue_date: new Date().toISOString()
-            })
-            .eq('id', requestId);
+    .from('material_requests')
+    .update({
+        issued_qty: newTotalIssued,
+        request_status: newStatus
+    })
+    .eq('id', requestId);
 
         if (updateError) throw updateError;
 

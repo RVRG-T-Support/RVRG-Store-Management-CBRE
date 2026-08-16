@@ -62,11 +62,12 @@ const password = document.getElementById('loginPassword').value.trim();
 try {
                 // Check users_master table for credentials
 const { data, error } = await window.supabaseClient
-.from('users_master')
-.select('*')
-.eq('username', username)
-.eq('password', password)
-.single();
+    .from('users_master')
+    .select('*')
+    .eq('username', username)
+    .eq('password', password)
+    .eq('is_active', true)
+    .single();
 
 if (error || !data) throw new Error("Invalid User ID or Password");
 

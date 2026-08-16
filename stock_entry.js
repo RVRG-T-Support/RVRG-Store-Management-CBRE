@@ -17,9 +17,47 @@ document.addEventListener('DOMContentLoaded', async () => {
     confirmModalInstance = new bootstrap.Modal(document.getElementById('confirmStockModal'));
     document.getElementById('invoiceDate').value = new Date().toISOString().split('T')[0];
 
-    await loadMaterials();
-    addRow(); // Add one blank row by default
+//====================================================
+// REFRESH MATERIAL DROPDOWNS
+//====================================================
 
+function refreshMaterialDropdowns(){
+
+    document.querySelectorAll('.item-select').forEach(select => {
+
+        const currentValue = select.value;
+
+        let optionsHtml =
+            '<option value="" disabled>Select Material...</option>';
+
+        materialsData.forEach(mat => {
+
+            const deptName =
+                mat.departments?.department_name || "-";
+
+            optionsHtml += `
+                <option value="${mat.id}">
+                    ${deptName} - ${mat.material_name}
+                </option>
+            `;
+
+        });
+
+        select.innerHTML = optionsHtml;
+
+        if(currentValue)
+            select.value = currentValue;
+
+    });
+
+}
+    // Add one blank row immediately
+    addRow();
+    // Load materials for the dropdown
+    await loadMaterials();
+
+    // Refresh material dropdowns after materials are loaded
+    refreshMaterialDropdowns();
     // Event Listeners
     document.getElementById('btnAddRow').addEventListener('click', () => addRow());
     document.getElementById('transportationCost').addEventListener('input', calculateGrandTotal);
@@ -116,7 +154,7 @@ ${deptName} - ${mat.material_name}
            step="0.01"
            class="form-control form-control-sm item-row-input mx-auto gst-input"
            id="gst-${rowCount}"
-           value="18"
+           value="${document.getElementById('gstType').value || 18}"
            min="0"
            max="100"
            oninput="calculateRowTotal(${rowCount})">

@@ -10,9 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const hasAccess = checkUserAccess(['ADMIN', 'FM', 'AFM', 'STORE']);
     if (!hasAccess) return;
 
-    // Display current user name
-    const user = getCurrentUser();
-    document.getElementById('currentUserName').innerText = `${user.name} (${user.role})`;
+// User information is handled by navigation.js
 
     // Event Listeners
     document.getElementById('btnSearchTicket').addEventListener('click', searchTicket);

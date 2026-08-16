@@ -143,7 +143,7 @@ window.processIssue = async function(requestId, materialId, balance) {
 
     try {
         // Step 1: Insert into material_issue_register
-        // Step 1: Fetch request details
+// Step 1: Fetch request details
 const { data: requestInfo, error: requestError } = await supabase
     .from("material_requests")
     .select(`
@@ -157,13 +157,14 @@ const { data: requestInfo, error: requestError } = await supabase
     `)
     .eq("id", requestId)
     .single();
-    .eq("id", requestId)
-    .single();
 
 if (requestError) throw requestError;
 
-const unitCost = Number(requestInfo.materials?.unit_cost || 0);
-const totalCost = unitCost * issueQty;
+const unitCost =
+    Number(requestInfo.materials?.unit_cost || 0);
+
+const totalCost =
+    unitCost * issueQty;
 
 // Step 2: Insert into material_issue_register
 const { data: issueData, error: issueError } = await supabase

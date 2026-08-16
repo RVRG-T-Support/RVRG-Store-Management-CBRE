@@ -110,6 +110,17 @@ ${deptName} - ${mat.material_name}
            oninput="calculateRowTotal(${rowCount})"
            onkeydown="handleEnterKey(event, ${rowCount})">
 </td>
+
+<td>
+    <input type="number"
+           step="0.01"
+           class="form-control form-control-sm item-row-input mx-auto gst-input"
+           id="gst-${rowCount}"
+           value="18"
+           min="0"
+           max="100"
+           oninput="calculateRowTotal(${rowCount})">
+</td>
         <td class="align-middle fw-bold row-total" id="total-${rowCount}" data-value="0">₹ 0.00</td>
         <td class="align-middle">
             <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeRow(${rowCount})" title="Remove">
@@ -355,25 +366,34 @@ if (selectedMaterials.has(materialId)) {
 }
 
 selectedMaterials.add(materialId);
-            const qty = parseFloat(document.getElementById(`qty-${rowId}`).value);
-            const price = parseFloat(document.getElementById(`price-${rowId}`).value);
-            if (qty <= 0) {
+const qty =
+    parseFloat(document.getElementById(`qty-${rowId}`).value);
+
+const price =
+    parseFloat(document.getElementById(`price-${rowId}`).value);
+
+const gstPercentage =
+    parseFloat(document.getElementById(`gst-${rowId}`).value) || 0;
+
+if (qty <= 0) {
     throw new Error("Quantity must be greater than zero.");
 }
 
 if (price <= 0) {
     throw new Error("Unit Price must be greater than zero.");
 }
-            const amount = qty * price;
 
-    detailsArray.push({
+const amount = qty * price;
+
+detailsArray.push({
     stock_entry_id: entryId,
     material_id: Number(materialId),
     quantity: qty,
     purchase_price: price,
     gst_type: "INCLUDED",
-    gst_percentage: Number(gstType),
+    gst_percentage: gstPercentage,
     line_total: amount
+});
 });
 
     ledgerArray.push({

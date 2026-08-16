@@ -199,22 +199,26 @@ function renderUsers(users) {
                 <button
                     class="btn btn-sm btn-primary"
                         onclick="editUser(${user.id})">
-
-
                     <i class="fa-solid fa-pen"></i>
                     Edit
-
                 </button>
 
                 <button
                     class="btn btn-sm btn-secondary"
                         onclick="copyUser(${user.id})">
-
                     <i class="fa-solid fa-copy"></i>
                     Copy
-
                 </button>
 
+<button
+    class="btn btn-sm ${user.is_active ? 'btn-danger' : 'btn-success'}"
+    onclick="toggleUserStatus(${user.id}, ${user.is_active})">
+
+    <i class="fa-solid ${user.is_active ? 'fa-ban' : 'fa-check'}"></i>
+
+    ${user.is_active ? 'Inactive' : 'Activate'}
+
+</button>
             </td>
 
         `;
@@ -777,6 +781,81 @@ async function copyUser(id) {
 
         console.error(
             "Copy User Error:",
+            error
+        );
+
+        showAlert(
+            error.message,
+            "danger"
+        );
+
+    }
+
+}
+
+//====================================================
+// ACTIVATE / INACTIVE USER
+//====================================================
+
+async function toggleUserStatus(id, currentStatus) {
+
+    try {
+
+        const action =
+            currentStatus
+                ? "make this user inactive"
+                : "activate this user";
+
+
+        const confirmed =
+            confirm(
+                `Are you sure you want to ${action}?`
+            );
+
+
+        if (!confirmed)
+            return;
+
+
+        const newStatus =
+            !currentStatus;
+
+
+        const {
+            error
+        } = await supabaseClient
+
+            .from("users_master")
+
+            .update({
+                is_active: newStatus
+            })
+
+            .eq("id", id);
+
+
+        if (error)
+            throw error;
+
+
+        showAlert(
+
+            newStatus
+                ? "User activated successfully."
+                : "User made inactive successfully.",
+
+            "success"
+
+        );
+
+
+        await loadUsers();
+
+
+    } catch (error) {
+
+        console.error(
+            "Change User Status Error:",
             error
         );
 

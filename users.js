@@ -52,7 +52,7 @@ async function loadUsers() {
             error
         } = await supabaseClient
 
-            .from("user_master")
+            .from("users_master")
 
             .select(`
                 id,

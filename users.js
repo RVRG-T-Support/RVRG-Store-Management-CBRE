@@ -314,3 +314,133 @@ function filterUsers() {
     renderUsers(filtered);
 
 }
+//====================================================
+// SAVE NEW USER
+//====================================================
+
+async function saveUser() {
+
+    try {
+
+        const fullName =
+            document.getElementById("fullName").value.trim();
+
+        const email =
+            document.getElementById("email").value.trim();
+
+        const username =
+            document.getElementById("username").value.trim();
+
+        const password =
+            document.getElementById("password").value;
+
+        const role =
+            document.getElementById("role").value;
+
+        const isActive =
+            document.getElementById("isActive").value === "true";
+
+
+        // Validation
+
+        if (!fullName) {
+            throw new Error("Full Name is required.");
+        }
+
+        if (!username) {
+            throw new Error("Username is required.");
+        }
+
+        if (!password) {
+            throw new Error("Password is required.");
+        }
+
+        if (!role) {
+            throw new Error("Please select a role.");
+        }
+
+
+        // Check duplicate username
+
+        const {
+            data: existingUser,
+            error: checkError
+        } = await supabaseClient
+
+            .from("users_master")
+
+            .select("id")
+
+            .eq("username", username)
+
+            .maybeSingle();
+
+
+        if (checkError)
+            throw checkError;
+
+
+        if (existingUser) {
+
+            throw new Error(
+                "Username already exists."
+            );
+
+        }
+
+
+        // Insert user
+
+        const {
+            error
+        } = await supabaseClient
+
+            .from("users_master")
+
+            .insert({
+
+                full_name: fullName,
+
+                email: email || null,
+
+                username: username,
+
+                password: password,
+
+                role: role,
+
+                is_active: isActive
+
+            });
+
+
+        if (error)
+            throw error;
+
+
+        showAlert(
+            "User saved successfully.",
+            "success"
+        );
+
+
+        clearUserForm();
+
+        await loadUsers();
+
+
+    } catch (error) {
+
+        console.error(
+            "Save User Error:",
+            error
+        );
+
+        showAlert(
+            error.message,
+            "danger"
+        );
+
+    }
+
+}

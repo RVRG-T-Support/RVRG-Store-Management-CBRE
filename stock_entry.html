@@ -9,7 +9,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- FontAwesome Icons -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    
+    <link href="theme.css" rel="stylesheet">
     <style>
         body { background-color: #f4f6f9; }
         .sidebar { min-height: 100vh; background-color: #ffffff; border-right: 1px solid #dee2e6; }
@@ -22,27 +22,15 @@
 </head>
 <body>
 
-    <!-- Top Navigation Bar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
-        <div class="container-fluid px-4">
-            <a class="navbar-brand fw-bold d-flex align-items-center" href="dashboard.html">
-                <img src="RVRG LOGO.jpg" alt="RVRG Logo" height="40" class="bg-white rounded p-1 me-2 shadow-sm">
-                <span class="text-secondary mx-1">|</span>
-                <img src="cbre_green.jpg" alt="CBRE Logo" height="40" class="bg-white rounded p-1 ms-2 me-3 shadow-sm">
-                <div>
-                    <span class="d-block lh-1 text-white" style="font-size: 0.9rem;">Store Management</span>
-                    <small class="text-info fw-normal" style="font-size: 0.65rem;">Enterprise Edition</small>
-                </div>
-            </a>
-            <div class="d-flex align-items-center text-white">
-                <span class="me-3"><i class="fa-solid fa-bell"></i></span>
-                <span class="me-3" id="userBadge"><i class="fa-solid fa-user-circle me-1"></i> <span id="currentUserName">Loading...</span></span>
-            </div>
-        </div>
-    </nav>
+<!-- Global Header -->
+<div id="appHeader"></div>
 
-    <div class="container-fluid">
-        <div class="row">
+<!-- Global Sidebar -->
+<div id="globalSidebar"></div>
+
+    <div class="main-content">
+
+    <div class="container my-4">
             
             <!-- Global Sidebar (Injected automatically by common.js) -->
             <div class="col-md-2 d-none d-md-block sidebar py-3" id="globalSidebar">
@@ -184,14 +172,13 @@
             </div>
         </div>
     </div>
-
+</div>
     <!-- Dependencies -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-    
     <script src="config.js"></script>
     <script src="common.js"></script>
+    <script src="navigation.js"></script>
     <script src="stock_entry.js"></script>
 </body>
 </html>

@@ -432,7 +432,6 @@ detailsArray.push({
     gst_percentage: gstPercentage,
     line_total: amount
 });
-});
 
     ledgerArray.push({
     material_id: Number(materialId),

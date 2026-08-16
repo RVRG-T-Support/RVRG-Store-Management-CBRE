@@ -198,7 +198,8 @@ function renderUsers(users) {
 
                 <button
                     class="btn btn-sm btn-primary"
-                    disabled>
+                        onclick="editUser(${user.id})">
+
 
                     <i class="fa-solid fa-pen"></i>
                     Edit
@@ -442,5 +443,254 @@ async function saveUser() {
         );
 
     }
+
+}
+
+//====================================================
+// EDIT USER
+//====================================================
+
+async function editUser(id) {
+
+    try {
+
+        const {
+            data,
+            error
+        } = await supabaseClient
+
+            .from("users_master")
+
+            .select(`
+                id,
+                full_name,
+                email,
+                username,
+                role,
+                is_active
+            `)
+
+            .eq("id", id)
+
+            .single();
+
+
+        if (error)
+            throw error;
+
+
+        // Store ID
+        document.getElementById("userId").value =
+            data.id;
+
+
+        // Load user information
+        document.getElementById("fullName").value =
+            data.full_name || "";
+
+        document.getElementById("email").value =
+            data.email || "";
+
+        document.getElementById("username").value =
+            data.username || "";
+
+        document.getElementById("role").value =
+            data.role || "STOREKEEPER";
+
+        document.getElementById("isActive").value =
+            String(data.is_active);
+
+
+        // Password remains blank
+        document.getElementById("password").value = "";
+
+
+        // Change button mode
+        document.getElementById("btnSaveUser")
+            .style.display = "none";
+
+        document.getElementById("btnUpdateUser")
+            .style.display = "inline-block";
+
+
+        // Username should not be changed during edit
+        document.getElementById("username")
+            .disabled = true;
+
+
+        // Scroll to form
+        document.getElementById("fullName")
+            .scrollIntoView({
+                behavior: "smooth",
+                block: "center"
+            });
+
+
+    } catch (error) {
+
+        console.error(
+            "Edit User Error:",
+            error
+        );
+
+        showAlert(
+            error.message,
+            "danger"
+        );
+
+    }
+
+}
+
+//====================================================
+// UPDATE USER
+//====================================================
+
+async function updateUser() {
+
+    try {
+
+        const id =
+            document.getElementById("userId").value;
+
+        if (!id) {
+            throw new Error(
+                "No user selected for update."
+            );
+        }
+
+
+        const fullName =
+            document.getElementById("fullName")
+                .value.trim();
+
+        const email =
+            document.getElementById("email")
+                .value.trim();
+
+        const password =
+            document.getElementById("password")
+                .value;
+
+        const role =
+            document.getElementById("role")
+                .value;
+
+        const isActive =
+            document.getElementById("isActive")
+                .value === "true";
+
+
+        if (!fullName) {
+            throw new Error(
+                "Full Name is required."
+            );
+        }
+
+
+        if (!role) {
+            throw new Error(
+                "Please select a role."
+            );
+        }
+
+
+        const updateData = {
+
+            full_name: fullName,
+
+            email: email || null,
+
+            role: role,
+
+            is_active: isActive
+
+        };
+
+
+        // Only update password if a new one was entered
+        if (password) {
+
+            updateData.password = password;
+
+        }
+
+
+        const {
+            error
+        } = await supabaseClient
+
+            .from("users_master")
+
+            .update(updateData)
+
+            .eq("id", id);
+
+
+        if (error)
+            throw error;
+
+
+        showAlert(
+            "User updated successfully.",
+            "success"
+        );
+
+
+        clearUserForm();
+
+        await loadUsers();
+
+
+    } catch (error) {
+
+        console.error(
+            "Update User Error:",
+            error
+        );
+
+        showAlert(
+            error.message,
+            "danger"
+        );
+
+    }
+
+}
+
+//====================================================
+// CLEAR USER FORM
+//====================================================
+
+function clearUserForm() {
+
+    document.getElementById("userId").value = "";
+
+    document.getElementById("fullName").value = "";
+
+    document.getElementById("email").value = "";
+
+    document.getElementById("username").value = "";
+
+    document.getElementById("password").value = "";
+
+    document.getElementById("role").value =
+        "STOREKEEPER";
+
+    document.getElementById("isActive").value =
+        "true";
+
+
+    // Enable username for new user
+    document.getElementById("username")
+        .disabled = false;
+
+
+    // Return to Save mode
+    document.getElementById("btnSaveUser")
+        .style.display = "inline-block";
+
+    document.getElementById("btnUpdateUser")
+        .style.display = "none";
 
 }

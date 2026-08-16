@@ -167,15 +167,6 @@ function renderDepartments() {
                     Edit
 
                 </button>
-
-<button
-    class="btn btn-sm btn-secondary"
-    onclick="copyDepartment(${dept.id})">
-
-    <i class="fa-solid fa-copy"></i>
-    Copy
-
-</button>
             </td>
 
         `;
@@ -882,92 +873,6 @@ async function updateDepartment() {
 
         console.error(
             "Update Department Error:",
-            error
-        );
-
-        showAlert(
-            error.message,
-            "danger"
-        );
-
-    }
-
-}
-
-//====================================================
-// COPY DEPARTMENT
-//====================================================
-
-async function copyDepartment(id) {
-
-    try {
-
-        const {
-            data,
-            error
-        } = await supabaseClient
-
-            .from("departments")
-
-            .select(`
-                department_code,
-                department_name,
-                prefix
-            `)
-
-            .eq("id", id)
-
-            .single();
-
-
-        if (error)
-            throw error;
-
-
-        // New record — no ID
-
-        document.getElementById("departmentId").value = "";
-
-
-        // Copy values
-
-        document.getElementById("departmentCode").value =
-            data.department_code || "";
-
-        document.getElementById("departmentName").value =
-            data.department_name || "";
-
-        document.getElementById("departmentPrefix").value =
-            data.prefix || "";
-
-
-        // Save mode
-
-        document.getElementById("btnSaveDepartment")
-            .style.display = "inline-block";
-
-        document.getElementById("btnUpdateDepartment")
-            .style.display = "none";
-
-
-        document.getElementById("departmentCode")
-            .disabled = false;
-
-        document.getElementById("departmentPrefix")
-            .disabled = false;
-
-
-        document.getElementById("departmentCode")
-            .scrollIntoView({
-                behavior: "smooth",
-                block: "center"
-            });
-
-
-    } catch (error) {
-
-        console.error(
-            "Copy Department Error:",
             error
         );
 

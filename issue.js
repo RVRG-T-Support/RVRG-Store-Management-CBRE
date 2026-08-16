@@ -150,11 +150,13 @@ const { data: requestInfo, error: requestError } = await supabase
         ticket_no,
         location_name,
         location_type,
-        technician_name,
+        technician_id,
         materials!material_requests_material_id_fkey (
             unit_cost
         )
     `)
+    .eq("id", requestId)
+    .single();
     .eq("id", requestId)
     .single();
 
@@ -172,7 +174,7 @@ const { data: issueData, error: issueError } = await supabase
         ticket_no: requestInfo.ticket_no,
         location_name: requestInfo.location_name,
         location_type: requestInfo.location_type,
-        technician_name: requestInfo.technician_name,
+        technician_name: requestInfo.technician_id,
         issued_qty: issueQty,
         unit_cost: unitCost,
         total_cost: totalCost,

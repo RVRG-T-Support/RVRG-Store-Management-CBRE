@@ -428,3 +428,190 @@ function escapeHtml(value) {
     return div.innerHTML;
 
 }
+
+//====================================================
+// SAVE DEPARTMENT
+//====================================================
+
+async function saveDepartment() {
+
+    try {
+
+        const code =
+            document.getElementById("departmentCode")
+                .value.trim()
+                .toUpperCase();
+
+        const name =
+            document.getElementById("departmentName")
+                .value.trim();
+
+        const prefix =
+            document.getElementById("departmentPrefix")
+                .value.trim()
+                .toUpperCase();
+
+
+        // Validation
+
+        if (!code)
+            throw new Error("Department Code is required.");
+
+        if (!name)
+            throw new Error("Department Name is required.");
+
+        if (!prefix)
+            throw new Error("Department Prefix is required.");
+
+
+        // Check duplicate code
+
+        const {
+            data: existingCode,
+            error: codeError
+        } = await supabaseClient
+
+            .from("departments")
+
+            .select("id")
+
+            .eq("department_code", code)
+
+            .maybeSingle();
+
+
+        if (codeError)
+            throw codeError;
+
+
+        if (existingCode)
+            throw new Error(
+                "Department Code already exists."
+            );
+
+
+        // Check duplicate name
+
+        const {
+            data: existingName,
+            error: nameError
+        } = await supabaseClient
+
+            .from("departments")
+
+            .select("id")
+
+            .eq("department_name", name)
+
+            .maybeSingle();
+
+
+        if (nameError)
+            throw nameError;
+
+
+        if (existingName)
+            throw new Error(
+                "Department Name already exists."
+            );
+
+
+        // Check duplicate prefix
+
+        const {
+            data: existingPrefix,
+            error: prefixError
+        } = await supabaseClient
+
+            .from("departments")
+
+            .select("id")
+
+            .eq("prefix", prefix)
+
+            .maybeSingle();
+
+
+        if (prefixError)
+            throw prefixError;
+
+
+        if (existingPrefix)
+            throw new Error(
+                "Department Prefix already exists."
+            );
+
+
+        // Insert
+
+        const {
+            error
+        } = await supabaseClient
+
+            .from("departments")
+
+            .insert({
+
+                department_code: code,
+
+                department_name: name,
+
+                prefix: prefix
+
+            });
+
+
+        if (error)
+            throw error;
+
+
+        showAlert(
+            "Department saved successfully.",
+            "success"
+        );
+
+
+        clearDepartmentForm();
+
+        await loadDepartments();
+
+
+    } catch (error) {
+
+        console.error(
+            "Save Department Error:",
+            error
+        );
+
+        showAlert(
+            error.message,
+            "danger"
+        );
+
+    }
+
+}
+
+//====================================================
+// CLEAR DEPARTMENT FORM
+//====================================================
+
+function clearDepartmentForm() {
+
+    document.getElementById("departmentId").value = "";
+
+    document.getElementById("departmentCode").value = "";
+
+    document.getElementById("departmentName").value = "";
+
+    document.getElementById("departmentPrefix").value = "";
+
+
+    document.getElementById("btnSaveDepartment")
+        .style.display = "inline-block";
+
+
+    document.getElementById("btnUpdateDepartment")
+        .style.display = "none";
+
+}

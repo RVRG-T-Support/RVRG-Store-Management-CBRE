@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>User Management - RVRG Store Management</title>
+
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+        rel="stylesheet">
+
+    <link
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+        rel="stylesheet">
+
+    <link href="theme.css" rel="stylesheet">
+
+</head>
+
+
+<body class="bg-light">
+
+
+<!-- Global Header -->
+<div id="appHeader"></div>
+
+
+<!-- Global Sidebar -->
+<div id="globalSidebar"></div>
+
+
+<!-- Main Content -->
+<div class="main-content">
+
+    <div class="container-fluid px-4 my-4">
+
+
+        <!-- Page Header -->
+
+        <div class="d-flex justify-content-between
+                    align-items-center mb-3">
+
+            <div>
+
+                <h3 class="fw-bold text-success mb-1">
+
+                    <i class="fa-solid fa-users-gear me-2"></i>
+
+                    User Management
+
+                </h3>
+
+                <small class="text-muted">
+
+                    Create and manage RVRG Store Management users
+
+                </small>
+
+            </div>
+
+
+            <button
+                class="btn btn-success"
+                onclick="clearUserForm()">
+
+                <i class="fa-solid fa-user-plus me-1"></i>
+
+                New User
+
+            </button>
+
+        </div>
+
+
+
+        <!-- User Information -->
+
+        <div class="card shadow-sm border-0 mb-4">
+
+            <div class="card-header bg-white">
+
+                <h5 class="mb-0">
+
+                    <i class="fa-solid fa-user me-2 text-success"></i>
+
+                    User Information
+
+                </h5>
+
+            </div>
+
+
+            <div class="card-body">
+
+
+                <!-- Hidden ID -->
+
+                <input
+                    type="hidden"
+                    id="userId">
+
+
+                <div class="row g-3">
+
+
+                    <!-- Full Name -->
+
+                    <div class="col-md-6">
+
+                        <label class="form-label fw-semibold">
+
+                            Full Name *
+
+                        </label>
+
+                        <input
+                            type="text"
+                            class="form-control"
+                            id="fullName"
+                            placeholder="Enter full name"
+                            required>
+
+                    </div>
+
+
+
+                    <!-- Email -->
+
+                    <div class="col-md-6">
+
+                        <label class="form-label fw-semibold">
+
+                            Email
+
+                        </label>
+
+                        <input
+                            type="email"
+                            class="form-control"
+                            id="email"
+                            placeholder="user@rvrg.in">
+
+                    </div>
+
+
+
+                    <!-- Username -->
+
+                    <div class="col-md-4">
+
+                        <label class="form-label fw-semibold">
+
+                            Username *
+
+                        </label>
+
+                        <input
+                            type="text"
+                            class="form-control"
+                            id="username"
+                            placeholder="Enter username"
+                            required>
+
+                    </div>
+
+
+
+                    <!-- Password -->
+
+                    <div class="col-md-4">
+
+                        <label class="form-label fw-semibold">
+
+                            Password *
+
+                        </label>
+
+                        <div class="input-group">
+
+                            <input
+                                type="password"
+                                class="form-control"
+                                id="password"
+                                placeholder="Enter password">
+
+                            <button
+                                type="button"
+                                class="btn btn-outline-secondary"
+                                onclick="togglePassword()">
+
+                                <i
+                                    class="fa-solid fa-eye"
+                                    id="passwordIcon"></i>
+
+                            </button>
+
+                        </div>
+
+                    </div>
+
+
+
+                    <!-- Role -->
+
+                    <div class="col-md-4">
+
+                        <label class="form-label fw-semibold">
+
+                            Role *
+
+                        </label>
+
+                        <select
+                            class="form-select"
+                            id="role">
+
+                            <option value="STOREKEEPER">
+                                Storekeeper
+                            </option>
+
+                            <option value="AFM">
+                                AFM
+                            </option>
+
+                            <option value="FM">
+                                Facility Manager
+                            </option>
+
+                            <option value="ADMIN">
+                                Administrator
+                            </option>
+
+                        </select>
+
+                    </div>
+
+
+
+                    <!-- Status -->
+
+                    <div class="col-md-4">
+
+                        <label class="form-label fw-semibold">
+
+                            Status
+
+                        </label>
+
+                        <select
+                            class="form-select"
+                            id="isActive">
+
+                            <option value="true">
+                                ACTIVE
+                            </option>
+
+                            <option value="false">
+                                INACTIVE
+                            </option>
+
+                        </select>
+
+                    </div>
+
+
+
+                    <!-- Buttons -->
+
+                    <div class="col-md-8
+                                d-flex justify-content-end
+                                align-items-end gap-2">
+
+                        <button
+                            type="button"
+                            class="btn btn-success"
+                            id="btnSaveUser"
+                            onclick="saveUser()">
+
+                            <i class="fa-solid fa-floppy-disk me-1"></i>
+
+                            Save
+
+                        </button>
+
+
+                        <button
+                            type="button"
+                            class="btn btn-secondary"
+                            onclick="clearUserForm()">
+
+                            <i class="fa-solid fa-eraser me-1"></i>
+
+                            Clear
+
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- User List -->
+
+        <div class="card shadow-sm border-0">
+
+            <div class="card-header bg-white
+                        d-flex justify-content-between
+                        align-items-center">
+
+                <h5 class="mb-0">
+
+                    <i class="fa-solid fa-list me-2 text-success"></i>
+
+                    User List
+
+                </h5>
+
+
+                <button
+                    class="btn btn-outline-success btn-sm"
+                    onclick="loadUsers()">
+
+                    <i class="fa-solid fa-rotate-right"></i>
+
+                    Refresh
+
+                </button>
+
+            </div>
+
+
+            <div class="card-body">
+
+
+                <!-- Filters -->
+
+                <div class="row g-2 mb-3">
+
+
+                    <div class="col-md-5">
+
+                        <input
+                            type="text"
+                            class="form-control"
+                            id="userSearch"
+                            placeholder="Search Name / Username / Email"
+                            oninput="filterUsers()">
+
+                    </div>
+
+
+                    <div class="col-md-3">
+
+                        <select
+                            class="form-select"
+                            id="roleFilter"
+                            onchange="filterUsers()">
+
+                            <option value="">
+                                All Roles
+                            </option>
+
+                            <option value="STOREKEEPER">
+                                Storekeeper
+                            </option>
+
+                            <option value="AFM">
+                                AFM
+                            </option>
+
+                            <option value="FM">
+                                Facility Manager
+                            </option>
+
+                            <option value="ADMIN">
+                                Administrator
+                            </option>
+
+                        </select>
+
+                    </div>
+
+
+                    <div class="col-md-3">
+
+                        <select
+                            class="form-select"
+                            id="statusFilter"
+                            onchange="filterUsers()">
+
+                            <option value="">
+                                All Status
+                            </option>
+
+                            <option value="true">
+                                Active
+                            </option>
+
+                            <option value="false">
+                                Inactive
+                            </option>
+
+                        </select>
+
+                    </div>
+
+
+                    <div class="col-md-1 text-end">
+
+                        <span
+                            class="badge bg-primary"
+                            id="userCount">
+
+                            0 Records
+
+                        </span>
+
+                    </div>
+
+                </div>
+
+
+
+                <!-- Table -->
+
+                <div class="table-responsive">
+
+                    <table
+                        class="table table-bordered
+                               table-hover align-middle
+                               text-nowrap">
+
+                        <thead class="table-dark">
+
+                            <tr>
+
+                                <th>Name</th>
+
+                                <th>Username</th>
+
+                                <th>Email</th>
+
+                                <th>Role</th>
+
+                                <th>Status</th>
+
+                                <th>Created</th>
+
+                                <th>Action</th>
+
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody id="userTableBody">
+
+                            <tr>
+
+                                <td
+                                    colspan="7"
+                                    class="text-center text-muted">
+
+                                    Loading users...
+
+                                </td>
+
+                            </tr>
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+    </div>
+
+</div>
+
+
+
+<!-- Dependencies -->
+
+<script
+    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js">
+</script>
+
+
+<script
+    src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+</script>
+
+
+<script src="config.js"></script>
+
+<script src="common.js"></script>
+
+<script src="navigation.js"></script>
+
+<script src="users.js"></script>
+
+
+</body>
+
+</html>

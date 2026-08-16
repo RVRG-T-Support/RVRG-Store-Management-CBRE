@@ -9,7 +9,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // 1. Security Check: All authenticated roles can view reports
     const hasAccess = checkUserAccess(['ADMIN', 'FM', 'AFM', 'STORE', 'TECH_SUPERVISOR']);
     if (!hasAccess) return;
-
+    
+const user = getCurrentUser();
 // User information is handled by navigation.js
 
 // 2. Master User Check: Enable Download Export for ADMIN only

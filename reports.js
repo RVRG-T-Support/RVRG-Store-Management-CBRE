@@ -10,10 +10,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const hasAccess = checkUserAccess(['ADMIN', 'FM', 'AFM', 'STORE', 'TECH_SUPERVISOR']);
     if (!hasAccess) return;
 
-    const user = getCurrentUser();
-    document.getElementById('currentUserName').innerText = `${user.name} (${user.role})`;
+// User information is handled by navigation.js
 
-    // 2. Master User Check: Enable Download Export for ADMIN only
+// 2. Master User Check: Enable Download Export for ADMIN only
     if (user.role === 'ADMIN') {
         document.getElementById('btnExportReport').classList.remove('d-none');
     }

@@ -161,13 +161,21 @@ function renderDepartments() {
 
                 <button
                     class="btn btn-sm btn-primary"
-                    disabled>
+                        onclick="editDepartment(${dept.id})">
 
                     <i class="fa-solid fa-pen"></i>
                     Edit
 
                 </button>
 
+<button
+    class="btn btn-sm btn-secondary"
+    onclick="copyDepartment(${dept.id})">
+
+    <i class="fa-solid fa-copy"></i>
+    Copy
+
+</button>
             </td>
 
         `;
@@ -613,5 +621,361 @@ function clearDepartmentForm() {
 
     document.getElementById("btnUpdateDepartment")
         .style.display = "none";
+
+}
+
+//====================================================
+// EDIT DEPARTMENT
+//====================================================
+
+async function editDepartment(id) {
+
+    try {
+
+        const {
+            data,
+            error
+        } = await supabaseClient
+
+            .from("departments")
+
+            .select(`
+                id,
+                department_code,
+                department_name,
+                prefix
+            `)
+
+            .eq("id", id)
+
+            .single();
+
+
+        if (error)
+            throw error;
+
+
+        document.getElementById("departmentId").value =
+            data.id;
+
+        document.getElementById("departmentCode").value =
+            data.department_code || "";
+
+        document.getElementById("departmentName").value =
+            data.department_name || "";
+
+        document.getElementById("departmentPrefix").value =
+            data.prefix || "";
+
+
+        // Code and prefix remain editable
+        document.getElementById("departmentCode")
+            .disabled = false;
+
+        document.getElementById("departmentPrefix")
+            .disabled = false;
+
+
+        // Switch to Update mode
+
+        document.getElementById("btnSaveDepartment")
+            .style.display = "none";
+
+        document.getElementById("btnUpdateDepartment")
+            .style.display = "inline-block";
+
+
+        document.getElementById("departmentCode")
+            .scrollIntoView({
+                behavior: "smooth",
+                block: "center"
+            });
+
+
+    } catch (error) {
+
+        console.error(
+            "Edit Department Error:",
+            error
+        );
+
+        showAlert(
+            error.message,
+            "danger"
+        );
+
+    }
+
+}
+
+//====================================================
+// UPDATE DEPARTMENT
+//====================================================
+
+async function updateDepartment() {
+
+    try {
+
+        const id =
+            document.getElementById("departmentId").value;
+
+        if (!id)
+            throw new Error(
+                "No department selected for update."
+            );
+
+
+        const code =
+            document.getElementById("departmentCode")
+                .value.trim()
+                .toUpperCase();
+
+        const name =
+            document.getElementById("departmentName")
+                .value.trim();
+
+        const prefix =
+            document.getElementById("departmentPrefix")
+                .value.trim()
+                .toUpperCase();
+
+
+        if (!code)
+            throw new Error(
+                "Department Code is required."
+            );
+
+        if (!name)
+            throw new Error(
+                "Department Name is required."
+            );
+
+        if (!prefix)
+            throw new Error(
+                "Department Prefix is required."
+            );
+
+
+        // Duplicate code check excluding current record
+
+        const {
+            data: codeExists,
+            error: codeError
+        } = await supabaseClient
+
+            .from("departments")
+
+            .select("id")
+
+            .eq("department_code", code)
+
+            .neq("id", id)
+
+            .maybeSingle();
+
+
+        if (codeError)
+            throw codeError;
+
+
+        if (codeExists)
+            throw new Error(
+                "Department Code already exists."
+            );
+
+
+        // Duplicate name check
+
+        const {
+            data: nameExists,
+            error: nameError
+        } = await supabaseClient
+
+            .from("departments")
+
+            .select("id")
+
+            .eq("department_name", name)
+
+            .neq("id", id)
+
+            .maybeSingle();
+
+
+        if (nameError)
+            throw nameError;
+
+
+        if (nameExists)
+            throw new Error(
+                "Department Name already exists."
+            );
+
+
+        // Duplicate prefix check
+
+        const {
+            data: prefixExists,
+            error: prefixError
+        } = await supabaseClient
+
+            .from("departments")
+
+            .select("id")
+
+            .eq("prefix", prefix)
+
+            .neq("id", id)
+
+            .maybeSingle();
+
+
+        if (prefixError)
+            throw prefixError;
+
+
+        if (prefixExists)
+            throw new Error(
+                "Department Prefix already exists."
+            );
+
+
+        // Update
+
+        const {
+            error
+        } = await supabaseClient
+
+            .from("departments")
+
+            .update({
+
+                department_code: code,
+
+                department_name: name,
+
+                prefix: prefix
+
+            })
+
+            .eq("id", id);
+
+
+        if (error)
+            throw error;
+
+
+        showAlert(
+            "Department updated successfully.",
+            "success"
+        );
+
+
+        clearDepartmentForm();
+
+        await loadDepartments();
+
+        await loadCategories();
+
+
+    } catch (error) {
+
+        console.error(
+            "Update Department Error:",
+            error
+        );
+
+        showAlert(
+            error.message,
+            "danger"
+        );
+
+    }
+
+}
+
+//====================================================
+// COPY DEPARTMENT
+//====================================================
+
+async function copyDepartment(id) {
+
+    try {
+
+        const {
+            data,
+            error
+        } = await supabaseClient
+
+            .from("departments")
+
+            .select(`
+                department_code,
+                department_name,
+                prefix
+            `)
+
+            .eq("id", id)
+
+            .single();
+
+
+        if (error)
+            throw error;
+
+
+        // New record — no ID
+
+        document.getElementById("departmentId").value = "";
+
+
+        // Copy values
+
+        document.getElementById("departmentCode").value =
+            data.department_code || "";
+
+        document.getElementById("departmentName").value =
+            data.department_name || "";
+
+        document.getElementById("departmentPrefix").value =
+            data.prefix || "";
+
+
+        // Save mode
+
+        document.getElementById("btnSaveDepartment")
+            .style.display = "inline-block";
+
+        document.getElementById("btnUpdateDepartment")
+            .style.display = "none";
+
+
+        document.getElementById("departmentCode")
+            .disabled = false;
+
+        document.getElementById("departmentPrefix")
+            .disabled = false;
+
+
+        document.getElementById("departmentCode")
+            .scrollIntoView({
+                behavior: "smooth",
+                block: "center"
+            });
+
+
+    } catch (error) {
+
+        console.error(
+            "Copy Department Error:",
+            error
+        );
+
+        showAlert(
+            error.message,
+            "danger"
+        );
+
+    }
 
 }

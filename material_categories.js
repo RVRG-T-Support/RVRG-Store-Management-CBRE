@@ -393,7 +393,7 @@ function renderCategories() {
 
                 <button
                     class="btn btn-sm btn-primary"
-                    disabled>
+                    onclick="editCategory(${category.id})">
 
                     <i class="fa-solid fa-pen"></i>
                     Edit
@@ -873,6 +873,262 @@ async function updateDepartment() {
 
         console.error(
             "Update Department Error:",
+            error
+        );
+
+        showAlert(
+            error.message,
+            "danger"
+        );
+
+    }
+
+}
+
+//====================================================
+// EDIT MATERIAL CATEGORY
+//====================================================
+
+async function editCategory(id) {
+
+    try {
+
+        const {
+            data,
+            error
+        } = await supabaseClient
+
+            .from("material_categories")
+
+            .select(`
+                id,
+                department_id,
+                category_name,
+                short_code,
+                description,
+                is_active
+            `)
+
+            .eq("id", id)
+
+            .single();
+
+
+        if (error)
+            throw error;
+
+
+        document.getElementById("categoryId").value =
+            data.id;
+
+        document.getElementById("categoryDepartment").value =
+            data.department_id;
+
+        document.getElementById("categoryName").value =
+            data.category_name || "";
+
+        document.getElementById("categoryShortCode").value =
+            data.short_code || "";
+
+        document.getElementById("categoryDescription").value =
+            data.description || "";
+
+        document.getElementById("categoryActive").value =
+            data.is_active ? "true" : "false";
+
+
+        // Switch to Update mode
+
+        document.getElementById("btnSaveCategory")
+            .style.display = "none";
+
+        document.getElementById("btnUpdateCategory")
+            .style.display = "inline-block";
+
+
+        document.getElementById("categoryDepartment")
+            .scrollIntoView({
+                behavior: "smooth",
+                block: "center"
+            });
+
+
+    } catch (error) {
+
+        console.error(
+            "Edit Category Error:",
+            error
+        );
+
+        showAlert(
+            error.message,
+            "danger"
+        );
+
+    }
+
+}
+
+//====================================================
+// UPDATE MATERIAL CATEGORY
+//====================================================
+
+async function updateCategory() {
+
+    try {
+
+        const id =
+            document.getElementById("categoryId").value;
+
+        if (!id)
+            throw new Error(
+                "No category selected for update."
+            );
+
+
+        const departmentId =
+            document.getElementById("categoryDepartment")
+                .value;
+
+        const categoryName =
+            document.getElementById("categoryName")
+                .value.trim();
+
+        const shortCode =
+            document.getElementById("categoryShortCode")
+                .value.trim()
+                .toUpperCase();
+
+        const description =
+            document.getElementById("categoryDescription")
+                .value.trim();
+
+        const isActive =
+            document.getElementById("categoryActive")
+                .value === "true";
+
+
+        // Validation
+
+        if (!departmentId)
+            throw new Error(
+                "Please select a Department."
+            );
+
+        if (!categoryName)
+            throw new Error(
+                "Category Name is required."
+            );
+
+        if (!shortCode)
+            throw new Error(
+                "Short Code is required."
+            );
+
+
+        // Duplicate category name
+        // within selected department
+
+        const {
+            data: existingCategory,
+            error: categoryError
+        } = await supabaseClient
+
+            .from("material_categories")
+
+            .select("id")
+
+            .eq("department_id", departmentId)
+
+            .eq("category_name", categoryName)
+
+            .neq("id", id)
+
+            .maybeSingle();
+
+
+        if (categoryError)
+            throw categoryError;
+
+
+        if (existingCategory)
+            throw new Error(
+                "This Category already exists in the selected Department."
+            );
+
+
+        // Duplicate short code
+
+        const {
+            data: existingCode,
+            error: codeError
+        } = await supabaseClient
+
+            .from("material_categories")
+
+            .select("id")
+
+            .eq("short_code", shortCode)
+
+            .neq("id", id)
+
+            .maybeSingle();
+
+
+        if (codeError)
+            throw codeError;
+
+
+        if (existingCode)
+            throw new Error(
+                "Category Short Code already exists."
+            );
+
+
+        // Update
+
+        const {
+            error
+        } = await supabaseClient
+
+            .from("material_categories")
+
+            .update({
+
+                department_id: Number(departmentId),
+
+                category_name: categoryName,
+
+                short_code: shortCode,
+
+                description: description || null,
+
+                is_active: isActive
+
+            })
+
+            .eq("id", id);
+
+
+        if (error)
+            throw error;
+
+
+        showAlert(
+            "Material Category updated successfully.",
+            "success"
+        );
+
+
+        clearCategoryForm();
+
+        await loadCategories();
+
+
+    } catch (error) {
+
+        console.error(
+            "Update Category Error:",
             error
         );
 

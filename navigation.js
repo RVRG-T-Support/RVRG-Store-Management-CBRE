@@ -202,7 +202,7 @@ function renderHeader() {
 
     <div class="header-right">
 
-    <img src="cbre_green.jpg"
+    <img src="cbre_green.png"
          class="cbre-logo"
          alt="CBRE">
 

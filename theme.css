@@ -93,6 +93,18 @@ body{
     font-weight:600;
 
 }
+
+.title-divider{
+
+    width:100%;
+
+    height:2px;
+
+    background:#17E88F;
+
+    margin:2px 0 2px 0;
+
+}
 .header-logo{
 
     width:42px;

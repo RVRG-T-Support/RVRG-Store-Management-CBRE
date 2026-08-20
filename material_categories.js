@@ -392,13 +392,23 @@ function renderCategories() {
             <td>
 
                 <button
-                    class="btn btn-sm btn-primary"
-                    onclick="editCategory(${category.id})">
+    class="btn btn-sm btn-primary"
+    onclick="editCategory(${category.id})">
 
-                    <i class="fa-solid fa-pen"></i>
-                    Edit
+    <i class="fa-solid fa-pen"></i>
+    Edit
 
-                </button>
+</button>
+
+<button
+    class="btn btn-sm ${category.is_active ? 'btn-danger' : 'btn-success'}"
+    onclick="toggleCategoryStatus(${category.id}, ${category.is_active})">
+
+    <i class="fa-solid ${category.is_active ? 'fa-ban' : 'fa-check'}"></i>
+
+    ${category.is_active ? 'Inactive' : 'Activate'}
+
+</button>
 
             </td>
 
@@ -1129,6 +1139,78 @@ async function updateCategory() {
 
         console.error(
             "Update Category Error:",
+            error
+        );
+
+        showAlert(
+            error.message,
+            "danger"
+        );
+
+    }
+
+}
+
+//====================================================
+// ACTIVATE / INACTIVE CATEGORY
+//====================================================
+
+async function toggleCategoryStatus(id, currentStatus) {
+
+    try {
+
+        const action =
+            currentStatus
+                ? "make this category inactive"
+                : "activate this category";
+
+
+        if (!confirm(
+            `Are you sure you want to ${action}?`
+        )) {
+            return;
+        }
+
+
+        const newStatus =
+            !currentStatus;
+
+
+        const {
+            error
+        } = await supabaseClient
+
+            .from("material_categories")
+
+            .update({
+                is_active: newStatus
+            })
+
+            .eq("id", id);
+
+
+        if (error)
+            throw error;
+
+
+        showAlert(
+
+            newStatus
+                ? "Category activated successfully."
+                : "Category made inactive successfully.",
+
+            "success"
+
+        );
+
+
+        await loadCategories();
+
+
+    } catch (error) {
+
+        console.error(
+            "Category Status Error:",
             error
         );
 

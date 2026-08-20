@@ -182,15 +182,17 @@ function renderHeader() {
 
     <div class="header-title">
 
-        <div class="title-main">
-            RVRG Store Management
-        </div>
-
-        <div class="title-sub">
-             Developed by CBRE
-        </div>
-
+    <div class="title-main">
+        RVRG Store Management
     </div>
+
+    <div class="title-divider"></div>
+
+    <div class="title-sub">
+        Developed by CBRE
+    </div>
+
+</div>
 
 </div>
 

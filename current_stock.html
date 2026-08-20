@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Current Stock | RVRG Store Management</title>
+
+    <!-- Bootstrap -->
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+    >
+
+    <!-- Font Awesome -->
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+    >
+
+    <!-- Application CSS -->
+    <link rel="stylesheet" href="style.css">
+
+    <style>
+        .stock-page-title {
+            color: #0b1f33;
+            font-weight: 700;
+        }
+
+        .stock-summary-card {
+            border: none;
+            border-radius: 10px;
+            background: #fff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            height: 100%;
+        }
+
+        .stock-summary-card .card-body {
+            padding: 18px;
+        }
+
+        .stock-summary-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #6c757d;
+            margin-bottom: 6px;
+        }
+
+        .stock-summary-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #172b4d;
+        }
+
+        .summary-icon {
+            font-size: 30px;
+            opacity: 0.18;
+        }
+
+        .stock-table-card {
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+
+        .stock-table-card .card-header {
+            background: #fff;
+            border-bottom: 1px solid #e5e5e5;
+            font-weight: 700;
+            padding: 14px 18px;
+        }
+
+        .stock-table thead th {
+            background: #212529;
+            color: #fff;
+            font-size: 13px;
+            white-space: nowrap;
+            vertical-align: middle;
+        }
+
+        .stock-table tbody td {
+            font-size: 13px;
+            vertical-align: middle;
+        }
+
+        .stock-table tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        .stock-low {
+            color: #dc3545;
+            font-weight: 700;
+        }
+
+        .stock-ok {
+            color: #198754;
+            font-weight: 700;
+        }
+
+        .stock-zero {
+            color: #dc3545;
+            font-weight: 700;
+        }
+
+        .filter-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 4px;
+        }
+
+        .page-count-badge {
+            font-size: 11px;
+        }
+
+        .table-responsive {
+            min-height: 250px;
+        }
+
+        #stockLoading {
+            padding: 50px 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Global Header -->
+    <header id="appHeader"></header>
+
+    <div class="container-fluid">
+        <div class="row">
+
+            <!-- Global Sidebar -->
+            <aside id="globalSidebar" class="col-md-2 p-0"></aside>
+
+            <!-- Main Content -->
+            <main class="col-md-10 py-4 px-4">
+
+                <!-- Page Heading -->
+                <div class="d-flex justify-content-between align-items-center mb-4">
+
+                    <div>
+                        <h4 class="stock-page-title mb-1">
+                            <i class="fa-solid fa-boxes-stacked me-2 text-success"></i>
+                            Current Stock
+                        </h4>
+
+                        <small class="text-muted">
+                            Complete inventory and current stock position
+                        </small>
+                    </div>
+
+                    <div class="d-flex gap-2">
+
+                        <button
+                            type="button"
+                            id="btnExportStock"
+                            class="btn btn-outline-success btn-sm"
+                        >
+                            <i class="fa-solid fa-file-excel me-1"></i>
+                            Export Excel
+                        </button>
+
+                        <button
+                            type="button"
+                            id="btnRefreshStock"
+                            class="btn btn-success btn-sm"
+                        >
+                            <i class="fa-solid fa-rotate me-1"></i>
+                            Refresh
+                        </button>
+
+                    </div>
+                </div>
+
+
+                <!-- Summary Cards -->
+                <div class="row g-3 mb-4">
+
+                    <!-- Total Materials -->
+                    <div class="col-xl-3 col-md-6">
+                        <div class="stock-summary-card">
+                            <div class="card-body position-relative">
+
+                                <div class="stock-summary-label">
+                                    Total Materials
+                                </div>
+
+                                <div
+                                    id="totalMaterials"
+                                    class="stock-summary-value"
+                                >
+                                    0
+                                </div>
+
+                                <i
+                                    class="fa-solid fa-boxes-stacked summary-icon text-primary position-absolute top-50 end-0 translate-middle-y me-4"
+                                ></i>
+
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- Total Quantity -->
+                    <div class="col-xl-3 col-md-6">
+                        <div class="stock-summary-card">
+                            <div class="card-body position-relative">
+
+                                <div class="stock-summary-label">
+                                    Total Stock Quantity
+                                </div>
+
+                                <div
+                                    id="totalQuantity"
+                                    class="stock-summary-value"
+                                >
+                                    0
+                                </div>
+
+                                <i
+                                    class="fa-solid fa-layer-group summary-icon text-info position-absolute top-50 end-0 translate-middle-y me-4"
+                                ></i>
+
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- Inventory Value -->
+                    <div class="col-xl-3 col-md-6">
+                        <div class="stock-summary-card">
+                            <div class="card-body position-relative">
+
+                                <div class="stock-summary-label">
+                                    Inventory Value
+                                </div>
+
+                                <div
+                                    id="totalInventoryValue"
+                                    class="stock-summary-value"
+                                >
+                                    ₹0.00
+                                </div>
+
+                                <i
+                                    class="fa-solid fa-indian-rupee-sign summary-icon text-success position-absolute top-50 end-0 translate-middle-y me-4"
+                                ></i>
+
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- Low Stock -->
+                    <div class="col-xl-3 col-md-6">
+                        <div class="stock-summary-card">
+                            <div class="card-body position-relative">
+
+                                <div class="stock-summary-label">
+                                    Low / Out of Stock
+                                </div>
+
+                                <div
+                                    id="lowStockCount"
+                                    class="stock-summary-value"
+                                >
+                                    0
+                                </div>
+
+                                <i
+                                    class="fa-solid fa-triangle-exclamation summary-icon text-danger position-absolute top-50 end-0 translate-middle-y me-4"
+                                ></i>
+
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+
+                <!-- Stock Table -->
+                <div class="stock-table-card">
+
+                    <div class="card-header">
+
+                        <div class="d-flex justify-content-between align-items-center">
+
+                            <div>
+                                <i class="fa-solid fa-warehouse me-2 text-success"></i>
+                                Inventory Stock
+                            </div>
+
+                            <span
+                                id="stockRecordCount"
+                                class="badge bg-primary page-count-badge"
+                            >
+                                0 Records
+                            </span>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- Filters -->
+                    <div class="p-3 border-bottom">
+
+                        <div class="row g-3">
+
+                            <!-- Search -->
+                            <div class="col-lg-5 col-md-6">
+
+                                <label class="filter-label">
+                                    Search Material
+                                </label>
+
+                                <div class="input-group input-group-sm">
+
+                                    <span class="input-group-text">
+                                        <i class="fa-solid fa-magnifying-glass"></i>
+                                    </span>
+
+                                    <input
+                                        type="text"
+                                        id="stockSearch"
+                                        class="form-control"
+                                        placeholder="Search code or material name..."
+                                    >
+
+                                </div>
+
+                            </div>
+
+
+                            <!-- Department -->
+                            <div class="col-lg-3 col-md-3">
+
+                                <label class="filter-label">
+                                    Department
+                                </label>
+
+                                <select
+                                    id="stockDepartment"
+                                    class="form-select form-select-sm"
+                                >
+                                    <option value="">All Departments</option>
+                                </select>
+
+                            </div>
+
+
+                            <!-- Stock Status -->
+                            <div class="col-lg-2 col-md-3">
+
+                                <label class="filter-label">
+                                    Stock Status
+                                </label>
+
+                                <select
+                                    id="stockStatus"
+                                    class="form-select form-select-sm"
+                                >
+                                    <option value="">All Stock</option>
+                                    <option value="IN_STOCK">In Stock</option>
+                                    <option value="LOW">Low Stock</option>
+                                    <option value="OUT">Out of Stock</option>
+                                </select>
+
+                            </div>
+
+
+                            <!-- Clear -->
+                            <div class="col-lg-2 col-md-12 d-flex align-items-end">
+
+                                <button
+                                    type="button"
+                                    id="btnClearFilters"
+                                    class="btn btn-secondary btn-sm w-100"
+                                >
+                                    <i class="fa-solid fa-eraser me-1"></i>
+                                    Clear Filters
+                                </button>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- Table -->
+                    <div class="table-responsive">
+
+                        <table
+                            class="table table-hover table-bordered stock-table mb-0"
+                        >
+
+                            <thead>
+
+                                <tr>
+
+                                    <th>#</th>
+
+                                    <th>Material Code</th>
+
+                                    <th>Material Name</th>
+
+                                    <th>Department</th>
+
+                                    <th>Unit</th>
+
+                                    <th class="text-end">
+                                        Unit Cost (₹)
+                                    </th>
+
+                                    <th class="text-end">
+                                        Current Stock
+                                    </th>
+
+                                    <th class="text-end">
+                                        Minimum Stock
+                                    </th>
+
+                                    <th class="text-end">
+                                        Stock Value (₹)
+                                    </th>
+
+                                    <th class="text-center">
+                                        Status
+                                    </th>
+
+                                </tr>
+
+                            </thead>
+
+
+                            <tbody id="stockTableBody">
+
+                                <tr id="stockLoading">
+
+                                    <td
+                                        colspan="10"
+                                        class="text-center text-muted"
+                                    >
+
+                                        <div
+                                            class="spinner-border spinner-border-sm text-success me-2"
+                                        ></div>
+
+                                        Loading current stock...
+
+                                    </td>
+
+                                </tr>
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+
+                    <!-- Empty State -->
+                    <div
+                        id="stockEmpty"
+                        class="text-center text-muted py-5 d-none"
+                    >
+
+                        <i
+                            class="fa-solid fa-box-open fa-2x mb-2"
+                        ></i>
+
+                        <div>
+                            No stock records found.
+                        </div>
+
+                    </div>
+
+
+                    <!-- Footer -->
+                    <div class="p-3 border-top bg-light">
+
+                        <div class="d-flex justify-content-between align-items-center">
+
+                            <small class="text-muted">
+                                Stock value = Current Stock × Unit Cost
+                            </small>
+
+                            <strong>
+                                Total:
+                                <span id="footerInventoryValue">
+                                    ₹0.00
+                                </span>
+                            </strong>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </main>
+
+        </div>
+    </div>
+
+
+    <!-- Dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- Application -->
+    <script src="config.js"></script>
+    <script src="common.js"></script>
+    <script src="navigation.js"></script>
+
+    <!-- Page Logic -->
+    <script src="current_stock.js"></script>
+
+</body>
+</html>

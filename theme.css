@@ -120,10 +120,13 @@ body{
 
     width:36px;
     height:36px;
+
     object-fit:contain;
-    background:#fff;
-    padding:3px;
-    border-radius:4px;
+
+    background:transparent;
+    padding:0;
+    border-radius:0;
+
     margin-right:14px;
 
 }

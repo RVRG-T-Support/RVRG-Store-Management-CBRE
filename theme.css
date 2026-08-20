@@ -4,9 +4,12 @@
 
 :root{
 
-    --header-bg:#435254;
+    /* CBRE Dark Green */
+    --header-bg:#012A2D;
+
     --sidebar-bg:#ffffff;
 
+    /* RVRG / CBRE Accent Green */
     --primary:#17E88F;
     --primary-dark:#0bb86c;
 

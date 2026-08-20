@@ -283,3 +283,7 @@ body{
     max-width:95vw;
 
 }
+/* Remove green line from bottom of header */
+.app-header {
+    border-bottom: none !important;
+}

@@ -64,6 +64,13 @@ function getNavigationItems(role) {
         },
 
         {
+            name: "Current Stock",
+            icon: "fa-boxes-stacked",
+            link: "current_stock.html",
+            roles: ["ADMIN","FM","AFM","STOREKEEPER","STORE"]
+        },
+
+        {
             name: "Reports",
             icon: "fa-chart-line",
             link: "reports.html",

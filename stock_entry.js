@@ -234,67 +234,387 @@ function calculateGrandTotal() {
 
 // --- EXCEL BULK UPLOAD LOGIC ---
 function downloadExcelTemplate() {
+
     try {
-        const templateData = [
-            {"Material_ID": "MAT-001", "Quantity": 10, "Unit_Price": 150.50}
+
+        if (typeof XLSX === "undefined") {
+            throw new Error("SheetJS library is not loaded.");
+        }
+
+
+        // Create template rows from current Material Master
+        const templateData = materialsData.map(mat => ({
+
+            "Material Code": mat.material_code || "",
+
+            "Material Name": mat.material_name || "",
+
+            "Quantity": "",
+
+            "Unit": mat.unit || "",
+
+            "Unit Price": ""
+
+        }));
+
+
+        if (templateData.length === 0) {
+
+            showAlert(
+                "No materials found. Please add materials in Material Master first.",
+                "warning"
+            );
+
+            return;
+        }
+
+
+        const ws =
+            XLSX.utils.json_to_sheet(templateData);
+
+
+        // Set column widths
+
+        ws["!cols"] = [
+            { wch: 18 },
+            { wch: 30 },
+            { wch: 12 },
+            { wch: 12 },
+            { wch: 15 }
         ];
-        // Create a new workbook and worksheet
-        const ws = XLSX.utils.json_to_sheet(templateData);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Stock_Entry");
-        // Trigger download
-        XLSX.writeFile(wb, "RVRG_Stock_Entry_Template.xlsx");
+
+
+        const wb =
+            XLSX.utils.book_new();
+
+
+        XLSX.utils.book_append_sheet(
+            wb,
+            ws,
+            "Stock_Entry"
+        );
+
+
+        XLSX.writeFile(
+            wb,
+            "RVRG_Stock_Entry_Template.xlsx"
+        );
+
+
     } catch (err) {
-        console.error("Excel Export Error:", err);
-        showAlert("Failed to download template. Ensure SheetJS library is loaded.", "error");
+
+        console.error(
+            "Excel Template Error:",
+            err
+        );
+
+        showAlert(
+            "Failed to download template: " +
+            err.message,
+            "error"
+        );
+
     }
+
 }
 
+//====================================================
+// PROCESS STOCK ENTRY EXCEL
+//====================================================
+
 function processExcelUpload() {
-    const fileInput = document.getElementById('excelUpload');
-    const file = fileInput.files[0];
+
+    const fileInput =
+        document.getElementById("excelUpload");
+
+    const file =
+        fileInput.files[0];
+
+
     if (!file) {
-        showAlert("Please select an Excel file first.", "warning");
+
+        showAlert(
+            "Please select an Excel file first.",
+            "warning"
+        );
+
         return;
     }
 
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        try {
-            const data = e.target.result;
-            const workbook = XLSX.read(data, { type: 'binary' });
-            const sheetName = workbook.SheetNames[0];
-            const excelRows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
 
-            if (excelRows.length === 0) {
-                showAlert("The uploaded Excel sheet is empty.", "warning");
+    if (typeof XLSX === "undefined") {
+
+        showAlert(
+            "SheetJS library is not loaded.",
+            "error"
+        );
+
+        return;
+    }
+
+
+    const reader =
+        new FileReader();
+
+
+    reader.onload = function (e) {
+
+        try {
+
+            const workbook =
+                XLSX.read(
+                    e.target.result,
+                    { type: "binary" }
+                );
+
+
+            const sheetName =
+                workbook.SheetNames[0];
+
+
+            const sheet =
+                workbook.Sheets[sheetName];
+
+
+            const excelRows =
+                XLSX.utils.sheet_to_json(
+                    sheet,
+                    {
+                        defval: ""
+                    }
+                );
+
+
+            if (!excelRows.length) {
+
+                showAlert(
+                    "The uploaded Excel sheet is empty.",
+                    "warning"
+                );
+
                 return;
             }
 
-            // Clear existing rows before appending Excel data
-            document.getElementById('stockEntryItems').innerHTML = '';
+
+            // Clear existing rows
+
+            document.getElementById(
+                "stockEntryItems"
+            ).innerHTML = "";
+
             rowCount = 0;
 
-            excelRows.forEach(row => {
-                // Ensure required columns exist
-                if (row.Material_ID && row.Quantity !== undefined && row.Unit_Price !== undefined) {
-                    addRow({
-                        Material_ID: row.Material_ID,
-                        Quantity: row.Quantity,
-                        Unit_Price: row.Unit_Price
-                    });
+
+            let importedCount = 0;
+
+            const errors = [];
+
+
+            excelRows.forEach((row, index) => {
+
+                const excelLine =
+                    index + 2;
+
+
+                const materialCode =
+                    String(
+                        row["Material Code"] || ""
+                    ).trim();
+
+
+                const materialName =
+                    String(
+                        row["Material Name"] || ""
+                    ).trim();
+
+
+                const quantity =
+                    parseFloat(
+                        row["Quantity"]
+                    );
+
+
+                const unitPrice =
+                    parseFloat(
+                        row["Unit Price"]
+                    );
+
+
+                // Skip completely blank rows
+
+                if (
+                    !materialCode &&
+                    !materialName &&
+                    !row["Quantity"] &&
+                    !row["Unit Price"]
+                ) {
+                    return;
                 }
+
+
+                // Material Code required
+
+                if (!materialCode) {
+
+                    errors.push(
+                        `Excel row ${excelLine}: Material Code is required.`
+                    );
+
+                    return;
+                }
+
+
+                // Find material by CODE
+
+                const material =
+                    materialsData.find(
+                        mat =>
+                            String(
+                                mat.material_code || ""
+                            ).trim().toUpperCase()
+                            ===
+                            materialCode.toUpperCase()
+                    );
+
+
+                if (!material) {
+
+                    errors.push(
+                        `Excel row ${excelLine}: Material Code "${materialCode}" not found in Material Master.`
+                    );
+
+                    return;
+                }
+
+
+                // Quantity validation
+
+                if (
+                    !Number.isFinite(quantity) ||
+                    quantity <= 0
+                ) {
+
+                    errors.push(
+                        `Excel row ${excelLine}: Quantity must be greater than zero.`
+                    );
+
+                    return;
+                }
+
+
+                // Unit Price validation
+
+                if (
+                    !Number.isFinite(unitPrice) ||
+                    unitPrice <= 0
+                ) {
+
+                    errors.push(
+                        `Excel row ${excelLine}: Unit Price must be greater than zero.`
+                    );
+
+                    return;
+                }
+
+
+                // Check duplicate material
+
+                const alreadyAdded =
+                    Array.from(
+                        document.querySelectorAll(
+                            ".item-select"
+                        )
+                    ).some(
+                        select =>
+                            String(select.value)
+                            ===
+                            String(material.id)
+                    );
+
+
+                if (alreadyAdded) {
+
+                    errors.push(
+                        `Excel row ${excelLine}: Material "${materialCode}" is duplicated.`
+                    );
+
+                    return;
+                }
+
+
+                // Add row
+
+                addRow({
+
+                    Material_ID: material.id,
+
+                    Quantity: quantity,
+
+                    Unit_Price: unitPrice
+
+                });
+
+
+                importedCount++;
+
             });
 
-            showAlert(`${excelRows.length} items imported successfully. Please review.`, "success");
-            fileInput.value = ""; // Reset input
+
+            if (importedCount === 0) {
+
+                showAlert(
+                    errors.length
+                        ? errors.join("\n")
+                        : "No valid material rows found.",
+                    "error"
+                );
+
+                return;
+            }
+
+
+            calculateGrandTotal();
+
+
+            fileInput.value = "";
+
+
+            if (errors.length) {
+
+                showAlert(
+                    `${importedCount} item(s) imported. Some rows were skipped:\n\n${errors.join("\n")}`,
+                    "warning"
+                );
+
+            } else {
+
+                showAlert(
+                    `${importedCount} item(s) imported successfully. Please review before saving.`,
+                    "success"
+                );
+
+            }
+
 
         } catch (err) {
-            console.error(err);
-            showAlert("Failed to parse the Excel file. Please use the provided template format.", "error");
+
+            console.error(
+                "Excel Import Error:",
+                err
+            );
+
+            showAlert(
+                "Failed to parse the Excel file. Please use the provided template.",
+                "error"
+            );
+
         }
+
     };
+
+
     reader.readAsBinaryString(file);
+
 }
 
 // --- MODAL & VERIFICATION ---

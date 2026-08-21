@@ -1807,27 +1807,179 @@ function openImportDialog(){
 }
 
 //====================================================
-// EXCEL IMPORT - MATERIAL MASTER
+// EXCEL IMPORT - HEADER NORMALIZATION
 //====================================================
+// From here to save material code saved in notepad
 
 let importedMaterialRows = [];
 
-// Register Excel Import Events
+function normalizeExcelHeader(value){
+
+    return String(value ?? "")
+        .replace(/^\uFEFF/, "")
+        .trim()
+        .toLowerCase()
+        .replace(/[\s_-]+/g, "");
+
+}
+
+function getExcelValue(row, aliases){
+
+    const keys = Object.keys(row || {});
+    const wanted = aliases.map(normalizeExcelHeader);
+
+    for(const key of keys){
+
+        if(wanted.includes(normalizeExcelHeader(key))){
+            return row[key];
+        }
+
+    }
+
+    return "";
+
+}
+
+function normalizeImportedRow(row){
+
+    return {
+
+        Department:
+            String(getExcelValue(row, [
+                "Department",
+                "Department Name",
+                "Dept",
+                "Department_Name"
+            ])).trim(),
+
+        Category:
+            String(getExcelValue(row, [
+                "Category",
+                "Category Name",
+                "Material Category",
+                "Category_Name"
+            ])).trim(),
+
+        Material_Name:
+            String(getExcelValue(row, [
+                "Material_Name",
+                "Material Name",
+                "MaterialName",
+                "Item Name",
+                "Item_Name"
+            ])).trim(),
+
+        Brand:
+            String(getExcelValue(row, [
+                "Brand"
+            ])).trim(),
+
+        Item_Type:
+            String(getExcelValue(row, [
+                "Item_Type",
+                "Item Type",
+                "ItemType"
+            ])).trim(),
+
+        Item_Size:
+            String(getExcelValue(row, [
+                "Item_Size",
+                "Item Size",
+                "ItemSize"
+            ])).trim(),
+
+        Specification:
+            String(getExcelValue(row, [
+                "Specification",
+                "Spec"
+            ])).trim(),
+
+        Unit:
+            String(getExcelValue(row, [
+                "Unit",
+                "UOM"
+            ])).trim(),
+
+        Minimum_Stock:
+            getExcelValue(row, [
+                "Minimum_Stock",
+                "Minimum Stock",
+                "MinimumStock",
+                "Min Stock"
+            ]),
+
+        Rack_Location:
+            String(getExcelValue(row, [
+                "Rack_Location",
+                "Rack Location",
+                "RackLocation"
+            ])).trim(),
+
+        Unit_Cost:
+            getExcelValue(row, [
+                "Unit_Cost",
+                "Unit Cost",
+                "UnitCost",
+                "Cost"
+            ]),
+
+        GST_Type:
+            String(getExcelValue(row, [
+                "GST_Type",
+                "GST Type",
+                "GSTType"
+            ])).trim(),
+
+        GST_Percentage:
+            getExcelValue(row, [
+                "GST_Percentage",
+                "GST Percentage",
+                "GST %",
+                "GSTPercent"
+            ]),
+
+        Description:
+            String(getExcelValue(row, [
+                "Description",
+                "Remarks"
+            ])).trim(),
+
+        Status:
+            String(getExcelValue(row, [
+                "Status"
+            ])).trim()
+
+    };
+
+}
+
+//====================================================
+// REGISTER EXCEL IMPORT EVENTS
+//====================================================
+
 document.addEventListener("DOMContentLoaded", function(){
 
-    const excelFile = document.getElementById("excelFile");
-    const btnImportNow = document.getElementById("btnImportNow");
+    const excelFile =
+        document.getElementById("excelFile");
+
+    const btnImportNow =
+        document.getElementById("btnImportNow");
 
     if(excelFile){
-        excelFile.addEventListener("change", handleExcelFile);
+        excelFile.addEventListener(
+            "change",
+            handleExcelFile
+        );
     }
 
     if(btnImportNow){
-        btnImportNow.addEventListener("click", importMaterialsFromExcel);
+        btnImportNow.addEventListener(
+            "click",
+            importMaterialsFromExcel
+        );
     }
 
 });
-
 
 //====================================================
 // READ EXCEL FILE
@@ -1837,21 +1989,26 @@ async function handleExcelFile(event){
 
     try{
 
-        const file = event.target.files[0];
+        const file =
+            event.target.files[0];
 
         if(!file){
             return;
         }
 
         if(typeof XLSX === "undefined"){
+
             showAlert(
                 "Excel library is not loaded.",
                 "danger"
             );
+
             return;
+
         }
 
-        const reader = new FileReader();
+        const reader =
+            new FileReader();
 
         reader.onload = async function(e){
 
@@ -1860,7 +2017,9 @@ async function handleExcelFile(event){
                 const workbook =
                     XLSX.read(
                         e.target.result,
-                        {type:"array"}
+                        {
+                            type:"array"
+                        }
                     );
 
                 const sheetName =
@@ -1869,7 +2028,7 @@ async function handleExcelFile(event){
                 const worksheet =
                     workbook.Sheets[sheetName];
 
-                const rows =
+                const rawRows =
                     XLSX.utils.sheet_to_json(
                         worksheet,
                         {
@@ -1877,7 +2036,7 @@ async function handleExcelFile(event){
                         }
                     );
 
-                if(!rows.length){
+                if(!rawRows.length){
 
                     showAlert(
                         "Excel file contains no data.",
@@ -1885,11 +2044,17 @@ async function handleExcelFile(event){
                     );
 
                     return;
+
                 }
 
-                importedMaterialRows = rows;
+                importedMaterialRows =
+                    rawRows.map(
+                        normalizeImportedRow
+                    );
 
-                await previewImportedMaterials(rows);
+                await previewImportedMaterials(
+                    importedMaterialRows
+                );
 
             }
             catch(error){
@@ -1925,7 +2090,6 @@ async function handleExcelFile(event){
 
 }
 
-
 //====================================================
 // PREVIEW EXCEL DATA
 //====================================================
@@ -1933,7 +2097,9 @@ async function handleExcelFile(event){
 async function previewImportedMaterials(rows){
 
     const previewArea =
-        document.getElementById("previewArea");
+        document.getElementById(
+            "previewArea"
+        );
 
     if(!previewArea){
         return;
@@ -1952,6 +2118,7 @@ async function previewImportedMaterials(rows){
             <table class="table table-bordered table-sm">
 
                 <thead class="table-dark">
+
                     <tr>
                         <th>#</th>
                         <th>Material Name</th>
@@ -1962,6 +2129,7 @@ async function previewImportedMaterials(rows){
                         <th>Unit Cost</th>
                         <th>Status</th>
                     </tr>
+
                 </thead>
 
                 <tbody>
@@ -1975,31 +2143,45 @@ async function previewImportedMaterials(rows){
                 <td>${index + 1}</td>
 
                 <td>
-                    ${row.Material_Name || ""}
+                    ${escapeHtml(
+                        row.Material_Name || ""
+                    )}
                 </td>
 
                 <td>
-                    ${row.Department || ""}
+                    ${escapeHtml(
+                        row.Department || ""
+                    )}
                 </td>
 
                 <td>
-                    ${row.Category || ""}
+                    ${escapeHtml(
+                        row.Category || "-"
+                    )}
                 </td>
 
                 <td>
-                    ${row.Brand || ""}
+                    ${escapeHtml(
+                        row.Brand || "-"
+                    )}
                 </td>
 
                 <td>
-                    ${row.Unit || ""}
+                    ${escapeHtml(
+                        row.Unit || "-"
+                    )}
                 </td>
 
                 <td>
-                    ${row.Unit_Cost || 0}
+                    ${Number(
+                        row.Unit_Cost || 0
+                    )}
                 </td>
 
                 <td>
-                    ${row.Status || "ACTIVE"}
+                    ${escapeHtml(
+                        row.Status || "ACTIVE"
+                    )}
                 </td>
 
             </tr>
@@ -2019,6 +2201,16 @@ async function previewImportedMaterials(rows){
 
 }
 
+function escapeHtml(value){
+
+    return String(value ?? "")
+        .replace(/&/g,"&amp;")
+        .replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;")
+        .replace(/'/g,"&#039;");
+
+}
 
 //====================================================
 // GENERATE SEQUENTIAL MATERIAL CODE
@@ -2026,16 +2218,27 @@ async function previewImportedMaterials(rows){
 
 async function generateImportMaterialCode(prefix){
 
-    const {data,error} = await supabase
+    const cleanPrefix =
+        String(prefix || "")
+            .trim()
+            .toUpperCase();
 
-        .from("materials")
+    if(!cleanPrefix){
 
-        .select("material_code")
-
-        .like(
-            "material_code",
-            prefix + "-%"
+        throw new Error(
+            "Department Prefix Missing"
         );
+
+    }
+
+    const {data,error} =
+        await supabase
+            .from("materials")
+            .select("material_code")
+            .like(
+                "material_code",
+                cleanPrefix + "-%"
+            );
 
     if(error){
         throw error;
@@ -2046,16 +2249,23 @@ async function generateImportMaterialCode(prefix){
     (data || []).forEach(item => {
 
         const code =
-            String(item.material_code || "");
+            String(
+                item.material_code || ""
+            )
+            .trim()
+            .toUpperCase();
+
+        const escapedPrefix =
+            cleanPrefix.replace(
+                /[-\/\\^$*+?.()|[\]{}]/g,
+                "\\$&"
+            );
 
         const match =
             code.match(
                 new RegExp(
                     "^" +
-                    prefix.replace(
-                        /[-\/\\^$*+?.()|[\]{}]/g,
-                        "\\$&"
-                    ) +
+                    escapedPrefix +
                     "-(\\d{3})$"
                 )
             );
@@ -2083,19 +2293,19 @@ async function generateImportMaterialCode(prefix){
 
         throw new Error(
             "Material code limit reached for department " +
-            prefix
+            cleanPrefix
         );
 
     }
 
     return (
-        prefix +
+        cleanPrefix +
         "-" +
-        String(nextNumber).padStart(3,"0")
+        String(nextNumber)
+            .padStart(3,"0")
     );
 
 }
-
 
 //====================================================
 // IMPORT MATERIALS
@@ -2113,6 +2323,7 @@ async function importMaterialsFromExcel(){
             );
 
             return;
+
         }
 
         const btn =
@@ -2121,11 +2332,13 @@ async function importMaterialsFromExcel(){
             );
 
         if(btn){
+
             btn.disabled = true;
+
             btn.innerHTML =
                 '<i class="fa-solid fa-spinner fa-spin"></i> Importing...';
-        }
 
+        }
 
         // --------------------------------------------
         // LOAD DEPARTMENTS
@@ -2135,9 +2348,7 @@ async function importMaterialsFromExcel(){
             data: departments,
             error: departmentError
         } = await supabase
-
             .from("departments")
-
             .select(
                 "id, department_name, prefix"
             );
@@ -2146,19 +2357,21 @@ async function importMaterialsFromExcel(){
             throw departmentError;
         }
 
-
         const departmentMap = {};
 
-        (departments || []).forEach(dept => {
+        (departments || []).forEach(
+            dept => {
 
-            departmentMap[
-                String(
-                    dept.department_name
-                ).trim().toUpperCase()
-            ] = dept;
+                departmentMap[
+                    String(
+                        dept.department_name
+                    )
+                    .trim()
+                    .toUpperCase()
+                ] = dept;
 
-        });
-
+            }
+        );
 
         // --------------------------------------------
         // LOAD CATEGORIES
@@ -2168,9 +2381,7 @@ async function importMaterialsFromExcel(){
             data: categories,
             error: categoryError
         } = await supabase
-
             .from("material_categories")
-
             .select(
                 "id, department_id, category_name, short_code"
             );
@@ -2179,22 +2390,24 @@ async function importMaterialsFromExcel(){
             throw categoryError;
         }
 
-
         const categoryMap = {};
 
-        (categories || []).forEach(cat => {
+        (categories || []).forEach(
+            cat => {
 
-            const key =
-                String(cat.department_id) +
-                "|" +
-                String(cat.category_name)
+                const key =
+                    String(cat.department_id) +
+                    "|" +
+                    String(
+                        cat.category_name
+                    )
                     .trim()
                     .toUpperCase();
 
-            categoryMap[key] = cat;
+                categoryMap[key] = cat;
 
-        });
-
+            }
+        );
 
         // --------------------------------------------
         // IMPORT EACH ROW
@@ -2229,11 +2442,7 @@ async function importMaterialsFromExcel(){
                         row.Category || ""
                     ).trim();
 
-
-                // ------------------------------------
-                // REQUIRED FIELDS
-                // ------------------------------------
-
+                // REQUIRED
                 if(!materialName){
 
                     throw new Error(
@@ -2249,15 +2458,6 @@ async function importMaterialsFromExcel(){
                     );
 
                 }
-
-                if(!categoryName){
-
-                    throw new Error(
-                        "Category missing"
-                    );
-
-                }
-
 
                 // ------------------------------------
                 // FIND DEPARTMENT
@@ -2277,48 +2477,47 @@ async function importMaterialsFromExcel(){
 
                 }
 
-
                 // ------------------------------------
                 // FIND CATEGORY
+                // Category is OPTIONAL
                 // ------------------------------------
 
-                const categoryKey =
-                    String(department.id) +
-                    "|" +
-                    categoryName.toUpperCase();
+                let category = null;
 
-                const category =
-                    categoryMap[
-                        categoryKey
-                    ];
+                if(categoryName){
 
-                if(!category){
+                    const categoryKey =
+                        String(department.id) +
+                        "|" +
+                        categoryName.toUpperCase();
 
-                    throw new Error(
-                        "Category not found: " +
-                        categoryName
-                    );
+                    category =
+                        categoryMap[
+                            categoryKey
+                        ];
+
+                    if(!category){
+
+                        throw new Error(
+                            "Category not found: " +
+                            categoryName
+                        );
+
+                    }
 
                 }
 
-
                 // ------------------------------------
-                // GENERATE MATERIAL CODE
+                // GENERATE CODE
                 // ------------------------------------
-                //
-                // IMPORTANT:
-                // Excel Material Code is ignored.
-                // The system generates it.
-                //
 
                 const materialCode =
                     await generateImportMaterialCode(
                         department.prefix
                     );
 
-
                 // ------------------------------------
-                // MATERIAL DATA
+                // MATERIAL OBJECT
                 // ------------------------------------
 
                 const material = {
@@ -2330,16 +2529,28 @@ async function importMaterialsFromExcel(){
                         materialName,
 
                     department_id:
-                        Number(department.id),
+                        Number(
+                            department.id
+                        ),
 
                     category_id:
-                        Number(category.id),
+                        category
+                            ? Number(
+                                category.id
+                              )
+                            : null,
 
                     category:
-                        category.category_name,
+                        category
+                            ? category.category_name
+                            : "",
 
                     material_short_name:
-                        category.short_code || "",
+                        category
+                            ? (
+                                category.short_code || ""
+                              )
+                            : "",
 
                     brand:
                         String(
@@ -2378,8 +2589,11 @@ async function importMaterialsFromExcel(){
 
                     status:
                         String(
-                            row.Status || "ACTIVE"
-                        ).trim().toUpperCase(),
+                            row.Status ||
+                            "ACTIVE"
+                        )
+                        .trim()
+                        .toUpperCase(),
 
                     unit_cost:
                         Number(
@@ -2388,12 +2602,16 @@ async function importMaterialsFromExcel(){
 
                     gst_type:
                         String(
-                            row.GST_Type || "INCLUDED"
-                        ).trim().toUpperCase(),
+                            row.GST_Type ||
+                            "INCLUDED"
+                        )
+                        .trim()
+                        .toUpperCase(),
 
                     gst_percentage:
                         Number(
-                            row.GST_Percentage || 18
+                            row.GST_Percentage ||
+                            18
                         ),
 
                     description:
@@ -2402,34 +2620,44 @@ async function importMaterialsFromExcel(){
                         ).trim(),
 
                     searchable_text:
+                    (
+                        materialCode + " " +
+                        materialName + " " +
                         (
-                            materialCode + " " +
-                            materialName + " " +
-                            category.category_name + " " +
-                            String(row.Brand || "") + " " +
-                            String(row.Specification || "") + " " +
-                            String(row.Item_Size || "")
-                        ).toUpperCase(),
+                            category
+                                ? category.category_name
+                                : ""
+                        ) + " " +
+                        String(
+                            row.Brand || ""
+                        ) + " " +
+                        String(
+                            row.Specification || ""
+                        ) + " " +
+                        String(
+                            row.Item_Size || ""
+                        )
+                    ).toUpperCase(),
 
                     is_active:
                         String(
-                            row.Status || "ACTIVE"
-                        ).trim().toUpperCase()
-                        === "ACTIVE"
+                            row.Status ||
+                            "ACTIVE"
+                        )
+                        .trim()
+                        .toUpperCase() ===
+                        "ACTIVE"
 
                 };
 
-
                 // ------------------------------------
-                // INSERT
+                // INSERT INTO MATERIALS
                 // ------------------------------------
 
                 const {
                     error: insertError
                 } = await supabase
-
                     .from("materials")
-
                     .insert(material);
 
                 if(insertError){
@@ -2448,14 +2676,22 @@ async function importMaterialsFromExcel(){
                 );
 
                 failedRows.push({
-                    row: i + 2,
-                    error: rowError.message
+
+                    row:
+                        i + 2,
+
+                    material:
+                        row.Material_Name ||
+                        "(blank)",
+
+                    error:
+                        rowError.message
+
                 });
 
             }
 
         }
-
 
         // --------------------------------------------
         // RESULT
@@ -2477,8 +2713,11 @@ async function importMaterialsFromExcel(){
                 failedRows
             );
 
-        }
+            console.table(
+                failedRows
+            );
 
+        }
 
         showAlert(
             message,
@@ -2486,7 +2725,6 @@ async function importMaterialsFromExcel(){
                 ? "warning"
                 : "success"
         );
-
 
         // --------------------------------------------
         // CLOSE MODAL
@@ -2506,8 +2744,6 @@ async function importMaterialsFromExcel(){
             modal.hide();
         }
 
-
-        // Clear import state
         importedMaterialRows = [];
 
         const excelFile =
@@ -2528,12 +2764,8 @@ async function importMaterialsFromExcel(){
             previewArea.innerHTML = "";
         }
 
-
-        // Refresh material list
         await loadMaterialList();
-
         await loadManageMaterials();
-
 
     }
     catch(error){
@@ -2569,7 +2801,6 @@ async function importMaterialsFromExcel(){
     }
 
 }
-
 //====================================================
 // SAVE MATERIAL
 //====================================================
@@ -2583,13 +2814,6 @@ async function saveMaterial(){
         if(document.getElementById("department").value==""){
 
             showAlert("Select Department","warning");
-            return;
-
-        }
-
-        if(document.getElementById("category").value==""){
-
-            showAlert("Select Category","warning");
             return;
 
         }
@@ -2609,24 +2833,39 @@ async function saveMaterial(){
 
         const material={
 
-            material_code:
-                document.getElementById("materialCode").value.trim(),
+            const categoryElement =
+    document.getElementById("category");
 
-            material_name:
-                document.getElementById("materialName").value.trim(),
+const categoryId =
+    categoryElement.value
+        ? Number(categoryElement.value)
+        : null;
 
-            category_id:
-                Number(document.getElementById("category").value),
+const categoryName =
+    categoryElement.value
+        ? categoryElement.options[
+            categoryElement.selectedIndex
+          ].text
+        : "";
 
-            category:
-                document.getElementById("category")
-                            .options[
-                document.getElementById("category").selectedIndex
-                ].text,
+const material={
 
-            category:
-                document.getElementById("category").value,
+    material_code:
+        document.getElementById("materialCode").value.trim(),
 
+    material_name:
+        document.getElementById("materialName").value.trim(),
+
+    department_id:
+        Number(
+            document.getElementById("department").value
+        ),
+
+    category_id:
+        categoryId,
+
+    category:
+        categoryName,
             brand:
                 document.getElementById("brand").value.trim(),
 

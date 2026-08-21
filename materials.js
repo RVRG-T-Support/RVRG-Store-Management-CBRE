@@ -2809,55 +2809,70 @@ async function saveMaterial(){
 
     try{
 
-        // Validation
+        // --------------------------------------------
+        // VALIDATION
+        // --------------------------------------------
 
-        if(document.getElementById("department").value==""){
+        const department =
+            document.getElementById("department").value;
 
-            showAlert("Select Department","warning");
+        const materialName =
+            document.getElementById("materialName").value.trim();
+
+        if(department === ""){
+
+            showAlert(
+                "Select Department",
+                "warning"
+            );
+
             return;
-
         }
 
-        if(document.getElementById("materialName").value.trim()==""){
+        if(materialName === ""){
 
-            showAlert("Enter Material Name","warning");
+            showAlert(
+                "Enter Material Name",
+                "warning"
+            );
+
             return;
-
         }
 
-        if(document.getElementById("materialCode").value.trim()==""){
+        // --------------------------------------------
+        // GENERATE MATERIAL CODE
+        // --------------------------------------------
+
+        if(
+            document
+                .getElementById("materialCode")
+                .value
+                .trim() === ""
+        ){
 
             await generateMaterialCode();
-
         }
 
-async function saveMaterial(){
+        const materialCode =
+            document
+                .getElementById("materialCode")
+                .value
+                .trim();
 
-    try{
+        if(materialCode === ""){
 
-        // Validation
+            showAlert(
+                "Unable to generate Material Code",
+                "danger"
+            );
 
-        if(document.getElementById("department").value==""){
-
-            showAlert("Select Department","warning");
             return;
-
         }
 
-        if(document.getElementById("materialName").value.trim()==""){
+        // --------------------------------------------
+        // CATEGORY
+        // --------------------------------------------
 
-            showAlert("Enter Material Name","warning");
-            return;
-
-        }
-
-        if(document.getElementById("materialCode").value.trim()==""){
-
-            await generateMaterialCode();
-
-        }
-
-        // Category information
         const categoryElement =
             document.getElementById("category");
 
@@ -2870,22 +2885,49 @@ async function saveMaterial(){
             categoryElement.value
                 ? categoryElement.options[
                     categoryElement.selectedIndex
-                  ].text
+                  ].text.trim()
                 : "";
 
-        // Material object
+        // --------------------------------------------
+        // SEARCHABLE TEXT
+        // --------------------------------------------
+
+        const searchableText = (
+
+            materialCode + " " +
+
+            materialName + " " +
+
+            categoryName + " " +
+
+            document
+                .getElementById("brand")
+                .value + " " +
+
+            document
+                .getElementById("specification")
+                .value + " " +
+
+            document
+                .getElementById("itemSize")
+                .value
+
+        ).toUpperCase();
+
+        // --------------------------------------------
+        // MATERIAL OBJECT
+        // --------------------------------------------
+
         const material = {
 
             material_code:
-                document.getElementById("materialCode").value.trim(),
+                materialCode,
 
             material_name:
-                document.getElementById("materialName").value.trim(),
+                materialName,
 
             department_id:
-                Number(
-                    document.getElementById("department").value
-                ),
+                Number(department),
 
             category_id:
                 categoryId,
@@ -2894,86 +2936,133 @@ async function saveMaterial(){
                 categoryName,
 
             material_short_name:
-                document.getElementById("materialShortName").value.trim(),
+                document
+                    .getElementById("materialShortName")
+                    .value
+                    .trim(),
 
             brand:
-                document.getElementById("brand").value.trim(),
+                document
+                    .getElementById("brand")
+                    .value
+                    .trim(),
 
             item_type:
-                document.getElementById("itemType").value,
+                document
+                    .getElementById("itemType")
+                    .value,
 
             specification:
-                document.getElementById("specification").value.trim(),
+                document
+                    .getElementById("specification")
+                    .value
+                    .trim(),
 
             item_size:
-                document.getElementById("itemSize").value.trim(),
+                document
+                    .getElementById("itemSize")
+                    .value
+                    .trim(),
 
             unit:
-                document.getElementById("unit").value,
+                document
+                    .getElementById("unit")
+                    .value,
 
             minimum_stock:
                 Number(
-                    document.getElementById("minimumStock").value || 0
+                    document
+                        .getElementById("minimumStock")
+                        .value || 0
                 ),
 
             rack_location:
-                document.getElementById("rackLocation").value.trim(),
+                document
+                    .getElementById("rackLocation")
+                    .value
+                    .trim(),
 
             status:
-                document.getElementById("status").value,
+                document
+                    .getElementById("status")
+                    .value,
 
             unit_cost:
                 Number(
-                    document.getElementById("unitCost").value || 0
+                    document
+                        .getElementById("unitCost")
+                        .value || 0
                 ),
 
             gst_type:
-                document.getElementById("gstType").value,
+                document
+                    .getElementById("gstType")
+                    .value,
 
             gst_percentage:
                 Number(
-                    document.getElementById("gstPercentage").value || 0
+                    document
+                        .getElementById("gstPercentage")
+                        .value || 0
                 ),
 
             description:
-                document.getElementById("description").value.trim()
+                document
+                    .getElementById("description")
+                    .value
+                    .trim(),
 
-        };
-(
-    document.getElementById("materialCode").value + " " +
-    document.getElementById("materialName").value + " " +
-    document.getElementById("category")
-        .options[
-            document.getElementById("category").selectedIndex
-        ].text + " " +
-    document.getElementById("brand").value + " " +
-    document.getElementById("specification").value + " " +
-    document.getElementById("itemSize").value
-).toUpperCase(),
+            searchable_text:
+                searchableText,
 
-            is_active:true
+            is_active:
+                document
+                    .getElementById("status")
+                    .value === "ACTIVE"
 
         };
 
-        // Duplicate Check
+        // --------------------------------------------
+        // DUPLICATE MATERIAL CODE CHECK
+        // --------------------------------------------
 
-        const {data:duplicate}=await supabase
+        const {
+            data: duplicate,
+            error: duplicateError
+        } = await supabase
 
             .from("materials")
 
             .select("id")
 
-            .eq("material_code",material.material_code);
+            .eq(
+                "material_code",
+                material.material_code
+            );
 
-        if(duplicate.length){
+        if(duplicateError)
+            throw duplicateError;
 
-            showAlert("Material Code already exists","danger");
+        if(
+            duplicate &&
+            duplicate.length > 0
+        ){
+
+            showAlert(
+                "Material Code already exists",
+                "danger"
+            );
 
             return;
-
         }
 
-        const {error}=await supabase
+        // --------------------------------------------
+        // INSERT MATERIAL
+        // --------------------------------------------
+
+        const {
+            error
+        } = await supabase
 
             .from("materials")
 
@@ -2982,9 +3071,18 @@ async function saveMaterial(){
         if(error)
             throw error;
 
-        showAlert("Material Saved Successfully","success");
+        // --------------------------------------------
+        // SUCCESS
+        // --------------------------------------------
+
+        showAlert(
+            "Material Saved Successfully",
+            "success"
+        );
 
         clearMaterialForm();
+
+        await loadMaterialList();
 
         await loadManageMaterials();
 
@@ -2992,9 +3090,15 @@ async function saveMaterial(){
 
     catch(error){
 
-        console.error(error);
+        console.error(
+            "Save Material Error:",
+            error
+        );
 
-        showAlert(error.message,"danger");
+        showAlert(
+            error.message,
+            "danger"
+        );
 
     }
 

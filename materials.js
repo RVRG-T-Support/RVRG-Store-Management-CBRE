@@ -2697,34 +2697,51 @@ async function importMaterialsFromExcel(){
         // RESULT
         // --------------------------------------------
 
-        let message =
-            successCount +
-            " material(s) imported successfully.";
+// --------------------------------------------
+// RESULT
+// --------------------------------------------
 
-        if(failedRows.length){
+let message =
+    successCount +
+    " material(s) imported successfully.";
 
-            message +=
-                " " +
-                failedRows.length +
-                " row(s) failed.";
+if(failedRows.length){
 
-            console.error(
-                "Failed Import Rows:",
-                failedRows
-            );
+    message +=
+        "<br><br><strong>" +
+        failedRows.length +
+        " row(s) failed:</strong><br>";
 
-            console.table(
-                failedRows
-            );
+    failedRows.forEach(item => {
 
-        }
+        message +=
+            "<br>" +
+            "<strong>Row " +
+            item.row +
+            " — " +
+            escapeHtml(item.material) +
+            "</strong><br>" +
+            escapeHtml(item.error);
 
-        showAlert(
-            message,
-            failedRows.length
-                ? "warning"
-                : "success"
-        );
+    });
+
+    console.error(
+        "Failed Import Rows:",
+        failedRows
+    );
+
+    console.table(
+        failedRows
+    );
+
+}
+
+showAlert(
+    message,
+    failedRows.length
+        ? "warning"
+        : "success"
+);
 
         // --------------------------------------------
         // CLOSE MODAL

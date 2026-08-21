@@ -2831,41 +2831,71 @@ async function saveMaterial(){
 
         }
 
-        const material={
+async function saveMaterial(){
 
-            const categoryElement =
-    document.getElementById("category");
+    try{
 
-const categoryId =
-    categoryElement.value
-        ? Number(categoryElement.value)
-        : null;
+        // Validation
 
-const categoryName =
-    categoryElement.value
-        ? categoryElement.options[
-            categoryElement.selectedIndex
-          ].text
-        : "";
+        if(document.getElementById("department").value==""){
 
-const material={
+            showAlert("Select Department","warning");
+            return;
 
-    material_code:
-        document.getElementById("materialCode").value.trim(),
+        }
 
-    material_name:
-        document.getElementById("materialName").value.trim(),
+        if(document.getElementById("materialName").value.trim()==""){
 
-    department_id:
-        Number(
-            document.getElementById("department").value
-        ),
+            showAlert("Enter Material Name","warning");
+            return;
 
-    category_id:
-        categoryId,
+        }
 
-    category:
-        categoryName,
+        if(document.getElementById("materialCode").value.trim()==""){
+
+            await generateMaterialCode();
+
+        }
+
+        // Category information
+        const categoryElement =
+            document.getElementById("category");
+
+        const categoryId =
+            categoryElement.value
+                ? Number(categoryElement.value)
+                : null;
+
+        const categoryName =
+            categoryElement.value
+                ? categoryElement.options[
+                    categoryElement.selectedIndex
+                  ].text
+                : "";
+
+        // Material object
+        const material = {
+
+            material_code:
+                document.getElementById("materialCode").value.trim(),
+
+            material_name:
+                document.getElementById("materialName").value.trim(),
+
+            department_id:
+                Number(
+                    document.getElementById("department").value
+                ),
+
+            category_id:
+                categoryId,
+
+            category:
+                categoryName,
+
+            material_short_name:
+                document.getElementById("materialShortName").value.trim(),
+
             brand:
                 document.getElementById("brand").value.trim(),
 
@@ -2882,7 +2912,9 @@ const material={
                 document.getElementById("unit").value,
 
             minimum_stock:
-                Number(document.getElementById("minimumStock").value || 0),
+                Number(
+                    document.getElementById("minimumStock").value || 0
+                ),
 
             rack_location:
                 document.getElementById("rackLocation").value.trim(),
@@ -2891,20 +2923,22 @@ const material={
                 document.getElementById("status").value,
 
             unit_cost:
-                Number(document.getElementById("unitCost").value || 0),
+                Number(
+                    document.getElementById("unitCost").value || 0
+                ),
 
             gst_type:
                 document.getElementById("gstType").value,
 
             gst_percentage:
-                Number(document.getElementById("gstPercentage").value || 0),
-
-            material_short_name:
-                document.getElementById("materialShortName").value,
+                Number(
+                    document.getElementById("gstPercentage").value || 0
+                ),
 
             description:
-                document.getElementById("description").value.trim(),
-            searchable_text:
+                document.getElementById("description").value.trim()
+
+        };
 (
     document.getElementById("materialCode").value + " " +
     document.getElementById("materialName").value + " " +

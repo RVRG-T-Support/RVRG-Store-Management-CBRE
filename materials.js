@@ -2693,10 +2693,6 @@ async function importMaterialsFromExcel(){
 
         }
 
-        // --------------------------------------------
-        // RESULT
-        // --------------------------------------------
-
 // --------------------------------------------
 // RESULT
 // --------------------------------------------
@@ -2708,20 +2704,20 @@ let message =
 if(failedRows.length){
 
     message +=
-        "<br><br><strong>" +
+        "\n\n" +
         failedRows.length +
-        " row(s) failed:</strong><br>";
+        " row(s) failed:\n";
 
     failedRows.forEach(item => {
 
         message +=
-            "<br>" +
-            "<strong>Row " +
+            "\nRow " +
             item.row +
             " — " +
-            escapeHtml(item.material) +
-            "</strong><br>" +
-            escapeHtml(item.error);
+            item.material +
+            "\n" +
+            item.error +
+            "\n";
 
     });
 

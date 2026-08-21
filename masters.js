@@ -1,5 +1,5 @@
-// masters.js
-// Protect page
+// masters.js//
+// Protect page//
 const currentUser = getCurrentUser();
 
 if (!currentUser)

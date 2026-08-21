@@ -1845,13 +1845,15 @@ function normalizeImportedRow(row){
     return {
 
         Department:
-            String(getExcelValue(row, [
-                "Department",
-                "Department Name",
-                "Dept",
-                "Department_Name"
-            ])).trim(),
-
+    String(getExcelValue(row, [
+        "Department",
+        "Department Name",
+        "Department Code",
+        "Dept",
+        "Dept Code",
+        "Department_Name",
+        "Department_Code"
+    ])).trim(),
         Category:
             String(getExcelValue(row, [
                 "Category",
@@ -2315,6 +2317,10 @@ async function importMaterialsFromExcel(){
 
     try{
 
+        // ====================================================
+        // BASIC CHECK
+        // ====================================================
+
         if(!importedMaterialRows.length){
 
             showAlert(
@@ -2326,10 +2332,12 @@ async function importMaterialsFromExcel(){
 
         }
 
+
         const btn =
             document.getElementById(
                 "btnImportNow"
             );
+
 
         if(btn){
 
@@ -2340,109 +2348,331 @@ async function importMaterialsFromExcel(){
 
         }
 
-        // --------------------------------------------
+
+        // ====================================================
         // LOAD DEPARTMENTS
-        // --------------------------------------------
+        // ====================================================
 
         const {
             data: departments,
             error: departmentError
         } = await supabase
+
             .from("departments")
+
             .select(
-                "id, department_name, prefix"
+                "id, department_code, department_name, prefix"
             );
 
+
         if(departmentError){
+
             throw departmentError;
+
         }
+
+
+        // Department lookup:
+        // Department Name
+        // Department Code
+        // Prefix
 
         const departmentMap = {};
 
-        (departments || []).forEach(
-            dept => {
 
-                departmentMap[
-                    String(
-                        dept.department_name
-                    )
-                    .trim()
-                    .toUpperCase()
-                ] = dept;
+        (departments || [])
+            .forEach(
+                dept => {
 
-            }
-        );
+                    const name =
+                        String(
+                            dept.department_name ||
+                            ""
+                        )
+                        .trim()
+                        .toUpperCase();
 
-        // --------------------------------------------
+
+                    const code =
+                        String(
+                            dept.department_code ||
+                            ""
+                        )
+                        .trim()
+                        .toUpperCase();
+
+
+                    const prefix =
+                        String(
+                            dept.prefix ||
+                            ""
+                        )
+                        .trim()
+                        .toUpperCase();
+
+
+                    if(name){
+
+                        departmentMap[name] =
+                            dept;
+
+                    }
+
+
+                    if(code){
+
+                        departmentMap[code] =
+                            dept;
+
+                    }
+
+
+                    if(prefix){
+
+                        departmentMap[prefix] =
+                            dept;
+
+                    }
+
+                }
+            );
+
+
+        // ====================================================
         // LOAD CATEGORIES
-        // --------------------------------------------
+        // ====================================================
 
         const {
             data: categories,
             error: categoryError
         } = await supabase
+
             .from("material_categories")
+
             .select(
                 "id, department_id, category_name, short_code"
             );
 
+
         if(categoryError){
+
             throw categoryError;
+
         }
+
+
+        // Category lookup by:
+        // Department ID + Name
+        // Category ID
+        // Department ID + Short Code
 
         const categoryMap = {};
 
-        (categories || []).forEach(
-            cat => {
 
-                const key =
-                    String(cat.department_id) +
-                    "|" +
-                    String(
-                        cat.category_name
-                    )
-                    .trim()
-                    .toUpperCase();
+        (categories || [])
+            .forEach(
+                category => {
 
-                categoryMap[key] = cat;
+                    const departmentId =
+                        String(
+                            category.department_id
+                        );
 
-            }
-        );
 
-        // --------------------------------------------
+                    const categoryName =
+                        String(
+                            category.category_name ||
+                            ""
+                        )
+                        .trim()
+                        .toUpperCase();
+
+
+                    const shortCode =
+                        String(
+                            category.short_code ||
+                            ""
+                        )
+                        .trim()
+                        .toUpperCase();
+
+
+                    // Name
+
+                    if(categoryName){
+
+                        categoryMap[
+                            departmentId +
+                            "|NAME|" +
+                            categoryName
+                        ] = category;
+
+                    }
+
+
+                    // Short Code
+
+                    if(shortCode){
+
+                        categoryMap[
+                            departmentId +
+                            "|CODE|" +
+                            shortCode
+                        ] = category;
+
+                    }
+
+
+                    // ID
+
+                    categoryMap[
+                        "ID|" +
+                        String(
+                            category.id
+                        )
+                    ] = category;
+
+                }
+            );
+
+
+        // ====================================================
+        // LOAD EXISTING MATERIAL CODES ONCE
+        // ====================================================
+
+        const {
+            data: existingMaterials,
+            error: materialError
+        } = await supabase
+
+            .from("materials")
+
+            .select(
+                "material_code"
+            );
+
+
+        if(materialError){
+
+            throw materialError;
+
+        }
+
+
+        // ====================================================
+        // FIND CURRENT MAX NUMBER FOR EACH PREFIX
+        // ====================================================
+
+        const nextNumbers = {};
+
+
+        (existingMaterials || [])
+            .forEach(
+                item => {
+
+                    const code =
+                        String(
+                            item.material_code ||
+                            ""
+                        )
+                        .trim()
+                        .toUpperCase();
+
+
+                    const match =
+                        code.match(
+                            /^([A-Z0-9]+)-(\d{3})$/
+                        );
+
+
+                    if(!match){
+
+                        return;
+
+                    }
+
+
+                    const prefix =
+                        match[1];
+
+
+                    const number =
+                        parseInt(
+                            match[2],
+                            10
+                        );
+
+
+                    if(
+                        !nextNumbers[prefix] ||
+                        number >=
+                        nextNumbers[prefix]
+                    ){
+
+                        nextNumbers[prefix] =
+                            number + 1;
+
+                    }
+
+                }
+            );
+
+
+        // ====================================================
         // IMPORT EACH ROW
-        // --------------------------------------------
+        // ====================================================
 
         let successCount = 0;
+
         let failedRows = [];
+
 
         for(
             let i = 0;
+
             i < importedMaterialRows.length;
+
             i++
         ){
 
             const row =
                 importedMaterialRows[i];
 
+
             try{
+
+                // --------------------------------------------
+                // BASIC VALUES
+                // --------------------------------------------
 
                 const materialName =
                     String(
-                        row.Material_Name || ""
-                    ).trim();
+                        row.Material_Name ||
+                        ""
+                    )
+                    .trim();
 
-                const departmentName =
+
+                const departmentValue =
                     String(
-                        row.Department || ""
-                    ).trim();
+                        row.Department ||
+                        ""
+                    )
+                    .trim();
 
-                const categoryName =
+
+                const categoryValue =
                     String(
-                        row.Category || ""
-                    ).trim();
+                        row.Category ||
+                        ""
+                    )
+                    .trim();
 
-                // REQUIRED
+
+                // --------------------------------------------
+                // REQUIRED FIELDS
+                // --------------------------------------------
+
                 if(!materialName){
 
                     throw new Error(
@@ -2451,87 +2681,240 @@ async function importMaterialsFromExcel(){
 
                 }
 
-                if(!departmentName){
+
+                if(!departmentValue){
 
                     throw new Error(
-                        "Department missing"
+                        "Department / Department Code missing"
                     );
 
                 }
 
-                // ------------------------------------
+
+                // --------------------------------------------
                 // FIND DEPARTMENT
-                // ------------------------------------
+                // --------------------------------------------
 
                 const department =
                     departmentMap[
-                        departmentName.toUpperCase()
+                        departmentValue
+                            .toUpperCase()
                     ];
+
 
                 if(!department){
 
                     throw new Error(
                         "Department not found: " +
-                        departmentName
+                        departmentValue
                     );
 
                 }
 
-                // ------------------------------------
+
+                // --------------------------------------------
                 // FIND CATEGORY
-                // Category is OPTIONAL
-                // ------------------------------------
+                // CATEGORY IS OPTIONAL
+                // --------------------------------------------
 
                 let category = null;
 
-                if(categoryName){
 
-                    const categoryKey =
-                        String(department.id) +
-                        "|" +
-                        categoryName.toUpperCase();
+                if(
+                    categoryValue &&
+                    categoryValue !== "-"
+                ){
 
-                    category =
-                        categoryMap[
-                            categoryKey
-                        ];
+                    // ----------------------------------------
+                    // CATEGORY ID
+                    // Example: 1 or 10
+                    // ----------------------------------------
+
+                    if(
+                        /^\d+$/.test(
+                            categoryValue
+                        )
+                    ){
+
+                        category =
+                            categoryMap[
+                                "ID|" +
+                                categoryValue
+                            ];
+
+                    }
+
+
+                    // ----------------------------------------
+                    // CATEGORY NAME
+                    // ----------------------------------------
+
+                    if(!category){
+
+                        category =
+                            categoryMap[
+                                String(
+                                    department.id
+                                ) +
+                                "|NAME|" +
+                                categoryValue
+                                    .toUpperCase()
+                            ];
+
+                    }
+
+
+                    // ----------------------------------------
+                    // CATEGORY SHORT CODE
+                    // ----------------------------------------
+
+                    if(!category){
+
+                        category =
+                            categoryMap[
+                                String(
+                                    department.id
+                                ) +
+                                "|CODE|" +
+                                categoryValue
+                                    .toUpperCase()
+                            ];
+
+                    }
+
+
+                    // ----------------------------------------
+                    // CATEGORY NOT FOUND
+                    // ----------------------------------------
 
                     if(!category){
 
                         throw new Error(
                             "Category not found: " +
-                            categoryName
+                            categoryValue +
+                            " under " +
+                            department.department_name
+                        );
+
+                    }
+
+
+                    // ----------------------------------------
+                    // VERIFY CATEGORY BELONGS TO DEPARTMENT
+                    // ----------------------------------------
+
+                    if(
+                        Number(
+                            category.department_id
+                        ) !==
+                        Number(
+                            department.id
+                        )
+                    ){
+
+                        throw new Error(
+                            "Category '" +
+                            categoryValue +
+                            "' does not belong to department " +
+                            department.department_name
                         );
 
                     }
 
                 }
 
-                // ------------------------------------
-                // GENERATE CODE
-                // ------------------------------------
 
-                const materialCode =
-                    await generateImportMaterialCode(
-                        department.prefix
+                // --------------------------------------------
+                // GENERATE MATERIAL CODE
+                // --------------------------------------------
+
+                const prefix =
+                    String(
+                        department.prefix ||
+                        ""
+                    )
+                    .trim()
+                    .toUpperCase();
+
+
+                if(!prefix){
+
+                    throw new Error(
+                        "Department Prefix missing for " +
+                        department.department_name
                     );
 
-                // ------------------------------------
+                }
+
+
+                if(
+                    !nextNumbers[prefix]
+                ){
+
+                    nextNumbers[prefix] = 1;
+
+                }
+
+
+                const nextNumber =
+                    nextNumbers[prefix];
+
+
+                if(nextNumber > 999){
+
+                    throw new Error(
+                        "Material code limit reached for department " +
+                        prefix
+                    );
+
+                }
+
+
+                const materialCode =
+                    prefix +
+                    "-" +
+                    String(
+                        nextNumber
+                    )
+                    .padStart(
+                        3,
+                        "0"
+                    );
+
+
+                // Reserve next number
+                nextNumbers[prefix] =
+                    nextNumber + 1;
+
+
+                // --------------------------------------------
                 // MATERIAL OBJECT
-                // ------------------------------------
+                // --------------------------------------------
+
+                const status =
+                    String(
+                        row.Status ||
+                        "ACTIVE"
+                    )
+                    .trim()
+                    .toUpperCase();
+
 
                 const material = {
 
                     material_code:
                         materialCode,
 
+
                     material_name:
                         materialName,
+
 
                     department_id:
                         Number(
                             department.id
                         ),
+
 
                     category_id:
                         category
@@ -2540,65 +2923,90 @@ async function importMaterialsFromExcel(){
                               )
                             : null,
 
+
                     category:
                         category
-                            ? category.category_name
-                            : "",
-
-                    material_short_name:
-                        category
-                            ? (
-                                category.short_code || ""
+                            ? String(
+                                category.category_name ||
+                                ""
                               )
                             : "",
 
+
+                    material_short_name:
+                        category
+                            ? String(
+                                category.short_code ||
+                                ""
+                              )
+                            : "",
+
+
                     brand:
                         String(
-                            row.Brand || ""
-                        ).trim(),
+                            row.Brand ||
+                            ""
+                        )
+                        .trim(),
+
 
                     item_type:
                         String(
-                            row.Item_Type || ""
-                        ).trim(),
+                            row.Item_Type ||
+                            ""
+                        )
+                        .trim(),
+
 
                     specification:
                         String(
-                            row.Specification || ""
-                        ).trim(),
+                            row.Specification ||
+                            ""
+                        )
+                        .trim(),
+
 
                     item_size:
                         String(
-                            row.Item_Size || ""
-                        ).trim(),
+                            row.Item_Size ||
+                            ""
+                        )
+                        .trim(),
+
 
                     unit:
                         String(
-                            row.Unit || ""
-                        ).trim(),
+                            row.Unit ||
+                            ""
+                        )
+                        .trim(),
+
 
                     minimum_stock:
                         Number(
-                            row.Minimum_Stock || 0
+                            row.Minimum_Stock ||
+                            0
                         ),
+
 
                     rack_location:
                         String(
-                            row.Rack_Location || ""
-                        ).trim(),
+                            row.Rack_Location ||
+                            ""
+                        )
+                        .trim(),
+
 
                     status:
-                        String(
-                            row.Status ||
-                            "ACTIVE"
-                        )
-                        .trim()
-                        .toUpperCase(),
+                        status,
+
 
                     unit_cost:
                         Number(
-                            row.Unit_Cost || 0
+                            row.Unit_Cost ||
+                            0
                         ),
+
 
                     gst_type:
                         String(
@@ -2608,61 +3016,77 @@ async function importMaterialsFromExcel(){
                         .trim()
                         .toUpperCase(),
 
+
                     gst_percentage:
                         Number(
                             row.GST_Percentage ||
                             18
                         ),
 
+
                     description:
                         String(
-                            row.Description || ""
-                        ).trim(),
+                            row.Description ||
+                            ""
+                        )
+                        .trim(),
+
 
                     searchable_text:
                     (
-                        materialCode + " " +
-                        materialName + " " +
+                        materialCode +
+                        " " +
+                        materialName +
+                        " " +
                         (
                             category
                                 ? category.category_name
                                 : ""
-                        ) + " " +
+                        ) +
+                        " " +
                         String(
-                            row.Brand || ""
-                        ) + " " +
+                            row.Brand ||
+                            ""
+                        ) +
+                        " " +
                         String(
-                            row.Specification || ""
-                        ) + " " +
+                            row.Specification ||
+                            ""
+                        ) +
+                        " " +
                         String(
-                            row.Item_Size || ""
+                            row.Item_Size ||
+                            ""
                         )
-                    ).toUpperCase(),
+                    )
+                    .toUpperCase(),
+
 
                     is_active:
-                        String(
-                            row.Status ||
-                            "ACTIVE"
-                        )
-                        .trim()
-                        .toUpperCase() ===
-                        "ACTIVE"
+                        status === "ACTIVE"
 
                 };
 
-                // ------------------------------------
-                // INSERT INTO MATERIALS
-                // ------------------------------------
+
+                // --------------------------------------------
+                // INSERT
+                // --------------------------------------------
 
                 const {
                     error: insertError
                 } = await supabase
+
                     .from("materials")
+
                     .insert(material);
 
+
                 if(insertError){
+
                     throw insertError;
+
                 }
+
 
                 successCount++;
 
@@ -2674,6 +3098,7 @@ async function importMaterialsFromExcel(){
                     i + 2,
                     rowError
                 );
+
 
                 failedRows.push({
 
@@ -2693,91 +3118,118 @@ async function importMaterialsFromExcel(){
 
         }
 
-// --------------------------------------------
-// RESULT
-// --------------------------------------------
 
-let message =
-    successCount +
-    " material(s) imported successfully.";
+        // ====================================================
+        // RESULT
+        // ====================================================
 
-if(failedRows.length){
+        let message =
 
-    message +=
-        "\n\n" +
-        failedRows.length +
-        " row(s) failed:\n";
+            successCount +
+            " material(s) imported successfully.";
 
-    failedRows.forEach(item => {
 
-        message +=
-            "\nRow " +
-            item.row +
-            " — " +
-            item.material +
-            "\n" +
-            item.error +
-            "\n";
+        if(failedRows.length){
 
-    });
+            message +=
 
-    console.error(
-        "Failed Import Rows:",
-        failedRows
-    );
+                "\n\n" +
+                failedRows.length +
+                " row(s) failed:\n";
 
-    console.table(
-        failedRows
-    );
 
-}
+            failedRows.forEach(
+                item => {
 
-showAlert(
-    message,
-    failedRows.length
-        ? "warning"
-        : "success"
-);
+                    message +=
 
-        // --------------------------------------------
+                        "\nRow " +
+                        item.row +
+                        " — " +
+                        item.material +
+                        "\n" +
+                        item.error +
+                        "\n";
+
+                }
+            );
+
+
+            console.error(
+                "Failed Import Rows:",
+                failedRows
+            );
+
+
+            console.table(
+                failedRows
+            );
+
+        }
+
+
+        showAlert(
+            message,
+            failedRows.length
+                ? "warning"
+                : "success"
+        );
+
+
+        // ====================================================
         // CLOSE MODAL
-        // --------------------------------------------
+        // ====================================================
 
         const modalElement =
             document.getElementById(
                 "importModal"
             );
 
+
         const modal =
             bootstrap.Modal.getInstance(
                 modalElement
             );
 
+
         if(modal){
+
             modal.hide();
+
         }
 
+
         importedMaterialRows = [];
+
 
         const excelFile =
             document.getElementById(
                 "excelFile"
             );
 
+
         if(excelFile){
+
             excelFile.value = "";
+
         }
+
 
         const previewArea =
             document.getElementById(
                 "previewArea"
             );
 
+
         if(previewArea){
+
             previewArea.innerHTML = "";
+
         }
 
+
         await loadMaterialList();
+
         await loadManageMaterials();
 
     }
@@ -2787,6 +3239,7 @@ showAlert(
             "Material Excel Import Error:",
             error
         );
+
 
         showAlert(
             "Import failed: " +
@@ -2802,12 +3255,13 @@ showAlert(
                 "btnImportNow"
             );
 
+
         if(btn){
 
             btn.disabled = false;
 
             btn.innerHTML =
-                "Import Materials";
+                '<i class="fa-solid fa-file-import"></i> Import Materials';
 
         }
 

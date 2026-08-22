@@ -4,7 +4,12 @@
 
 // Global user list
 let usersData = [];
+//====================================================
+// SECTION PERMISSIONS
+//====================================================
 
+let applicationSections = [];
+let currentUserPermissions = {};
 
 //====================================================
 // PAGE INITIALIZATION
@@ -20,6 +25,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
     }
 
+    await loadApplicationSections();
     await loadUsers();
 
 });
@@ -102,6 +108,285 @@ async function loadUsers() {
 
 }
 
+//====================================================
+// LOAD APPLICATION SECTIONS
+//====================================================
+
+async function loadApplicationSections() {
+
+    const container =
+        document.getElementById(
+            "sectionPermissionsContainer"
+        );
+
+    if (!container) return;
+
+
+    try {
+
+        const {
+            data,
+            error
+        } = await supabaseClient
+
+            .from("application_sections")
+
+            .select(`
+                id,
+                section_key,
+                section_name,
+                display_order
+            `)
+
+            .eq("is_active", true)
+
+            .order("display_order", {
+                ascending: true
+            });
+
+
+        if (error)
+            throw error;
+
+
+        applicationSections = data || [];
+
+
+        renderPermissionCheckboxes();
+
+
+    } catch (error) {
+
+        console.error(
+            "Load Application Sections Error:",
+            error
+        );
+
+
+        container.innerHTML = `
+            <div class="col-12 text-center text-danger py-3">
+                Failed to load sections:
+                ${escapeHtml(error.message)}
+            </div>
+        `;
+
+    }
+
+}
+
+
+//====================================================
+// RENDER PERMISSION CHECKBOXES
+//====================================================
+
+function renderPermissionCheckboxes() {
+
+    const container =
+        document.getElementById(
+            "sectionPermissionsContainer"
+        );
+
+
+    if (!container) return;
+
+
+    if (!applicationSections.length) {
+
+        container.innerHTML = `
+            <div class="col-12 text-center text-muted py-3">
+                No application sections found.
+            </div>
+        `;
+
+        return;
+
+    }
+
+
+    container.innerHTML = "";
+
+
+    applicationSections.forEach(section => {
+
+        const allowed =
+            currentUserPermissions[
+                section.section_key
+            ] === true;
+
+
+        const col =
+            document.createElement("div");
+
+
+        col.className =
+            "col-md-6 col-lg-4";
+
+
+        col.innerHTML = `
+
+            <div class="form-check border rounded p-3 h-100">
+
+                <input
+                    class="form-check-input section-permission"
+                    type="checkbox"
+                    value="${escapeHtml(section.section_key)}"
+                    id="permission_${escapeHtml(section.section_key)}"
+                    ${allowed ? "checked" : ""}>
+
+                <label
+                    class="form-check-label fw-semibold"
+                    for="permission_${escapeHtml(section.section_key)}">
+
+                    ${escapeHtml(section.section_name)}
+
+                </label>
+
+            </div>
+
+        `;
+
+
+        container.appendChild(col);
+
+    });
+
+}
+
+
+//====================================================
+// LOAD USER PERMISSIONS
+//====================================================
+
+async function loadUserPermissions(userId) {
+
+    currentUserPermissions = {};
+
+
+    if (!userId) {
+
+        renderPermissionCheckboxes();
+
+        return;
+
+    }
+
+
+    try {
+
+        const {
+            data,
+            error
+        } = await supabaseClient
+
+            .from("user_permissions")
+
+            .select(`
+                section_key,
+                is_allowed
+            `)
+
+            .eq("user_id", userId);
+
+
+        if (error)
+            throw error;
+
+
+        (data || []).forEach(permission => {
+
+            currentUserPermissions[
+                permission.section_key
+            ] =
+                permission.is_allowed === true;
+
+        });
+
+
+        renderPermissionCheckboxes();
+
+
+    } catch (error) {
+
+        console.error(
+            "Load User Permissions Error:",
+            error
+        );
+
+
+        showAlert(
+            "Unable to load user permissions: " +
+            error.message,
+            "danger"
+        );
+
+    }
+
+}
+
+
+//====================================================
+// GET SELECTED PERMISSIONS
+//====================================================
+
+function getSelectedPermissions() {
+
+    const selected = [];
+
+
+    document
+        .querySelectorAll(
+            ".section-permission:checked"
+        )
+        .forEach(checkbox => {
+
+            selected.push(
+                checkbox.value
+            );
+
+        });
+
+
+    return selected;
+
+}
+
+
+//====================================================
+// SELECT ALL PERMISSIONS
+//====================================================
+
+function selectAllPermissions() {
+
+    document
+        .querySelectorAll(
+            ".section-permission"
+        )
+        .forEach(checkbox => {
+
+            checkbox.checked = true;
+
+        });
+
+}
+
+
+//====================================================
+// CLEAR ALL PERMISSIONS
+//====================================================
+
+function clearAllPermissions() {
+
+    document
+        .querySelectorAll(
+            ".section-permission"
+        )
+        .forEach(checkbox => {
+
+            checkbox.checked = false;
+
+        });
+
+}
 
 //====================================================
 // RENDER USERS
@@ -520,7 +805,9 @@ async function editUser(id) {
         // Username should not be changed during edit
         document.getElementById("username")
             .disabled = true;
-
+        
+        // Load saved section permissions
+        await loadUserPermissions(data.id);
 
         // Scroll to form
         document.getElementById("fullName")
@@ -696,7 +983,11 @@ function clearUserForm() {
 
     document.getElementById("btnUpdateUser")
         .style.display = "none";
+    
+    // Clear section permissions
+    currentUserPermissions = {};
 
+    renderPermissionCheckboxes();
 }
 
 //====================================================

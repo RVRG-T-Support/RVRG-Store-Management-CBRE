@@ -77,7 +77,10 @@ const hasAccess = checkUserAccess([
     'STORE'
 ]);
 
-if (!hasAccess) return;
+if (!hasAccess) {
+    console.warn("User does not have access to Raise Material Request.");
+}
+
 // --- DATA LOADING FUNCTIONS ---
 // Load Department
 

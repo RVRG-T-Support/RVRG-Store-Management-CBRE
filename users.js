@@ -681,27 +681,74 @@ async function saveUser() {
 
         // Insert user
 
-        const {
-            error
-        } = await supabaseClient
+       const {
+    data: newUser,
+    error
+} = await supabaseClient
 
-            .from("users_master")
+    .from("users_master")
 
-            .insert({
+    .insert({
 
-                full_name: fullName,
+        full_name: fullName,
 
-                email: email || null,
+        email: email || null,
 
-                username: username,
+        username: username,
 
-                password: password,
+        password: password,
 
-                role: role,
+        role: role,
 
-                is_active: isActive
+        is_active: isActive
 
-            });
+    })
+
+    .select("id")
+    .single();
+
+
+if (error)
+    throw error;
+
+
+// ================================================
+// SAVE SECTION PERMISSIONS
+// ================================================
+
+const selectedPermissions =
+    getSelectedPermissions();
+
+
+if (selectedPermissions.length > 0) {
+
+    const permissionRows =
+        selectedPermissions.map(
+            sectionKey => ({
+
+                user_id: newUser.id,
+
+                section_key: sectionKey,
+
+                is_allowed: true
+
+            })
+        );
+
+
+    const {
+        error: permissionError
+    } = await supabaseClient
+
+        .from("user_permissions")
+
+        .insert(permissionRows);
+
+
+    if (permissionError)
+        throw permissionError;
+
+}
 
 
         if (error)
@@ -908,18 +955,76 @@ async function updateUser() {
 
 
         const {
-            error
-        } = await supabaseClient
+    error
+} = await supabaseClient
 
-            .from("users_master")
+    .from("users_master")
 
-            .update(updateData)
+    .update(updateData)
 
-            .eq("id", id);
+    .eq("id", id);
 
 
-        if (error)
-            throw error;
+if (error)
+    throw error;
+
+
+// ================================================
+// UPDATE SECTION PERMISSIONS
+// ================================================
+
+// First remove the user's old permissions
+
+const {
+    error: deletePermissionError
+} = await supabaseClient
+
+    .from("user_permissions")
+
+    .delete()
+
+    .eq("user_id", id);
+
+
+if (deletePermissionError)
+    throw deletePermissionError;
+
+
+// Get currently selected permissions
+
+const selectedPermissions =
+    getSelectedPermissions();
+
+
+if (selectedPermissions.length > 0) {
+
+    const permissionRows =
+        selectedPermissions.map(
+            sectionKey => ({
+
+                user_id: Number(id),
+
+                section_key: sectionKey,
+
+                is_allowed: true
+
+            })
+        );
+
+
+    const {
+        error: permissionError
+    } = await supabaseClient
+
+        .from("user_permissions")
+
+        .insert(permissionRows);
+
+
+    if (permissionError)
+        throw permissionError;
+
+}
 
 
         showAlert(

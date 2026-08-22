@@ -239,7 +239,72 @@
 
                     </div>
 
+                </div>
 
+<!-- Section Access -->
+
+<div class="col-12 mt-3">
+
+    <div class="card border-0 bg-light">
+
+        <div class="card-header bg-white border-bottom">
+
+            <div class="d-flex justify-content-between align-items-center">
+
+                <div>
+                    <strong>
+                        <i class="fa-solid fa-shield-halved me-2"></i>
+                        Section Access
+                    </strong>
+
+                    <div class="small text-muted">
+                        Select the sections this user can access.
+                    </div>
+                </div>
+
+                <div class="btn-group btn-group-sm">
+
+                    <button
+                        type="button"
+                        class="btn btn-outline-success"
+                        onclick="selectAllPermissions()">
+
+                        Select All
+
+                    </button>
+
+                    <button
+                        type="button"
+                        class="btn btn-outline-secondary"
+                        onclick="clearAllPermissions()">
+
+                        Clear All
+
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="card-body">
+
+            <div
+                id="sectionPermissionsContainer"
+                class="row g-2">
+
+                <div class="col-12 text-muted text-center py-3">
+                    Loading sections...
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
 
                     <!-- Status -->
 

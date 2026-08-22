@@ -54,7 +54,7 @@ body{
     top:0;
     left:0;
     right:0;
-    height:60px;
+    height:70px;
     background:var(--header-bg);
     color:#fff;
     display:flex;
@@ -159,7 +159,7 @@ body{
 
 .sidebar{
     position:fixed;
-    top:60px;
+    top:70px;
     left:0;
     bottom:0;
     width:250px;
@@ -251,7 +251,7 @@ body{
 
     margin-left:250px;
 
-    margin-top:65px;
+    margin-top:75px;
 
     padding:20px;
 

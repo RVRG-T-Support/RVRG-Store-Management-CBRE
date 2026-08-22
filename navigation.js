@@ -3,7 +3,7 @@
 // Global Header & Sidebar
 // =============================================
 
-function getNavigationItems(role) {
+function getNavigationItems(role, permissions = {}) {
 
     const items = [
 
@@ -11,20 +11,23 @@ function getNavigationItems(role) {
             name: "Dashboard",
             icon: "fa-house",
             link: "dashboard.html",
+            section: "dashboard",
             roles: ["ADMIN","FM","AFM","STOREKEEPER","STORE","TECH_SUPERVISOR"]
         },
 
         {
-            name:'Material Categories',
-            icon:'fa-tags',
-            link:'material_categories.html',
-            roles:['ADMIN','FM','AFM','STOREKEEPER','STORE']
+            name: "Material Categories",
+            icon: "fa-tags",
+            link: "material_categories.html",
+            section: "material_categories",
+            roles: ["ADMIN","FM","AFM","STOREKEEPER","STORE"]
         },
 
         {
             name: "Material Master",
             icon: "fa-box-open",
             link: "materials.html",
+            section: "material_master",
             roles: ["ADMIN","FM","AFM","STOREKEEPER","STORE"]
         },
 
@@ -32,6 +35,7 @@ function getNavigationItems(role) {
             name: "Raise Request",
             icon: "fa-file-signature",
             link: "material_request.html",
+            section: "raise_request",
             roles: ["ADMIN","FM","AFM","STOREKEEPER","STORE","TECH_SUPERVISOR"]
         },
 
@@ -39,6 +43,7 @@ function getNavigationItems(role) {
             name: "Approvals",
             icon: "fa-clipboard-check",
             link: "approvals.html",
+            section: "approvals",
             roles: ["ADMIN","FM","AFM"]
         },
 
@@ -46,6 +51,7 @@ function getNavigationItems(role) {
             name: "Issue Materials",
             icon: "fa-right-from-bracket",
             link: "issue.html",
+            section: "issue_materials",
             roles: ["ADMIN","FM","AFM","STOREKEEPER","STORE"]
         },
 
@@ -53,6 +59,7 @@ function getNavigationItems(role) {
             name: "Returns",
             icon: "fa-rotate-left",
             link: "return.html",
+            section: "returns",
             roles: ["ADMIN","FM","AFM","STOREKEEPER","STORE"]
         },
 
@@ -60,6 +67,7 @@ function getNavigationItems(role) {
             name: "Stock Entry",
             icon: "fa-truck-ramp-box",
             link: "stock_entry.html",
+            section: "stock_entry",
             roles: ["ADMIN","FM","AFM","STOREKEEPER","STORE"]
         },
 
@@ -67,6 +75,7 @@ function getNavigationItems(role) {
             name: "Current Stock",
             icon: "fa-boxes-stacked",
             link: "current_stock.html",
+            section: "current_stock",
             roles: ["ADMIN","FM","AFM","STOREKEEPER","STORE"]
         },
 
@@ -74,6 +83,7 @@ function getNavigationItems(role) {
             name: "Reports",
             icon: "fa-chart-line",
             link: "reports.html",
+            section: "reports",
             roles: ["ADMIN","FM","AFM","STOREKEEPER","STORE","TECH_SUPERVISOR"]
         },
 
@@ -81,76 +91,185 @@ function getNavigationItems(role) {
             name: "User Management",
             icon: "fa-users-gear",
             link: "users.html",
+            section: "user_management",
             roles: ["ADMIN"]
         }
 
     ];
 
-    return items.filter(item => item.roles.includes(role));
+
+    return items.filter(item => {
+
+        // User must first belong to the role
+        if (!item.roles.includes(role)) {
+            return false;
+        }
+
+        // ADMIN keeps full access
+        if (role === "ADMIN") {
+            return true;
+        }
+
+        // If permission exists, use it
+        if (
+            Object.prototype.hasOwnProperty.call(
+                permissions,
+                item.section
+            )
+        ) {
+            return permissions[item.section] === true;
+        }
+
+        // No permission record = deny
+        return false;
+
+    });
 
 }
+async function loadNavigationPermissions(userId) {
 
-function renderSidebar() {
+    const permissions = {};
+
+    // ADMIN always gets full access
+    const user = getCurrentUser();
+
+    if (user && user.role === "ADMIN") {
+        return permissions;
+    }
+
+    try {
+
+        const {
+            data,
+            error
+        } = await supabaseClient
+
+            .from("user_permissions")
+
+            .select(`
+                section_key,
+                is_allowed
+            `)
+
+            .eq("user_id", userId);
+
+
+        if (error)
+            throw error;
+
+
+        (data || []).forEach(permission => {
+
+            permissions[
+                permission.section_key
+            ] = permission.is_allowed === true;
+
+        });
+
+
+    } catch (error) {
+
+        console.error(
+            "Navigation Permission Error:",
+            error
+        );
+
+    }
+
+
+    return permissions;
+
+}
+async function renderSidebar() {
 
     const user = getCurrentUser();
 
     if (!user) return;
 
-    const container = document.getElementById("globalSidebar");
+
+    const container =
+        document.getElementById("globalSidebar");
 
     if (!container) return;
 
-    const menu = getNavigationItems(user.role);
+
+    // Load individual section permissions
+    const permissions =
+        await loadNavigationPermissions(user.id);
+
+
+    const menu =
+        getNavigationItems(
+            user.role,
+            permissions
+        );
+
 
     let html = `
         <div class="sidebar">
 
+            <div class="sidebar-title">
+                RVRG
+            </div>
 
-            <ul class="nav flex-column flex-grow-1">
+            <ul class="nav flex-column">
     `;
+
 
     menu.forEach(item => {
 
         const active =
-            window.location.pathname.endsWith(item.link)
+            window.location.pathname.endsWith(
+                item.link
+            )
             ? "active"
             : "";
 
+
         html += `
 
-        <li>
+            <li>
 
-            <a href="${item.link}" class="nav-link ${active}">
+                <a
+                    href="${item.link}"
+                    class="nav-link ${active}">
 
-                <i class="fa-solid ${item.icon}"></i>
+                    <i class="fa-solid ${item.icon}"></i>
 
-                <span>${item.name}</span>
+                    <span>${item.name}</span>
 
-            </a>
+                </a>
 
-        </li>
+            </li>
 
         `;
 
     });
 
+
     html += `
 
-        <li style="margin-top:40px;">
+            <li class="mt-auto">
 
-            <a href="#" class="nav-link text-danger" onclick="logout()">
+                <a
+                    href="#"
+                    class="nav-link text-danger"
+                    onclick="logout()">
 
-                <i class="fa-solid fa-right-from-bracket"></i>
+                    <i class="fa-solid fa-right-from-bracket"></i>
 
-                <span>Logout</span>
+                    <span>Logout</span>
 
-            </a>
+                </a>
 
-        </li>
+            </li>
 
-    </ul>
+        </ul>
 
-</div>`;
+    </div>
+
+    `;
+
 
     container.innerHTML = html;
 

@@ -2554,9 +2554,8 @@ async function importMaterialsFromExcel(){
             .from("materials")
 
             .select(
-                "material_code"
+        "id, material_code"
             );
-
 
         if(materialError){
 
@@ -2651,15 +2650,22 @@ async function importMaterialsFromExcel(){
                 // BASIC VALUES
                 // --------------------------------------------
 
-                const materialName =
-                    String(
-                        row.Material_Name ||
-                        ""
-                    )
-                    .trim();
+                const materialCodeFromExcel =
+    String(
+        row.Material_Code ||
+        ""
+    )
+    .trim()
+    .toUpperCase();
 
+const materialName =
+    String(
+        row.Material_Name ||
+        ""
+    )
+    .trim();
 
-                const departmentValue =
+const departmentValue =
                     String(
                         row.Department ||
                         ""
@@ -2830,67 +2836,83 @@ async function importMaterialsFromExcel(){
                 }
 
 
-                // --------------------------------------------
-                // GENERATE MATERIAL CODE
-                // --------------------------------------------
+// --------------------------------------------
+// MATERIAL CODE
+// EXISTING CODE = UPDATE
+// BLANK CODE = GENERATE NEW
+// --------------------------------------------
 
-                const prefix =
-                    String(
-                        department.prefix ||
-                        ""
-                    )
-                    .trim()
-                    .toUpperCase();
+let materialCode = materialCodeFromExcel;
 
+let existingMaterial = null;
 
-                if(!prefix){
+if(materialCode){
 
-                    throw new Error(
-                        "Department Prefix missing for " +
-                        department.department_name
-                    );
+    existingMaterial =
+        (existingMaterials || []).find(
+            item =>
+                String(
+                    item.material_code || ""
+                )
+                .trim()
+                .toUpperCase() === materialCode
+        );
 
-                }
+    if(!existingMaterial){
 
+        throw new Error(
+            "Material Code not found: " +
+            materialCode
+        );
 
-                if(
-                    !nextNumbers[prefix]
-                ){
+    }
 
-                    nextNumbers[prefix] = 1;
+}
+else{
 
-                }
+    const prefix =
+        String(
+            department.prefix ||
+            ""
+        )
+        .trim()
+        .toUpperCase();
 
+    if(!prefix){
 
-                const nextNumber =
-                    nextNumbers[prefix];
+        throw new Error(
+            "Department Prefix missing for " +
+            department.department_name
+        );
 
+    }
 
-                if(nextNumber > 999){
+    if(!nextNumbers[prefix]){
+        nextNumbers[prefix] = 1;
+    }
 
-                    throw new Error(
-                        "Material code limit reached for department " +
-                        prefix
-                    );
+    const nextNumber =
+        nextNumbers[prefix];
 
-                }
+    if(nextNumber > 999){
 
+        throw new Error(
+            "Material code limit reached for department " +
+            prefix
+        );
 
-                const materialCode =
-                    prefix +
-                    "-" +
-                    String(
-                        nextNumber
-                    )
-                    .padStart(
-                        3,
-                        "0"
-                    );
+    }
 
+    materialCode =
+        prefix +
+        "-" +
+        String(nextNumber)
+            .padStart(3,"0");
 
-                // Reserve next number
-                nextNumbers[prefix] =
-                    nextNumber + 1;
+    nextNumbers[prefix] =
+        nextNumber + 1;
+
+}
 
 
                 // --------------------------------------------
@@ -3078,23 +3100,44 @@ async function importMaterialsFromExcel(){
                 // INSERT
                 // --------------------------------------------
 
-                const {
-                    error: insertError
-                } = await supabase
+                // --------------------------------------------
+// INSERT NEW / UPDATE EXISTING MATERIAL
+// --------------------------------------------
 
-                    .from("materials")
+if(existingMaterial){
 
-                    .insert(material);
+    // EXISTING MATERIAL CODE → UPDATE
+    const {
+        error: updateError
+    } = await supabase
+        .from("materials")
+        .update(material)
+        .eq(
+            "id",
+            existingMaterial.id
+        );
 
+    if(updateError){
+        throw updateError;
+    }
 
-                if(insertError){
+}
+else{
 
-                    throw insertError;
+    // BLANK CODE → INSERT NEW MATERIAL
+    const {
+        error: insertError
+    } = await supabase
+        .from("materials")
+        .insert(material);
 
-                }
+    if(insertError){
+        throw insertError;
+    }
 
+}
 
-                successCount++;
+successCount++;
 
             }
             catch(rowError){

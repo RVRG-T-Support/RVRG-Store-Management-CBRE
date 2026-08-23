@@ -1735,7 +1735,7 @@ function downloadTemplate(){
 
     try{
 
-        cconst templateData = [
+        const templateData = [
             {
                 Material_Code: "",
                 Department: "",

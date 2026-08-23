@@ -1735,9 +1735,9 @@ function downloadTemplate(){
 
     try{
 
-        const templateData = [
-
+        cconst templateData = [
             {
+                Material_Code: "",
                 Department: "",
                 Category: "",
                 Material_Name: "",
@@ -1841,8 +1841,14 @@ function getExcelValue(row, aliases){
 }
 
 function normalizeImportedRow(row){
-
     return {
+        Material_Code:
+            String(getExcelValue(row, [
+                "Material_Code",
+                "Material Code",
+                "MaterialCode",
+                "Code"
+            ])).trim(),
 
         Department:
     String(getExcelValue(row, [

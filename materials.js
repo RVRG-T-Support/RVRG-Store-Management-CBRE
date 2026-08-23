@@ -2458,7 +2458,7 @@ async function importMaterialsFromExcel(){
             .select(
                 "id, department_id, category_name, short_code"
             );
-
+        is_active: true
 
         if(categoryError){
 
@@ -2795,20 +2795,126 @@ const departmentValue =
                     }
 
 
-                    // ----------------------------------------
-                    // CATEGORY NOT FOUND
-                    // ----------------------------------------
+                   // ----------------------------------------
+// AUTO-CREATE CATEGORY IF NOT FOUND
+// ----------------------------------------
 
-                    if(!category){
+if(!category){
 
-                        throw new Error(
-                            "Category not found: " +
-                            categoryValue +
-                            " under " +
-                            department.department_name
-                        );
+    // Create a clean short code from category name
+    let baseShortCode =
+        cleanCode(categoryValue)
+            .replace(/-/g, "")
+            .substring(0, 6);
 
-                    }
+    if(!baseShortCode){
+        baseShortCode = "CAT";
+    }
+
+    let shortCode =
+        baseShortCode;
+
+    let counter = 2;
+
+    // Make sure short code is unique within department
+    while(
+        categoryMap[
+            String(department.id) +
+            "|CODE|" +
+            shortCode
+        ]
+    ){
+
+        shortCode =
+            baseShortCode.substring(
+                0,
+                Math.max(
+                    1,
+                    6 - String(counter).length
+                )
+            ) +
+            String(counter);
+
+        counter++;
+
+    }
+
+    // Create new category
+    const {
+        data: newCategory,
+        error: createCategoryError
+    } = await supabase
+
+        .from("material_categories")
+
+        .insert({
+
+            department_id:
+                Number(department.id),
+
+            category_name:
+                categoryValue,
+
+            short_code:
+                shortCode,
+
+            is_active:
+                true
+
+        })
+
+        .select(
+            "id, department_id, category_name, short_code"
+        )
+
+        .single();
+
+
+    if(createCategoryError){
+
+        throw new Error(
+            "Unable to create category '" +
+            categoryValue +
+            "': " +
+            createCategoryError.message
+        );
+
+    }
+
+
+    category =
+        newCategory;
+
+
+    // Add newly created category to lookup
+    // so another Excel row using the same
+    // category will reuse it.
+
+    categoryMap[
+        String(department.id) +
+        "|NAME|" +
+        categoryValue
+            .trim()
+            .toUpperCase()
+    ] = category;
+
+
+    categoryMap[
+        String(department.id) +
+        "|CODE|" +
+        shortCode
+            .trim()
+            .toUpperCase()
+    ] = category;
+
+
+    categoryMap[
+        "ID|" +
+        String(category.id)
+    ] = category;
+
+
+}
 
 
                     // ----------------------------------------

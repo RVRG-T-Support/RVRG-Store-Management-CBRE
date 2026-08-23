@@ -2412,6 +2412,23 @@ function findExistingMaterial(
 
 async function importMaterialsFromExcel(){
 
+    // ====================================================
+    // PREVENT DOUBLE IMPORT
+    // ====================================================
+
+    if(window.materialImportRunning){
+
+        console.warn(
+            "Material import already running. Ignoring duplicate request."
+        );
+
+        return;
+
+    }
+
+    window.materialImportRunning = true;
+
+
     try{
 
         // ====================================================
@@ -3644,22 +3661,25 @@ successCount++;
     }
     finally{
 
-        const btn =
-            document.getElementById(
-                "btnImportNow"
-            );
+    // Release import lock
+    window.materialImportRunning = false;
 
 
-        if(btn){
+    const btn =
+        document.getElementById(
+            "btnImportNow"
+        );
 
-            btn.disabled = false;
+    if(btn){
 
-            btn.innerHTML =
-                '<i class="fa-solid fa-file-import"></i> Import Materials';
+        btn.disabled = false;
 
-        }
+        btn.innerHTML =
+            '<i class="fa-solid fa-file-import"></i> Import Materials';
 
     }
+
+}
 
 }
 //====================================================

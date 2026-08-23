@@ -2314,7 +2314,98 @@ async function generateImportMaterialCode(prefix){
     );
 
 }
+//====================================================
+// NORMALIZE VALUE FOR DUPLICATE CHECK
+//====================================================
 
+function normalizeImportMatch(value){
+
+    return String(value ?? "")
+        .trim()
+        .toUpperCase()
+        .replace(/\s+/g, " ");
+
+}
+
+
+//====================================================
+// FIND EXISTING MATERIAL
+//====================================================
+
+function findExistingMaterial(
+    materials,
+    materialName,
+    departmentId,
+    categoryId,
+    brand,
+    itemType,
+    itemSize,
+    specification
+){
+
+    const targetName =
+        normalizeImportMatch(materialName);
+
+    const targetBrand =
+        normalizeImportMatch(brand);
+
+    const targetItemType =
+        normalizeImportMatch(itemType);
+
+    const targetItemSize =
+        normalizeImportMatch(itemSize);
+
+    const targetSpecification =
+        normalizeImportMatch(specification);
+
+
+    return (materials || []).find(item => {
+
+        return (
+
+            Number(item.department_id) ===
+            Number(departmentId)
+
+            &&
+
+            normalizeImportMatch(
+                item.material_name
+            ) === targetName
+
+            &&
+
+            Number(item.category_id || 0) ===
+            Number(categoryId || 0)
+
+            &&
+
+            normalizeImportMatch(
+                item.brand
+            ) === targetBrand
+
+            &&
+
+            normalizeImportMatch(
+                item.item_type
+            ) === targetItemType
+
+            &&
+
+            normalizeImportMatch(
+                item.item_size
+            ) === targetItemSize
+
+            &&
+
+            normalizeImportMatch(
+                item.specification
+            ) === targetSpecification
+
+        );
+
+    });
+
+}
 //====================================================
 // IMPORT MATERIALS
 //====================================================
@@ -2546,16 +2637,22 @@ async function importMaterialsFromExcel(){
         // LOAD EXISTING MATERIAL CODES ONCE
         // ====================================================
 
-        const {
-            data: existingMaterials,
-            error: materialError
-        } = await supabase
-
-            .from("materials")
-
-            .select(
-        "id, material_code"
-            );
+       const {
+    data: existingMaterials,
+    error: materialError
+} = await supabase
+    .from("materials")
+    .select(`
+        id,
+        material_code,
+        material_name,
+        department_id,
+        category_id,
+        brand,
+        item_type,
+        item_size,
+        specification
+    `);
 
         if(materialError){
 
@@ -2943,26 +3040,35 @@ if(!category){
 
 
 // --------------------------------------------
-// MATERIAL CODE
-// EXISTING CODE = UPDATE
-// BLANK CODE = GENERATE NEW
+// MATERIAL CODE / DUPLICATE CHECK
 // --------------------------------------------
 
-let materialCode = materialCodeFromExcel;
+// Excel Material Code
+let materialCode =
+    materialCodeFromExcel;
 
 let existingMaterial = null;
+
+
+// ==================================================
+// CASE 1
+// EXCEL HAS MATERIAL CODE
+// ==================================================
 
 if(materialCode){
 
     existingMaterial =
         (existingMaterials || []).find(
             item =>
+
                 String(
                     item.material_code || ""
                 )
                 .trim()
-                .toUpperCase() === materialCode
+                .toUpperCase()
+                === materialCode
         );
+
 
     if(!existingMaterial){
 
@@ -2974,53 +3080,116 @@ if(materialCode){
     }
 
 }
+
+
+// ==================================================
+// CASE 2
+// EXCEL MATERIAL CODE IS BLANK
+// CHECK FOR EXISTING MATERIAL FIRST
+// ==================================================
+
 else{
 
-    const prefix =
-        String(
-            department.prefix ||
-            ""
-        )
-        .trim()
-        .toUpperCase();
+    existingMaterial =
+        findExistingMaterial(
 
-    if(!prefix){
+            existingMaterials,
 
-        throw new Error(
-            "Department Prefix missing for " +
-            department.department_name
+            materialName,
+
+            department.id,
+
+            category
+                ? category.id
+                : null,
+
+            row.Brand,
+
+            row.Item_Type,
+
+            row.Item_Size,
+
+            row.Specification
+
         );
 
-    }
 
-    if(!nextNumbers[prefix]){
-        nextNumbers[prefix] = 1;
-    }
+    // ----------------------------------------------
+    // EXISTING MATERIAL FOUND
+    // ----------------------------------------------
 
-    const nextNumber =
-        nextNumbers[prefix];
+    if(existingMaterial){
 
-    if(nextNumber > 999){
-
-        throw new Error(
-            "Material code limit reached for department " +
-            prefix
-        );
+        materialCode =
+            String(
+                existingMaterial.material_code
+            )
+            .trim()
+            .toUpperCase();
 
     }
 
-    materialCode =
-        prefix +
-        "-" +
-        String(nextNumber)
-            .padStart(3,"0");
 
-    nextNumbers[prefix] =
-        nextNumber + 1;
+    // ----------------------------------------------
+    // MATERIAL DOES NOT EXIST
+    // GENERATE NEW CODE
+    // ----------------------------------------------
+
+    else{
+
+        const prefix =
+            String(
+                department.prefix ||
+                ""
+            )
+            .trim()
+            .toUpperCase();
+
+
+        if(!prefix){
+
+            throw new Error(
+                "Department Prefix missing for " +
+                department.department_name
+            );
+
+        }
+
+
+        if(!nextNumbers[prefix]){
+
+            nextNumbers[prefix] = 1;
+
+        }
+
+
+        const nextNumber =
+            nextNumbers[prefix];
+
+
+        if(nextNumber > 999){
+
+            throw new Error(
+                "Material code limit reached for department " +
+                prefix
+            );
+
+        }
+
+
+        materialCode =
+            prefix +
+            "-" +
+            String(nextNumber)
+                .padStart(3, "0");
+
+
+        nextNumbers[prefix] =
+            nextNumber + 1;
+
+    }
 
 }
-
-
                 // --------------------------------------------
                 // MATERIAL OBJECT
                 // --------------------------------------------
@@ -3201,47 +3370,117 @@ else{
 
                 };
 
-
-                // --------------------------------------------
-                // INSERT
-                // --------------------------------------------
-
-                // --------------------------------------------
+//====================================================
 // INSERT NEW / UPDATE EXISTING MATERIAL
-// --------------------------------------------
+//====================================================
 
 if(existingMaterial){
 
-    // EXISTING MATERIAL CODE → UPDATE
+    // --------------------------------------------
+    // EXISTING MATERIAL → UPDATE
+    // --------------------------------------------
+
     const {
         error: updateError
     } = await supabase
+
         .from("materials")
+
         .update(material)
+
         .eq(
             "id",
             existingMaterial.id
         );
 
+
     if(updateError){
+
         throw updateError;
+
     }
 
+
+    // Keep local copy updated
+    existingMaterial.material_name =
+        material.material_name;
+
+    existingMaterial.department_id =
+        material.department_id;
+
+    existingMaterial.category_id =
+        material.category_id;
+
+    existingMaterial.brand =
+        material.brand;
+
+    existingMaterial.item_type =
+        material.item_type;
+
+    existingMaterial.item_size =
+        material.item_size;
+
+    existingMaterial.specification =
+        material.specification;
+
+    existingMaterial.material_code =
+        material.material_code;
+
 }
+
+
 else{
 
-    // BLANK CODE → INSERT NEW MATERIAL
+    // --------------------------------------------
+    // NEW MATERIAL → INSERT
+    // --------------------------------------------
+
     const {
+        data: insertedMaterial,
         error: insertError
     } = await supabase
+
         .from("materials")
-        .insert(material);
+
+        .insert(material)
+
+        .select(`
+            id,
+            material_code,
+            material_name,
+            department_id,
+            category_id,
+            brand,
+            item_type,
+            item_size,
+            specification
+        `)
+        .single();
+
 
     if(insertError){
+
         throw insertError;
+
+    }
+
+
+    // Add newly inserted material to local list
+    // so duplicate rows in the SAME Excel file
+    // are detected too.
+
+    if(insertedMaterial){
+
+        existingMaterials.push(
+            insertedMaterial
+        );
+
     }
 
 }
+
+
+successCount++;
 
 successCount++;
 

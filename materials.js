@@ -3523,9 +3523,6 @@ else{
 
 }
 
-
-successCount++;
-
 successCount++;
 
             }

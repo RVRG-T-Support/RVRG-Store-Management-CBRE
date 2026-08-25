@@ -1965,29 +1965,56 @@ function normalizeImportedRow(row){
 // REGISTER EXCEL IMPORT EVENTS
 //====================================================
 
-document.addEventListener("DOMContentLoaded", function(){
+document.addEventListener(
+    "DOMContentLoaded",
+    function(){
 
-    const excelFile =
-        document.getElementById("excelFile");
+        const excelFile =
+            document.getElementById("excelFile");
 
-    const btnImportNow =
-        document.getElementById("btnImportNow");
+        const btnImportNow =
+            document.getElementById("btnImportNow");
 
-    if(excelFile){
-        excelFile.addEventListener(
-            "change",
-            handleExcelFile
-        );
+
+        // --------------------------------------------
+        // EXCEL FILE CHANGE
+        // --------------------------------------------
+
+        if(
+            excelFile &&
+            !excelFile.dataset.importBound
+        ){
+
+            excelFile.addEventListener(
+                "change",
+                handleExcelFile
+            );
+
+            excelFile.dataset.importBound =
+                "true";
+        }
+
+
+        // --------------------------------------------
+        // IMPORT BUTTON
+        // --------------------------------------------
+
+        if(
+            btnImportNow &&
+            !btnImportNow.dataset.importBound
+        ){
+
+            btnImportNow.addEventListener(
+                "click",
+                importMaterialsFromExcel
+            );
+
+            btnImportNow.dataset.importBound =
+                "true";
+        }
+
     }
-
-    if(btnImportNow){
-        btnImportNow.addEventListener(
-            "click",
-            importMaterialsFromExcel
-        );
-    }
-
-});
+);
 
 //====================================================
 // READ EXCEL FILE
@@ -2413,13 +2440,13 @@ function findExistingMaterial(
 async function importMaterialsFromExcel(){
 
     // ====================================================
-    // PREVENT DOUBLE IMPORT
+    // PREVENT DUPLICATE IMPORT EXECUTION
     // ====================================================
 
-    if(window.materialImportRunning){
+    if(window.materialImportRunning === true){
 
         console.warn(
-            "Material import already running. Ignoring duplicate request."
+            "Import already running. Duplicate request ignored."
         );
 
         return;

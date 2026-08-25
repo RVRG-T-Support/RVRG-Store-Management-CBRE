@@ -1736,26 +1736,26 @@ function downloadTemplate(){
     try{
 
         const templateData = [
-            {
-                Material_Code: "",
-                Department: "",
-                Category: "",
-                Material_Name: "",
-                Brand: "",
-                Item_Type: "",
-                Item_Size: "",
-                Specification: "",
-                Unit: "",
-                Minimum_Stock: 0,
-                Rack_Location: "",
-                Unit_Cost: "",
-                GST_Type: "INCLUDED",
-                GST_Percentage: 18,
-                Description: ""
-            }
-
-        ];
-
+    {
+        Material_Code: "",
+        Department: "",
+        Category: "",
+        Material_Name: "",
+        Brand: "",
+        Item_Type: "",
+        Item_Size: "",
+        Specification: "",
+        Unit: "",
+        Opening_Stock: 0,
+        Minimum_Stock: 0,
+        Rack_Location: "",
+        Unit_Cost: "",
+        GST_Type: "INCLUDED",
+        GST_Percentage: 18,
+        Description: "",
+        Status: "ACTIVE"
+    }
+];
         const ws =
             XLSX.utils.json_to_sheet(templateData);
 

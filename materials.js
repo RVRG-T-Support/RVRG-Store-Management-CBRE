@@ -1915,7 +1915,19 @@ function normalizeImportedRow(row){
                 "MinimumStock",
                 "Min Stock"
             ]),
-
+        
+    Opening_Stock:
+    getExcelValue(row, [
+        "Opening_Stock",
+        "Opening Stock",
+        "OpeningStock",
+        "Opening Qty",
+        "Opening Quantity",
+        "Opening_Quantity",
+        "Stock",
+        "Quantity"
+    ]),
+        
         Rack_Location:
             String(getExcelValue(row, [
                 "Rack_Location",
@@ -2162,6 +2174,7 @@ async function previewImportedMaterials(rows){
                         <th>Brand</th>
                         <th>Unit</th>
                         <th>Unit Cost</th>
+                        <th>Opening Stock</th>
                         <th>Status</th>
                     </tr>
 
@@ -2208,16 +2221,22 @@ async function previewImportedMaterials(rows){
                 </td>
 
                 <td>
-                    ${Number(
-                        row.Unit_Cost || 0
-                    )}
-                </td>
+    ${Number(
+        row.Unit_Cost || 0
+    )}
+</td>
 
-                <td>
-                    ${escapeHtml(
-                        row.Status || "ACTIVE"
-                    )}
-                </td>
+<td>
+    ${Number(
+        row.Opening_Stock || 0
+    )}
+</td>
+
+<td>
+    ${escapeHtml(
+        row.Status || "ACTIVE"
+    )}
+</td>
 
             </tr>
         `;
@@ -3509,10 +3528,52 @@ else{
     }
 
 
-    // Add newly inserted material to local list
-    // so duplicate rows in the SAME Excel file
-    // are detected too.
+// --------------------------------------------
+// ADD OPENING STOCK
+// --------------------------------------------
+const openingStock =
+    Number(row.Opening_Stock || 0);
 
+if(openingStock > 0){
+
+    const { error: ledgerError } =
+        await supabase
+            .from("stock_ledger")
+            .insert([{
+                material_id:
+                    Number(insertedMaterial.id),
+
+                transaction_type:
+                    "STOCK_IN",
+
+                quantity:
+                    openingStock,
+
+                reference_no:
+                    "OPENING-" +
+                    insertedMaterial.material_code,
+
+                request_id:
+                    null,
+
+                remarks:
+                    "Opening stock imported from Excel",
+
+                created_by:
+                    null,
+
+                transaction_date:
+                    new Date().toISOString()
+            }]);
+
+    if(ledgerError){
+        throw ledgerError;
+    }
+}
+
+// --------------------------------------------
+// ADD NEWLY INSERTED MATERIAL TO LOCAL LIST
+// --------------------------------------------
     if(insertedMaterial){
 
         existingMaterials.push(

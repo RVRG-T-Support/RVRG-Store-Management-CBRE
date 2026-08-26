@@ -3176,17 +3176,66 @@ async function importMaterialsFromExcel(){
 
                         nextNumbers[prefix] =
                             number + 1;
-
                     }
-
                 }
             );
+// ====================================================
+// IMPORT EACH ROW
+// ====================================================
+// ====================================================
+// STRICT PRE-VALIDATION
+// NOTHING IS WRITTEN BEFORE VALIDATION PASSES
+// ====================================================
+
+const validationErrors =
+    await validateMaterialImport(
+        importedMaterialRows,
+        departments,
+        existingMaterials
+    );
+
+if(validationErrors.length > 0){
+
+    console.error(
+        "Material Import Rejected:",
+        validationErrors
+    );
+
+    let message =
+        "IMPORT REJECTED.\n\n" +
+        importedMaterialRows.length +
+        " row(s) found in Excel.\n" +
+        validationErrors.length +
+        " row(s) failed validation.\n\n";
 
 
-        // ====================================================
-        // IMPORT EACH ROW
-        // ====================================================
+    validationErrors.forEach(
+        item => {
 
+            message +=
+                "Row " +
+                item.row +
+                " — " +
+                item.material +
+                "\n" +
+                item.error +
+                "\n\n";
+
+        }
+    );
+
+    console.table(
+        validationErrors
+    );
+
+
+    showAlert(
+        message,
+        "danger"
+    );
+
+    return;
+}
         let successCount = 0;
 
         let failedRows = [];
@@ -3583,14 +3632,15 @@ else{
 
     if(existingMaterial){
 
-        materialCode =
-            String(
-                existingMaterial.material_code
-            )
-            .trim()
-            .toUpperCase();
+    throw new Error(
+        "Existing material detected: " +
+        materialCode +
+        " (" +
+        materialName +
+        "). Import rejected."
+    );
 
-    }
+}
 
 
     // ----------------------------------------------
@@ -3990,10 +4040,28 @@ successCount++;
         }
 
 
-        // ====================================================
-        // RESULT
-        // ====================================================
+// ====================================================
+// RESULT
+// ====================================================
+// ====================================================
+// FINAL IMPORT COUNT CHECK
+// ====================================================
 
+if(
+    successCount !==
+    importedMaterialRows.length
+){
+
+    throw new Error(
+        "IMPORT COUNT MISMATCH.\n\n" +
+        "Excel rows: " +
+        importedMaterialRows.length +
+        "\nSuccessfully processed: " +
+        successCount +
+        "\n\nImport rejected because the counts do not match."
+    );
+
+}
         let message =
 
             successCount +

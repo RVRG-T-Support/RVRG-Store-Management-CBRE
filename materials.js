@@ -2144,114 +2144,350 @@ async function handleExcelFile(event){
 async function previewImportedMaterials(rows){
 
     const previewArea =
-        document.getElementById(
-            "previewArea"
-        );
+        document.getElementById("previewArea");
 
     if(!previewArea){
         return;
     }
 
-    let html = `
-        <div class="alert alert-success">
+    try{
+
+        // ====================================================
+        // LOAD EXISTING MATERIALS
+        // ====================================================
+
+        const {
+            data: existingMaterials,
+            error: materialError
+        } = await supabase
+            .from("materials")
+            .select(`
+                id,
+                material_code,
+                material_name
+            `);
+
+        if(materialError){
+            throw materialError;
+        }
+
+
+        // ====================================================
+        // LOAD CURRENT STOCK
+        // ====================================================
+
+        const {
+            data: stockData,
+            error: stockError
+        } = await supabase
+            .from("current_stock")
+            .select(`
+                material_id,
+                current_stock
+            `);
+
+        if(stockError){
+            throw stockError;
+        }
+
+
+        // ====================================================
+        // CREATE LOOKUPS
+        // ====================================================
+
+        const materialCodeMap = {};
+
+        (existingMaterials || []).forEach(
+            material => {
+
+                const code =
+                    String(
+                        material.material_code || ""
+                    )
+                    .trim()
+                    .toUpperCase();
+
+                if(code){
+
+                    materialCodeMap[code] =
+                        material;
+
+                }
+
+            }
+        );
+
+
+        const stockMap = {};
+
+        (stockData || []).forEach(
+            stock => {
+
+                stockMap[
+                    String(stock.material_id)
+                ] =
+                    Number(
+                        stock.current_stock || 0
+                    );
+
+            }
+        );
+
+
+        // ====================================================
+        // BUILD PREVIEW
+        // ====================================================
+
+        let newCount = 0;
+        let existingCount = 0;
+
+        let totalExcelQty = 0;
+        let totalAfterQty = 0;
+
+
+        let html = `
+
+        <div class="alert alert-info">
+
             <b>${rows.length}</b>
             material(s) found in Excel.
-            Material codes will be generated automatically.
+
+            <br><br>
+
+            <b>Green = New Material</b><br>
+            <b>Yellow = Existing Material — Additional Stock</b>
+
         </div>
 
+
         <div class="table-responsive"
-             style="max-height:400px;overflow:auto;">
+             style="max-height:450px;overflow:auto;">
 
             <table class="table table-bordered table-sm">
 
                 <thead class="table-dark">
 
                     <tr>
+
                         <th>#</th>
+                        <th>Material Code</th>
                         <th>Material Name</th>
-                        <th>Department</th>
-                        <th>Category</th>
-                        <th>Brand</th>
-                        <th>Unit</th>
-                        <th>Unit Cost</th>
-                        <th>Opening Stock</th>
                         <th>Status</th>
+                        <th>Current Stock</th>
+                        <th>Excel Qty</th>
+                        <th>After Import</th>
+
                     </tr>
 
                 </thead>
 
                 <tbody>
-    `;
-
-    rows.forEach((row,index)=>{
-
-        html += `
-            <tr>
-
-                <td>${index + 1}</td>
-
-                <td>
-                    ${escapeHtml(
-                        row.Material_Name || ""
-                    )}
-                </td>
-
-                <td>
-                    ${escapeHtml(
-                        row.Department || ""
-                    )}
-                </td>
-
-                <td>
-                    ${escapeHtml(
-                        row.Category || "-"
-                    )}
-                </td>
-
-                <td>
-                    ${escapeHtml(
-                        row.Brand || "-"
-                    )}
-                </td>
-
-                <td>
-                    ${escapeHtml(
-                        row.Unit || "-"
-                    )}
-                </td>
-
-                <td>
-    ${Number(
-        row.Unit_Cost || 0
-    )}
-</td>
-
-<td>
-    ${Number(
-        row.Opening_Stock || 0
-    )}
-</td>
-
-<td>
-    ${escapeHtml(
-        row.Status || "ACTIVE"
-    )}
-</td>
-
-            </tr>
         `;
 
-    });
 
-    html += `
+        rows.forEach(
+            (row,index) => {
+
+                const code =
+                    String(
+                        row.Material_Code || ""
+                    )
+                    .trim()
+                    .toUpperCase();
+
+
+                const existingMaterial =
+                    code
+                        ? materialCodeMap[code]
+                        : null;
+
+
+                const excelQty =
+                    Number(
+                        row.Opening_Stock || 0
+                    );
+
+
+                let currentStock = 0;
+
+                let afterImport =
+                    excelQty;
+
+
+                let statusText =
+                    "NEW";
+
+                let statusClass =
+                    "table-success";
+
+
+                if(existingMaterial){
+
+                    existingCount++;
+
+                    currentStock =
+                        Number(
+                            stockMap[
+                                String(
+                                    existingMaterial.id
+                                )
+                            ] || 0
+                        );
+
+                    afterImport =
+                        currentStock +
+                        excelQty;
+
+                    statusText =
+                        "EXISTING";
+
+                    statusClass =
+                        "table-warning";
+
+                }
+                else{
+
+                    newCount++;
+
+                }
+
+
+                totalExcelQty +=
+                    excelQty;
+
+                totalAfterQty +=
+                    afterImport;
+
+
+                html += `
+
+                    <tr class="${statusClass}">
+
+                        <td>
+                            ${index + 1}
+                        </td>
+
+                        <td>
+                            ${escapeHtml(
+                                existingMaterial
+                                    ? existingMaterial.material_code
+                                    : code || "AUTO"
+                            )}
+                        </td>
+
+                        <td>
+                            ${escapeHtml(
+                                row.Material_Name || ""
+                            )}
+                        </td>
+
+                        <td>
+
+                            <span class="badge ${
+                                existingMaterial
+                                    ? "bg-warning text-dark"
+                                    : "bg-success"
+                            }">
+
+                                ${statusText}
+
+                            </span>
+
+                        </td>
+
+                        <td>
+                            ${currentStock}
+                        </td>
+
+                        <td>
+                            ${excelQty}
+                        </td>
+
+                        <td>
+                            <b>${afterImport}</b>
+                        </td>
+
+                    </tr>
+
+                `;
+
+            }
+        );
+
+
+        html += `
+
                 </tbody>
 
             </table>
 
         </div>
-    `;
 
-    previewArea.innerHTML = html;
+
+        <div class="alert alert-secondary mt-3">
+
+            <div>
+                <b>New Materials:</b>
+                ${newCount}
+            </div>
+
+            <div>
+                <b>Existing Materials:</b>
+                ${existingCount}
+            </div>
+
+            <div>
+                <b>Excel Quantity:</b>
+                ${totalExcelQty}
+            </div>
+
+            <div>
+                <b>Total Stock After Import:</b>
+                ${totalAfterQty}
+            </div>
+
+            <hr>
+
+            Existing materials will receive
+            the Excel quantity as <b>additional stock</b>.
+            
+            <br>
+
+            No existing stock will be overwritten.
+
+        </div>
+
+        `;
+
+
+        previewArea.innerHTML =
+            html;
+
+    }
+    catch(error){
+
+        console.error(
+            "Import Preview Error:",
+            error
+        );
+
+        previewArea.innerHTML = `
+
+            <div class="alert alert-danger">
+
+                Unable to generate import preview.
+
+                <br>
+
+                ${escapeHtml(
+                    error.message
+                )}
+
+            </div>
+
+        `;
+
+    }
 
 }
 
@@ -2783,48 +3019,90 @@ async function validateMaterialImport(
         }
 
 
-        // ----------------------------------------
-        // MATERIAL CODE
-        // ----------------------------------------
+// ----------------------------------------
+// MATERIAL CODE
+// ----------------------------------------
 
-        if(materialCode){
+// Existing Material Code is allowed.
+// It will be treated as ADDITIONAL STOCK.
+//
+// However, verify that the Excel material name
+// matches the existing material. This prevents
+// accidentally adding stock to the wrong item.
 
-            // Already exists in database
-            if(
-                existingCodeSet.has(
-                    materialCode
-                )
-            ){
-
-                errors.push({
-    row: excelRow,
-
-    material: materialName,
-
-    material_code:
-        materialCode,
-
-    Department:
-        row.Department || "",
-
-    Category:
-        row.Category || "",
-
-    Brand:
-        row.Brand || "",
-
-    Unit:
-        row.Unit || "",
-
-    Opening_Stock:
-        row.Opening_Stock || "",
-
-    error:
-        "Material Code already exists: " +
+if(
+    existingCodeSet.has(
         materialCode
-});
+    )
+){
 
-            }
+    const existingMaterial =
+        (existingMaterials || []).find(
+            item =>
+                String(
+                    item.material_code || ""
+                )
+                .trim()
+                .toUpperCase()
+                === materialCode
+        );
+
+    if(existingMaterial){
+
+        const existingName =
+            normalizeImportMatch(
+                existingMaterial.material_name
+            );
+
+        const excelName =
+            normalizeImportMatch(
+                materialName
+            );
+
+        if(
+            existingName !==
+            excelName
+        ){
+
+            errors.push({
+                row: excelRow,
+
+                material:
+                    materialName,
+
+                material_code:
+                    materialCode,
+
+                Department:
+                    row.Department || "",
+
+                Category:
+                    row.Category || "",
+
+                Brand:
+                    row.Brand || "",
+
+                Unit:
+                    row.Unit || "",
+
+                Opening_Stock:
+                    row.Opening_Stock || "",
+
+                error:
+                    "Material Code " +
+                    materialCode +
+                    " already belongs to '" +
+                    existingMaterial.material_name +
+                    "'. Excel contains '" +
+                    materialName +
+                    "'."
+            });
+
+        }
+
+    }
+
+}
 
 
             // Duplicate inside same Excel

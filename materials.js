@@ -3049,32 +3049,27 @@ const normalizeDuplicateValue = (value) =>
         .trim()
         .replace(/\s+/g, " ")
         .toUpperCase();
+// Duplicate data verification system-----
+const materialKey =
+    [
+        normalizeDuplicateValue(
+            materialName
+        ),
 
-const materialKey = JSON.stringify({
-    name:
-        normalizeDuplicateValue(materialName),
+        normalizeDuplicateValue(
+            row.Item_Size
+        ),
 
-    department:
-        String(department.id),
+        normalizeDuplicateValue(
+            row.Item_Type
+        ),
 
-    category:
-        normalizeDuplicateValue(categoryValue),
+        normalizeDuplicateValue(
+            row.Specification
+        )
 
-    brand:
-        normalizeDuplicateValue(row.Brand),
-
-    item_type:
-        normalizeDuplicateValue(row.Item_Type),
-
-    item_size:
-        normalizeDuplicateValue(row.Item_Size),
-
-    specification:
-        normalizeDuplicateValue(row.Specification),
-
-    unit:
-        normalizeDuplicateValue(row.Unit)
-});
+    ]
+    .join("|");
 
 if(seenMaterials.has(materialKey)){
 

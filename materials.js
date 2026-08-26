@@ -2557,10 +2557,305 @@ async function saveOpeningStock(
     }
 }
 
-//====================================================
-// IMPORT MATERIALS
-//====================================================
+// ====================================================
+// STRICT MATERIAL EXCEL PRE-VALIDATION
+// ====================================================
 
+async function validateMaterialImport(
+    rows,
+    departments,
+    existingMaterials
+){
+
+    const errors = [];
+
+    const seenCodes = new Set();
+    const seenMaterials = new Set();
+
+
+    // --------------------------------------------
+    // BUILD DEPARTMENT LOOKUP
+    // --------------------------------------------
+
+    const departmentMap = {};
+
+    (departments || []).forEach(dept => {
+
+        const name =
+            String(
+                dept.department_name || ""
+            )
+            .trim()
+            .toUpperCase();
+
+        const code =
+            String(
+                dept.department_code || ""
+            )
+            .trim()
+            .toUpperCase();
+
+        const prefix =
+            String(
+                dept.prefix || ""
+            )
+            .trim()
+            .toUpperCase();
+
+        if(name){
+            departmentMap[name] = dept;
+        }
+
+        if(code){
+            departmentMap[code] = dept;
+        }
+
+        if(prefix){
+            departmentMap[prefix] = dept;
+        }
+
+    });
+
+
+    // --------------------------------------------
+    // EXISTING MATERIAL CODE LOOKUP
+    // --------------------------------------------
+
+    const existingCodeSet =
+        new Set();
+
+    (existingMaterials || []).forEach(
+        material => {
+
+            const code =
+                String(
+                    material.material_code || ""
+                )
+                .trim()
+                .toUpperCase();
+
+            if(code){
+                existingCodeSet.add(code);
+            }
+
+        }
+    );
+
+
+    // --------------------------------------------
+    // VALIDATE EVERY ROW
+    // --------------------------------------------
+
+    rows.forEach((row, index) => {
+
+        const excelRow =
+            index + 2;
+
+        const materialName =
+            String(
+                row.Material_Name || ""
+            ).trim();
+
+        const departmentValue =
+            String(
+                row.Department || ""
+            )
+            .trim()
+            .toUpperCase();
+
+        const materialCode =
+            String(
+                row.Material_Code || ""
+            )
+            .trim()
+            .toUpperCase();
+
+        const categoryValue =
+            String(
+                row.Category || ""
+            ).trim();
+
+
+        // ----------------------------------------
+        // MATERIAL NAME
+        // ----------------------------------------
+
+        if(!materialName){
+
+            errors.push({
+                row: excelRow,
+                material: "(blank)",
+                error:
+                    "Material Name is missing"
+            });
+
+            return;
+        }
+
+
+        // ----------------------------------------
+        // DEPARTMENT
+        // ----------------------------------------
+
+        const department =
+            departmentMap[
+                departmentValue
+            ];
+
+        if(!department){
+
+            errors.push({
+                row: excelRow,
+                material: materialName,
+                error:
+                    "Department not found: " +
+                    departmentValue
+            });
+
+            return;
+        }
+
+
+        // ----------------------------------------
+        // MATERIAL CODE
+        // ----------------------------------------
+
+        if(materialCode){
+
+            // Already exists in database
+            if(
+                existingCodeSet.has(
+                    materialCode
+                )
+            ){
+
+                errors.push({
+                    row: excelRow,
+                    material: materialName,
+                    error:
+                        "Material Code already exists: " +
+                        materialCode
+                });
+
+            }
+
+
+            // Duplicate inside same Excel
+            if(
+                seenCodes.has(
+                    materialCode
+                )
+            ){
+
+                errors.push({
+                    row: excelRow,
+                    material: materialName,
+                    error:
+                        "Duplicate Material Code in Excel: " +
+                        materialCode
+                });
+
+            }
+
+            seenCodes.add(
+                materialCode
+            );
+
+        }
+
+
+        // ----------------------------------------
+        // DUPLICATE MATERIAL INSIDE EXCEL
+        // ----------------------------------------
+
+        const materialKey =
+            [
+                materialName,
+                department.id,
+
+                categoryValue
+                    .trim()
+                    .toUpperCase(),
+
+                String(
+                    row.Brand || ""
+                )
+                .trim()
+                .toUpperCase(),
+
+                String(
+                    row.Item_Type || ""
+                )
+                .trim()
+                .toUpperCase(),
+
+                String(
+                    row.Item_Size || ""
+                )
+                .trim()
+                .toUpperCase(),
+
+                String(
+                    row.Specification || ""
+                )
+                .trim()
+                .toUpperCase()
+            ]
+            .join("|");
+
+
+        if(
+            seenMaterials.has(
+                materialKey
+            )
+        ){
+
+            errors.push({
+                row: excelRow,
+                material: materialName,
+                error:
+                    "Duplicate material in Excel"
+            });
+
+        }
+
+        seenMaterials.add(
+            materialKey
+        );
+
+
+        // ----------------------------------------
+        // OPENING STOCK
+        // ----------------------------------------
+
+        const openingStock =
+            Number(
+                row.Opening_Stock || 0
+            );
+
+        if(
+            !Number.isFinite(
+                openingStock
+            ) ||
+            openingStock < 0
+        ){
+
+            errors.push({
+                row: excelRow,
+                material: materialName,
+                error:
+                    "Invalid Opening Stock: " +
+                    row.Opening_Stock
+            });
+
+        }
+
+    });
+
+
+    return errors;
+
+}
 async function importMaterialsFromExcel(){
 
     // ====================================================

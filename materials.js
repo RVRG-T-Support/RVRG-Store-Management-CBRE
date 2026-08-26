@@ -2705,7 +2705,6 @@ async function saveOpeningStock(
 
     const qty = Number(openingStock || 0);
 
-    // Nothing to add
     if(qty <= 0){
         return;
     }
@@ -2747,99 +2746,6 @@ async function saveOpeningStock(
     }
 }
 
-    const qty = Number(openingStock || 0);
-
-    const referenceNo =
-        "OPENING-" + String(materialCode).trim();
-
-    // Check whether opening stock already exists
-    const {
-        data: existingLedger,
-        error: findError
-    } = await supabase
-        .from("stock_ledger")
-        .select("id")
-        .eq("reference_no", referenceNo)
-        .maybeSingle();
-
-    if(findError){
-        throw findError;
-    }
-
-    // If opening stock is zero
-    if(qty <= 0){
-
-        // Remove previous opening entry if it exists
-        if(existingLedger){
-
-            const {
-                error: deleteError
-            } = await supabase
-                .from("stock_ledger")
-                .delete()
-                .eq("id", existingLedger.id);
-
-            if(deleteError){
-                throw deleteError;
-            }
-        }
-
-        return;
-    }
-
-    // Existing opening entry → UPDATE
-    if(existingLedger){
-
-        const {
-            error: updateError
-        } = await supabase
-            .from("stock_ledger")
-            .update({
-                quantity: qty,
-                transaction_type: "STOCK_IN",
-                remarks:
-                    "Opening stock imported from Excel",
-                transaction_date:
-                    new Date().toISOString()
-            })
-            .eq("id", existingLedger.id);
-
-        if(updateError){
-            throw updateError;
-        }
-
-        return;
-    }
-
-    // No opening entry → INSERT
-    const {
-        error: insertError
-    } = await supabase
-        .from("stock_ledger")
-        .insert([{
-            material_id: Number(materialId),
-
-            transaction_type: "STOCK_IN",
-
-            quantity: qty,
-
-            reference_no: referenceNo,
-
-            request_id: null,
-
-            remarks:
-                "Opening stock imported from Excel",
-
-            created_by: null,
-
-            transaction_date:
-                new Date().toISOString()
-        }]);
-
-    if(insertError){
-        throw insertError;
-    }
-}
 
 // ====================================================
 // STRICT MATERIAL EXCEL PRE-VALIDATION

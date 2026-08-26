@@ -2921,7 +2921,8 @@ async function validateMaterialImport(
         row.Opening_Stock || "",
 
     error:
-        "Duplicate material in Excel"
+        "Department not found: " +
+    departmentValue
 });
 
             return;
@@ -3091,20 +3092,19 @@ const materialKey =
     .join("|");
 
         if(
-            seenMaterials.has(
-                materialKey
-            )
-        ){
+    seenMaterials.has(
+        materialKey
+    )
+){
 
-            errors.push({
-                row: excelRow,
-                material: materialName,
-                error:
-                "Department not found: " +
-                    departmentValue
-            });
+    errors.push({
+        row: excelRow,
+        material: materialName,
+        error:
+            "Duplicate material in Excel"
+    });
 
-        }
+}
 
         seenMaterials.add(
             materialKey

@@ -2457,11 +2457,59 @@ function findExistingMaterial(
 // SAVE / UPDATE OPENING STOCK
 // ====================================================
 
+// ====================================================
+// ADD STOCK FROM MATERIAL EXCEL IMPORT
+// ====================================================
+
 async function saveOpeningStock(
     materialId,
     materialCode,
     openingStock
 ){
+
+    const qty = Number(openingStock || 0);
+
+    // Nothing to add
+    if(qty <= 0){
+        return;
+    }
+
+    const referenceNo =
+        "IMPORT-" +
+        String(materialCode).trim() +
+        "-" +
+        Date.now();
+
+    const {
+        error: insertError
+    } = await supabase
+        .from("stock_ledger")
+        .insert([{
+            material_id: Number(materialId),
+
+            transaction_type:
+                "STOCK_IN",
+
+            quantity: qty,
+
+            reference_no:
+                referenceNo,
+
+            request_id: null,
+
+            remarks:
+                "Additional stock imported from Excel",
+
+            created_by: null,
+
+            transaction_date:
+                new Date().toISOString()
+        }]);
+
+    if(insertError){
+        throw insertError;
+    }
+}
 
     const qty = Number(openingStock || 0);
 
@@ -3754,16 +3802,14 @@ else{
 
     if(existingMaterial){
 
-    throw new Error(
-        "Existing material detected: " +
-        materialCode +
-        " (" +
-        materialName +
-        "). Import rejected."
-    );
+    // Existing material is allowed.
+    // Excel Opening_Stock will be treated
+    // as ADDITIONAL STOCK.
 
-}
+    materialCode =
+        existingMaterial.material_code;
 
+    }
 
     // ----------------------------------------------
     // MATERIAL DOES NOT EXIST

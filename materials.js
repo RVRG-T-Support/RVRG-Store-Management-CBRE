@@ -3040,41 +3040,52 @@ if(materialCode){
         // DUPLICATE MATERIAL INSIDE EXCEL
         // ----------------------------------------
 
-        const materialKey =
-            [
-                materialName,
-                department.id,
+       const normalizeDuplicateValue = (value) =>
+    String(value || "")
+        .trim()
+        .replace(/\s+/g, " ")
+        .toUpperCase();
 
-                categoryValue
-                    .trim()
-                    .toUpperCase(),
 
-                String(
-                    row.Brand || ""
-                )
-                .trim()
-                .toUpperCase(),
+const materialKey =
+    [
+        normalizeDuplicateValue(
+            materialName
+        ),
 
-                String(
-                    row.Item_Type || ""
-                )
-                .trim()
-                .toUpperCase(),
+        String(
+            department.id
+        ),
 
-                String(
-                    row.Item_Size || ""
-                )
-                .trim()
-                .toUpperCase(),
+        normalizeDuplicateValue(
+            categoryValue
+        ),
 
-                String(
-                    row.Specification || ""
-                )
-                .trim()
-                .toUpperCase()
-            ]
-            .join("|");
+        normalizeDuplicateValue(
+            row.Brand
+        ),
 
+        normalizeDuplicateValue(
+            row.Item_Type
+        ),
+
+        // IMPORTANT:
+        // Different Item Size = different material
+        normalizeDuplicateValue(
+            row.Item_Size
+        ),
+
+        normalizeDuplicateValue(
+            row.Specification
+        ),
+
+        // Unit is also part of material identity
+        normalizeDuplicateValue(
+            row.Unit
+        )
+
+    ]
+    .join("|");
 
         if(
             seenMaterials.has(
@@ -3086,7 +3097,8 @@ if(materialCode){
                 row: excelRow,
                 material: materialName,
                 error:
-                    "Duplicate material in Excel"
+                "Department not found: " +
+                    departmentValue
             });
 
         }

@@ -2705,12 +2705,31 @@ async function validateMaterialImport(
         if(!department){
 
             errors.push({
-                row: excelRow,
-                material: materialName,
-                error:
-                    "Department not found: " +
-                    departmentValue
-            });
+    row: excelRow,
+
+    material: materialName,
+
+    material_code:
+        materialCode,
+
+    Department:
+        row.Department || "",
+
+    Category:
+        row.Category || "",
+
+    Brand:
+        row.Brand || "",
+
+    Unit:
+        row.Unit || "",
+
+    Opening_Stock:
+        row.Opening_Stock || "",
+
+    error:
+        "Duplicate material in Excel"
+});
 
             return;
         }
@@ -2730,12 +2749,32 @@ async function validateMaterialImport(
             ){
 
                 errors.push({
-                    row: excelRow,
-                    material: materialName,
-                    error:
-                        "Material Code already exists: " +
-                        materialCode
-                });
+    row: excelRow,
+
+    material: materialName,
+
+    material_code:
+        materialCode,
+
+    Department:
+        row.Department || "",
+
+    Category:
+        row.Category || "",
+
+    Brand:
+        row.Brand || "",
+
+    Unit:
+        row.Unit || "",
+
+    Opening_Stock:
+        row.Opening_Stock || "",
+
+    error:
+        "Material Code already exists: " +
+        materialCode
+});
 
             }
 
@@ -2855,6 +2894,89 @@ async function validateMaterialImport(
 
     return errors;
 
+}
+// ====================================================
+// DOWNLOAD FAILED IMPORT ROWS
+// ====================================================
+
+function downloadFailedImportRows(failedRows){
+
+    if(
+        !failedRows ||
+        !failedRows.length
+    ){
+        return;
+    }
+
+    if(
+        typeof XLSX === "undefined"
+    ){
+        console.error(
+            "Excel library is not loaded."
+        );
+
+        return;
+    }
+
+
+    const exportRows =
+        failedRows.map(item => {
+
+            return {
+                Excel_Row:
+                    item.row || "",
+
+                Material_Code:
+                    item.material_code || "",
+
+                Material_Name:
+                    item.material ||
+                    item.Material_Name ||
+                    "",
+
+                Department:
+                    item.Department || "",
+
+                Category:
+                    item.Category || "",
+
+                Brand:
+                    item.Brand || "",
+
+                Unit:
+                    item.Unit || "",
+
+                Opening_Stock:
+                    item.Opening_Stock || "",
+
+                Failure_Reason:
+                    item.error || ""
+            };
+
+        });
+
+
+    const worksheet =
+        XLSX.utils.json_to_sheet(
+            exportRows
+        );
+
+
+    const workbook =
+        XLSX.utils.book_new();
+
+
+    XLSX.utils.book_append_sheet(
+        workbook,
+        worksheet,
+        "Failed Rows"
+    );
+
+
+    XLSX.writeFile(
+        workbook,
+        "Material_Import_Failed_Rows.xlsx"
+    );
 }
 async function importMaterialsFromExcel(){
 
@@ -4047,20 +4169,142 @@ successCount++;
 // FINAL IMPORT COUNT CHECK
 // ====================================================
 
+// ====================================================
+// FINAL IMPORT VALIDATION
+// ====================================================
+
 if(
     successCount !==
     importedMaterialRows.length
 ){
 
-    throw new Error(
-        "IMPORT COUNT MISMATCH.\n\n" +
-        "Excel rows: " +
-        importedMaterialRows.length +
-        "\nSuccessfully processed: " +
-        successCount +
-        "\n\nImport rejected because the counts do not match."
+    // --------------------------------------------
+    // Build complete failure list
+    // --------------------------------------------
+
+    const exportFailures =
+        failedRows.map(item => {
+
+            const originalRow =
+                importedMaterialRows[
+                    Number(item.row) - 2
+                ] || {};
+
+            return {
+
+                row:
+                    item.row,
+
+                material_code:
+                    originalRow.Material_Code ||
+                    originalRow.material_code ||
+                    "",
+
+                material:
+                    item.material ||
+                    originalRow.Material_Name ||
+                    "",
+
+                Material_Name:
+                    originalRow.Material_Name ||
+                    "",
+
+                Department:
+                    originalRow.Department ||
+                    "",
+
+                Category:
+                    originalRow.Category ||
+                    "",
+
+                Brand:
+                    originalRow.Brand ||
+                    "",
+
+                Unit:
+                    originalRow.Unit ||
+                    "",
+
+                Opening_Stock:
+                    originalRow.Opening_Stock ||
+                    "",
+
+                error:
+                    item.error ||
+                    "Import failed"
+            };
+
+        });
+
+
+    // --------------------------------------------
+    // Download failed rows
+    // --------------------------------------------
+
+    downloadFailedImportRows(
+        exportFailures
     );
 
+
+    // --------------------------------------------
+    // Build user message
+    // --------------------------------------------
+
+    let message =
+        "IMPORT REJECTED.\n\n" +
+
+        "Excel rows: " +
+        importedMaterialRows.length +
+
+        "\nSuccessfully processed: " +
+        successCount +
+
+        "\nFailed rows: " +
+        exportFailures.length +
+
+        "\n\n";
+
+
+    exportFailures.forEach(
+        item => {
+
+            message +=
+                "Row " +
+                item.row +
+                " — " +
+                item.material +
+                "\n" +
+                item.error +
+                "\n\n";
+
+        }
+    );
+
+
+    console.error(
+        "Material Import Rejected:",
+        exportFailures
+    );
+
+
+    console.table(
+        exportFailures
+    );
+
+
+    showAlert(
+        message +
+        "Failed rows have been downloaded to Excel.",
+        "danger"
+    );
+
+
+    // IMPORTANT:
+    // Do NOT close the import modal.
+    // Do NOT clear the selected Excel.
+    // User can inspect and correct it.
+
+    return;
 }
         let message =
 

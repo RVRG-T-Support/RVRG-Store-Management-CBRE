@@ -2889,8 +2889,11 @@ async function validateMaterialImport(
 
         const department =
             departmentMap[
-                departmentValue
-            ];
+                String(departmentValue || "")
+            .trim()
+            .replace(/\s+/g, " ")
+            .toUpperCase()
+    ];
 
         if(!department){
 
@@ -3683,11 +3686,16 @@ const departmentValue =
                 // FIND DEPARTMENT
                 // --------------------------------------------
 
-                const department =
-                    departmentMap[
-                        departmentValue
-                            .toUpperCase()
-                    ];
+                const normalizedDepartment =
+    String(departmentValue || "")
+        .trim()
+        .replace(/\s+/g, " ")
+        .toUpperCase();
+
+const department =
+    departmentMap[
+        normalizedDepartment
+    ];
 
 
                 if(!department){

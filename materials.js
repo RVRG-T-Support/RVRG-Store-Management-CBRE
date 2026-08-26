@@ -3049,52 +3049,112 @@ const normalizeDuplicateValue = (value) =>
         .trim()
         .replace(/\s+/g, " ")
         .toUpperCase();
-// Duplicate data verification system-----
-const materialKey =
-    [
-        normalizeDuplicateValue(
-            materialName
-        ),
+// ----------------------------------------
+// DUPLICATE MATERIAL INSIDE EXCEL
+// ----------------------------------------
 
-        normalizeDuplicateValue(
-            row.Item_Size
-        ),
+const normalizeDuplicateValue = (value) => {
 
-        normalizeDuplicateValue(
-            row.Item_Type
-        ),
+    return String(value ?? "")
+        .replace(/\uFEFF/g, "")
+        .replace(/\u200B/g, "")
+        .replace(/\u00A0/g, " ")
+        .trim()
+        .replace(/\s+/g, " ")
+        .toUpperCase();
 
-        normalizeDuplicateValue(
-            row.Specification
-        )
+};
 
-    ]
-    .join("|");
+const duplicateMaterialName =
+    normalizeDuplicateValue(
+        row.Material_Name
+    );
+
+const duplicateItemSize =
+    normalizeDuplicateValue(
+        row.Item_Size
+    );
+
+const duplicateItemType =
+    normalizeDuplicateValue(
+        row.Item_Type
+    );
+
+const duplicateSpecification =
+    normalizeDuplicateValue(
+        row.Specification
+    );
+
+const materialKey = JSON.stringify({
+
+    Material_Name:
+        duplicateMaterialName,
+
+    Item_Size:
+        duplicateItemSize,
+
+    Item_Type:
+        duplicateItemType,
+
+    Specification:
+        duplicateSpecification
+
+});
+
 
 if(seenMaterials.has(materialKey)){
 
     const previousRow =
-        seenMaterials.get(materialKey);
+        seenMaterials.get(
+            materialKey
+        );
 
     errors.push({
 
-        row: excelRow,
+        row:
+            excelRow,
 
-        material: materialName,
+        material:
+            materialName,
 
         error:
             "Duplicate material in Excel. " +
-            "Same material already exists at Excel row " +
+
+            "Same Material Name + Item Size + Item Type + Specification " +
+
+            "already exists at Excel row " +
+
             previousRow +
-            "."
+
+            ". " +
+
+            "Match: " +
+
+            duplicateMaterialName +
+
+            " | " +
+
+            duplicateItemSize +
+
+            " | " +
+
+            duplicateItemType +
+
+            " | " +
+
+            duplicateSpecification
+
     });
 
 }
 else{
 
     seenMaterials.set(
+
         materialKey,
+
         excelRow
+
     );
 
 }

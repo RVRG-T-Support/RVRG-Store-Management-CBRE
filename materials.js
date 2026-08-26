@@ -3044,15 +3044,6 @@ if(materialCode){
 // DUPLICATE MATERIAL INSIDE EXCEL
 // ----------------------------------------
 
-const normalizeDuplicateValue = (value) =>
-    String(value ?? "")
-        .trim()
-        .replace(/\s+/g, " ")
-        .toUpperCase();
-// ----------------------------------------
-// DUPLICATE MATERIAL INSIDE EXCEL
-// ----------------------------------------
-
 const normalizeDuplicateValue = (value) => {
 
     return String(value ?? "")
@@ -3063,7 +3054,7 @@ const normalizeDuplicateValue = (value) => {
         .replace(/\s+/g, " ")
         .toUpperCase();
 
-};
+}; 
 
 const duplicateMaterialName =
     normalizeDuplicateValue(

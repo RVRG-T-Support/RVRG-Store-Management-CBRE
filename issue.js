@@ -139,12 +139,45 @@ window.processIssue = async function(requestId, materialId, balance) {
     const newStatus = 'ISSUED';
     const confirmMsg = `Issue all ${issueQty} item(s) and close this request?`;
     
-    if (!confirm(confirmMsg)) return;
+if (!confirm(confirmMsg)) return;
 
-    try {
-        // Step 1: Insert into material_issue_register
+try {
+
+    // ====================================================
+    // FINAL STOCK VALIDATION
+    // ====================================================
+
+    const { data: stockRecord, error: stockError } =
+        await supabaseClient
+            .from("current_stock")
+            .select("current_stock")
+            .eq("material_id", materialId)
+            .single();
+
+    if (stockError) {
+        throw stockError;
+    }
+
+    const currentStock =
+        Number(stockRecord?.current_stock || 0);
+
+    if (issueQty > currentStock) {
+
+        showAlert(
+            "Insufficient stock.\n\n" +
+            "Available stock: " +
+            currentStock +
+            "\nRequested quantity: " +
+            issueQty +
+            "\n\nMaterial cannot be issued.",
+            "danger"
+        );
+
+        return;
+    }
+// Step 1: Insert into material_issue_register
 // Step 1: Fetch request details
-const { data: requestInfo, error: requestError } = await supabase
+const { data: requestInfo, error: requestError } = await supabaseClient
     .from("material_requests")
     .select(`
         ticket_no,
@@ -194,7 +227,7 @@ const { data: issueData, error: issueError } = await supabase
 
     transaction_type: 'ISSUE',
 
-    quantity: Math.abs(issueQty),
+    quantity: -Math.abs(issueQty),
 
     reference_no: newIssueId.toString(),
 

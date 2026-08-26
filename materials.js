@@ -2760,7 +2760,7 @@ async function validateMaterialImport(
     const errors = [];
 
     const seenCodes = new Set();
-    const seenMaterials = new Set();
+    const seenMaterials = new Map();
 
 
     // --------------------------------------------
@@ -3040,76 +3040,69 @@ if(materialCode){
     );
 
 }
-        // ----------------------------------------
-        // DUPLICATE MATERIAL INSIDE EXCEL
-        // ----------------------------------------
+// ----------------------------------------
+// DUPLICATE MATERIAL INSIDE EXCEL
+// ----------------------------------------
 
-       const normalizeDuplicateValue = (value) =>
-    String(value || "")
+const normalizeDuplicateValue = (value) =>
+    String(value ?? "")
         .trim()
         .replace(/\s+/g, " ")
         .toUpperCase();
 
+const materialKey = JSON.stringify({
+    name:
+        normalizeDuplicateValue(materialName),
 
-const materialKey =
-    [
-        normalizeDuplicateValue(
-            materialName
-        ),
+    department:
+        String(department.id),
 
-        String(
-            department.id
-        ),
+    category:
+        normalizeDuplicateValue(categoryValue),
 
-        normalizeDuplicateValue(
-            categoryValue
-        ),
+    brand:
+        normalizeDuplicateValue(row.Brand),
 
-        normalizeDuplicateValue(
-            row.Brand
-        ),
+    item_type:
+        normalizeDuplicateValue(row.Item_Type),
 
-        normalizeDuplicateValue(
-            row.Item_Type
-        ),
+    item_size:
+        normalizeDuplicateValue(row.Item_Size),
 
-        // IMPORTANT:
-        // Different Item Size = different material
-        normalizeDuplicateValue(
-            row.Item_Size
-        ),
+    specification:
+        normalizeDuplicateValue(row.Specification),
 
-        normalizeDuplicateValue(
-            row.Specification
-        ),
+    unit:
+        normalizeDuplicateValue(row.Unit)
+});
 
-        // Unit is also part of material identity
-        normalizeDuplicateValue(
-            row.Unit
-        )
+if(seenMaterials.has(materialKey)){
 
-    ]
-    .join("|");
-
-        if(
-    seenMaterials.has(
-        materialKey
-    )
-){
+    const previousRow =
+        seenMaterials.get(materialKey);
 
     errors.push({
+
         row: excelRow,
+
         material: materialName,
+
         error:
-            "Duplicate material in Excel"
+            "Duplicate material in Excel. " +
+            "Same material already exists at Excel row " +
+            previousRow +
+            "."
     });
 
 }
+else{
 
-        seenMaterials.add(
-            materialKey
-        );
+    seenMaterials.set(
+        materialKey,
+        excelRow
+    );
 
+}
 
         // ----------------------------------------
         // OPENING STOCK

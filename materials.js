@@ -2929,112 +2929,113 @@ async function validateMaterialImport(
 // MATERIAL CODE
 // ----------------------------------------
 
-// Existing Material Code is allowed.
-// It will be treated as ADDITIONAL STOCK.
-//
-// However, verify that the Excel material name
-// matches the existing material. This prevents
-// accidentally adding stock to the wrong item.
+if(materialCode){
 
-if(
-    existingCodeSet.has(
-        materialCode
-    )
-){
+    // Existing Material Code is allowed.
+    // It will be treated as ADDITIONAL STOCK.
 
-    const existingMaterial =
-        (existingMaterials || []).find(
-            item =>
-                String(
-                    item.material_code || ""
-                )
-                .trim()
-                .toUpperCase()
-                === materialCode
-        );
+    if(
+        existingCodeSet.has(
+            materialCode
+        )
+    ){
 
-    if(existingMaterial){
-
-        const existingName =
-            normalizeImportMatch(
-                existingMaterial.material_name
+        const existingMaterial =
+            (existingMaterials || []).find(
+                item =>
+                    String(
+                        item.material_code || ""
+                    )
+                    .trim()
+                    .toUpperCase()
+                    === materialCode
             );
 
-        const excelName =
-            normalizeImportMatch(
-                materialName
-            );
+        if(existingMaterial){
 
-        if(
-            existingName !==
-            excelName
-        ){
+            const existingName =
+                normalizeImportMatch(
+                    existingMaterial.material_name
+                );
 
-            errors.push({
-                row: excelRow,
+            const excelName =
+                normalizeImportMatch(
+                    materialName
+                );
 
-                material:
-                    materialName,
+            // Same code but different material
+            // is still rejected.
+            if(
+                existingName !==
+                excelName
+            ){
 
-                material_code:
-                    materialCode,
+                errors.push({
+                    row: excelRow,
 
-                Department:
-                    row.Department || "",
+                    material:
+                        materialName,
 
-                Category:
-                    row.Category || "",
+                    material_code:
+                        materialCode,
 
-                Brand:
-                    row.Brand || "",
+                    Department:
+                        row.Department || "",
 
-                Unit:
-                    row.Unit || "",
+                    Category:
+                        row.Category || "",
 
-                Opening_Stock:
-                    row.Opening_Stock || "",
+                    Brand:
+                        row.Brand || "",
 
-                error:
-                    "Material Code " +
-                    materialCode +
-                    " already belongs to '" +
-                    existingMaterial.material_name +
-                    "'. Excel contains '" +
-                    materialName +
-                    "'."
-            });
+                    Unit:
+                        row.Unit || "",
+
+                    Opening_Stock:
+                        row.Opening_Stock || "",
+
+                    error:
+                        "Material Code " +
+                        materialCode +
+                        " already belongs to '" +
+                        existingMaterial.material_name +
+                        "'. Excel contains '" +
+                        materialName +
+                        "'."
+                });
+
+            }
 
         }
 
     }
 
-}
 
+    // Duplicate inside the SAME Excel
+    if(
+        seenCodes.has(
+            materialCode
+        )
+    ){
 
-            // Duplicate inside same Excel
-            if(
-                seenCodes.has(
-                    materialCode
-                )
-            ){
+        errors.push({
+            row: excelRow,
 
-                errors.push({
-                    row: excelRow,
-                    material: materialName,
-                    error:
-                        "Duplicate Material Code in Excel: " +
-                        materialCode
-                });
+            material:
+                materialName,
 
-            }
-
-            seenCodes.add(
+            error:
+                "Duplicate Material Code in Excel: " +
                 materialCode
-            );
+        });
 
-        }
+    }
 
+    seenCodes.add(
+        materialCode
+    );
 
+}
         // ----------------------------------------
         // DUPLICATE MATERIAL INSIDE EXCEL
         // ----------------------------------------

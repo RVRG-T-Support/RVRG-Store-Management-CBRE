@@ -89,11 +89,13 @@ async function loadCurrentStock() {
         filteredStockData = [...stockData];
 
 
-        populateDepartmentFilter();
+populateDepartmentFilter();
 
-        renderStockTable();
+renderStockTable();
 
-        updateStockSummary();
+updateStockSummary();
+
+reconcileStockTotal();
         
     } catch (error) {
 
@@ -489,6 +491,62 @@ function renderStockTable() {
 
 }
 
+//====================================================
+// STOCK TOTAL RECONCILIATION
+//====================================================
+
+function reconcileStockTotal() {
+
+    let total = 0;
+
+    const breakdown = [];
+
+    (stockData || []).forEach(item => {
+
+        const quantity =
+            Number(item.current_stock || 0);
+
+        total += quantity;
+
+        breakdown.push({
+            code:
+                item.material_code || "",
+
+            name:
+                item.material_name || "",
+
+            quantity:
+                quantity
+        });
+
+    });
+
+    console.log(
+        "===================================="
+    );
+
+    console.log(
+        "RVRG STOCK RECONCILIATION"
+    );
+
+    console.log(
+        "Total materials:",
+        breakdown.length
+    );
+
+    console.log(
+        "Total current stock:",
+        total
+    );
+
+    console.log(
+        "===================================="
+    );
+
+    console.table(breakdown);
+
+    return total;
+}
 
 //====================================================
 // UPDATE SUMMARY CARDS

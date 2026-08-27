@@ -94,8 +94,7 @@ async function loadCurrentStock() {
         renderStockTable();
 
         updateStockSummary();
-
-
+        
     } catch (error) {
 
         console.error(
@@ -299,6 +298,8 @@ function applyStockFilters() {
     renderStockTable();
 
     updateStockSummary();
+
+    reconcileStockTotal();
 
 }
 
@@ -575,6 +576,69 @@ function updateStockSummary() {
 
 }
 
+//====================================================
+// STOCK TOTAL RECONCILIATION
+//====================================================
+
+function reconcileStockTotal() {
+
+    let total = 0;
+
+    const stockBreakdown = [];
+
+    (stockData || []).forEach(item => {
+
+        const qty =
+            Number(
+                item.current_stock || 0
+            );
+
+        total += qty;
+
+        stockBreakdown.push({
+
+            code:
+                item.material_code || "",
+
+            name:
+                item.material_name || "",
+
+            quantity:
+                qty
+
+        });
+
+    });
+
+
+    console.log(
+        "===================================="
+    );
+
+    console.log(
+        "RVRG STOCK RECONCILIATION"
+    );
+
+    console.log(
+        "Materials:",
+        stockBreakdown.length
+    );
+
+    console.log(
+        "Total Current Stock:",
+        total
+    );
+
+    console.log(
+        "===================================="
+    );
+
+    console.table(
+        stockBreakdown
+    );
+
+    return total;
+}
 
 //====================================================
 // EVENT HANDLERS

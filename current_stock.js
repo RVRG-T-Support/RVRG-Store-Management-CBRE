@@ -668,6 +668,10 @@ function clearStockFilters() {
 // EXPORT EXCEL
 //====================================================
 
+//====================================================
+// EXPORT CURRENT STOCK TO EXCEL
+//====================================================
+
 function exportCurrentStock() {
 
     try {
@@ -685,7 +689,10 @@ function exportCurrentStock() {
         }
 
 
-        if (!filteredStockData.length) {
+        if (
+            !filteredStockData ||
+            !filteredStockData.length
+        ) {
 
             showAlert(
                 "There is no stock data to export.",
@@ -696,6 +703,14 @@ function exportCurrentStock() {
         }
 
 
+        // ====================================================
+        // CALCULATE TOTALS FROM EXACT EXPORTED DATASET
+        // ====================================================
+
+        let totalQuantity = 0;
+        let totalValue = 0;
+
+
         const exportData =
             filteredStockData.map(item => {
 
@@ -704,11 +719,26 @@ function exportCurrentStock() {
                         item.current_stock || 0
                     );
 
-
                 const unitCost =
                     Number(
                         item.unit_cost || 0
                     );
+
+                const minimumStock =
+                    Number(
+                        item.minimum_stock || 0
+                    );
+
+                const stockValue =
+                    currentStock *
+                    unitCost;
+
+
+                totalQuantity +=
+                    currentStock;
+
+                totalValue +=
+                    stockValue;
 
 
                 return {
@@ -732,18 +762,52 @@ function exportCurrentStock() {
                         currentStock,
 
                     "Minimum Stock":
-                        Number(
-                            item.minimum_stock || 0
-                        ),
+                        minimumStock,
 
                     "Stock Value":
-                        currentStock *
-                        unitCost
+                        stockValue
 
                 };
 
             });
 
+
+        // ====================================================
+        // ADD SUMMARY ROW
+        // ====================================================
+
+        exportData.push({
+
+            "Material Code":
+                "",
+
+            "Material Name":
+                "TOTAL",
+
+            "Department":
+                `${filteredStockData.length} Materials`,
+
+            "Unit":
+                "",
+
+            "Unit Cost":
+                "",
+
+            "Current Stock":
+                totalQuantity,
+
+            "Minimum Stock":
+                "",
+
+            "Stock Value":
+                totalValue
+
+        });
+
+
+        // ====================================================
+        // CREATE WORKSHEET
+        // ====================================================
 
         const worksheet =
             XLSX.utils.json_to_sheet(
@@ -765,6 +829,10 @@ function exportCurrentStock() {
         ];
 
 
+        // ====================================================
+        // CREATE WORKBOOK
+        // ====================================================
+
         const workbook =
             XLSX.utils.book_new();
 
@@ -776,13 +844,24 @@ function exportCurrentStock() {
         );
 
 
+        // ====================================================
+        // DOWNLOAD
+        // ====================================================
+
         XLSX.writeFile(
             workbook,
             "RVRG_Current_Stock.xlsx"
         );
 
 
-    } catch (error) {
+        showAlert(
+            `${filteredStockData.length} materials exported. ` +
+            `Total Stock: ${formatNumber(totalQuantity)}`,
+            "success"
+        );
+
+    }
+    catch (error) {
 
         console.error(
             "Stock Export Error:",
@@ -790,14 +869,14 @@ function exportCurrentStock() {
         );
 
         showAlert(
-            "Failed to export current stock.",
+            "Failed to export current stock: " +
+            error.message,
             "error"
         );
 
     }
 
 }
-
 
 //====================================================
 // NUMBER FORMAT

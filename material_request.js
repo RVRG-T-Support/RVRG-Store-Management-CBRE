@@ -44,13 +44,6 @@ function registerEvents(){
     .getElementById("departmentSelect")
 
     document
-    .getElementById("materialSelect")
-    .addEventListener(
-        "change",
-        handleMaterialChange
-    );
-
-    document
     .getElementById("materialRequestForm")
     .addEventListener(
         "submit",

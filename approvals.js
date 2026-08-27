@@ -39,10 +39,20 @@ async function loadPendingApprovals() {
             .from('material_requests')
             .select(`
                 *,
-                materials!material_requests_material_id_fkey (
-                    material_name,
-                    department_id
-                )
+    materials!material_requests_material_id_fkey (
+    material_code,
+    material_name,
+    brand,
+    item_type,
+    item_size,
+    specification,
+    unit,
+    unit_cost,
+    department_id,
+    departments (
+        department_name
+    )
+)
         `)
         .eq('request_status', 'PENDING')
             .order('created_at', { ascending: true }); // Oldest first
@@ -57,14 +67,37 @@ async function loadPendingApprovals() {
         tableBody.innerHTML = ''; // Clear table
         
         data.forEach(req => {
-            const materialName =
-        req.materials?.material_name || '-';
+            const material =
+    req.materials || {};
 
-        const deptName = "-";
+const materialCode =
+    material.material_code || "-";
 
-    
-        const techName =
-            req.technician_name || '-';
+const materialName =
+    material.material_name || "-";
+
+const brand =
+    material.brand || "-";
+
+const itemType =
+    material.item_type || "-";
+
+const itemSize =
+    material.item_size || "-";
+
+const specification =
+    material.specification || "-";
+
+const unit =
+    material.unit || "-";
+
+const unitCost =
+    Number(
+        material.unit_cost || 0
+    );
+
+const techName =
+    req.technician_name || "-";
             
             const tr = document.createElement('tr');
             tr.innerHTML = `
@@ -76,7 +109,51 @@ async function loadPendingApprovals() {
                     <strong>${deptName}</strong><br>
                     <small class="text-muted"><i class="fa-solid fa-user-wrench me-1"></i>${techName}</small>
                 </td>
-                <td><span class="fw-semibold">${materialName}</span></td>
+                <td>
+
+    <div class="fw-bold text-primary">
+        ${materialCode}
+    </div>
+
+    <div class="fw-semibold">
+        ${materialName}
+    </div>
+
+    <div class="small text-muted mt-1">
+
+        <div>
+            <strong>Brand:</strong>
+            ${brand}
+        </div>
+
+        <div>
+            <strong>Type:</strong>
+            ${itemType}
+        </div>
+
+        <div>
+            <strong>Size:</strong>
+            ${itemSize}
+        </div>
+
+        <div>
+            <strong>Specification:</strong>
+            ${specification}
+        </div>
+
+        <div>
+            <strong>Unit:</strong>
+            ${unit}
+        </div>
+
+        <div>
+            <strong>Unit Cost:</strong>
+            ₹${unitCost.toFixed(2)}
+        </div>
+
+    </div>
+
+</td>
                 <td><h5><span class="badge bg-secondary">${req.requested_qty}</span></h5></td>
                 <td>
                     ${req.location_type}<br>

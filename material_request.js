@@ -129,14 +129,28 @@ async function loadDepartments() {
 
 // Handle Department Changes
 
-async function handleDepartmentChange(e) {
-    const departmentId = e.target.value;
-    
-    // Reset dependant dropdowns
-    document.getElementById('unitPriceDisplay').innerText = '₹ 0.00';
-    document.getElementById('gstNote').innerText = 'GST info will appear here';
-    
-    await loadMaterials(Number(departmentId));
+async function handleDepartmentChange(e){
+
+    const departmentId =
+        Number(e.target.value);
+
+
+    // Clear current request items
+    // whenever department changes.
+
+    requestItemCount = 0;
+
+    window.requestItems = [
+        createRequestItem()
+    ];
+
+
+    // Load materials for selected department
+
+    await loadMaterials(
+        departmentId
+    );
+
 }
 
 // ====================================================

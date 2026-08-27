@@ -141,19 +141,24 @@ async function loadMaterials(departmentId) {
 console.log("Material Dept ID:", departmentId);
     try {
         console.log("Loading materials for:", departmentId);
-        const { data, error } = await supabase
-            .from("materials")
-            .select(`
-                id,
-                material_name,
-                unit,
-                unit_cost,
-                price,
-                gst_type
-            `)
-            .eq("department_id", departmentId)
-            .eq("is_active", true)
-            .order("material_name");
+       const { data, error } = await supabase
+    .from("materials")
+    .select(`
+        id,
+        material_code,
+        material_name,
+        brand,
+        item_type,
+        item_size,
+        specification,
+        unit,
+        unit_cost,
+        price,
+        gst_type
+    `)
+    .eq("department_id", departmentId)
+    .eq("is_active", true)
+    .order("material_name");
 
         if (error) throw error;
         console.log(data);
@@ -167,13 +172,26 @@ console.log("Material Dept ID:", departmentId);
 
         data.forEach(mat => {
 
-            matSelect.innerHTML += `
-                <option value="${mat.id}">
-                    ${mat.material_name}
-                </option>
-            `;
+    const details = [
+        mat.material_code,
+        mat.material_name,
+        mat.brand,
+        mat.item_type,
+        mat.item_size,
+        mat.specification
+    ]
+    .filter(value =>
+        String(value || "").trim() !== ""
+    )
+    .join(" | ");
 
-        });
+    matSelect.innerHTML += `
+        <option value="${mat.id}">
+            ${details}
+        </option>
+    `;
+
+});
 
     }
 

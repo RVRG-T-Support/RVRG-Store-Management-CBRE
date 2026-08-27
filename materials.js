@@ -3076,10 +3076,18 @@ const duplicateSpecification =
         row.Specification
     );
 
+const duplicateBrand =
+    normalizeDuplicateValue(
+        row.Brand
+    );
+
 const materialKey = JSON.stringify({
 
     Material_Name:
         duplicateMaterialName,
+
+    Brand:
+        duplicateBrand,
 
     Item_Size:
         duplicateItemSize,

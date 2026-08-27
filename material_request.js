@@ -41,28 +41,35 @@ async function initializePage(){
 function registerEvents(){
 
     document
-    .getElementById("departmentSelect")
+        .getElementById("departmentSelect")
+        .addEventListener(
+            "change",
+            handleDepartmentChange
+        );
+
 
     document
-    .getElementById("materialRequestForm")
-    .addEventListener(
-        "submit",
-        submitMaterialRequest
-    );
+        .getElementById("materialRequestForm")
+        .addEventListener(
+            "submit",
+            submitMaterialRequest
+        );
+
 
     document
-    .getElementById("btnAddRequestItem")
-    .addEventListener(
-        "click",
-        addRequestItem
-    );
+        .getElementById("btnAddRequestItem")
+        .addEventListener(
+            "click",
+            addRequestItem
+        );
+
 
     document
-    .getElementById("btnRefreshTable")
-    .addEventListener(
-        "click",
-        loadRecentRequests
-    );
+        .getElementById("btnRefreshTable")
+        .addEventListener(
+            "click",
+            loadRecentRequests
+        );
 
 }
 const hasAccess = checkUserAccess([

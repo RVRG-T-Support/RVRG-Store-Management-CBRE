@@ -109,21 +109,46 @@ const deptName =
                 <td>${req.requested_qty}</td>
                 <td>${issuedQty}</td>
                 <td class="table-warning fw-bold text-danger" id="balance-${req.id}">${balance}</td>
-                <td>${formatCurrency(unitCost)}</td>
-                <td class="fw-bold text-success">
-    ${formatCurrency(balance * unitCost)}
+               <td class="table-warning fw-bold text-danger"
+    id="balance-${req.id}">
+    ${balance}
 </td>
-                <td class="fw-bold text-primary">
+
+<td class="table-info fw-bold ${
+    currentStock < balance
+        ? 'text-danger'
+        : 'text-dark'
+}">
+    ${currentStock}
+</td>
+
+<td>
+    ${formatCurrency(unitCost)}
+</td>
+
+<td class="fw-bold text-success">
+    ${formatCurrency(
+        balance * unitCost
+    )}
+</td>
+
+<td class="fw-bold text-primary">
     ${balance}
 </td>
 
 <td>
-    <button class="btn btn-success btn-sm fw-bold shadow-sm"
-            onclick="processIssue(${req.id}, ${req.material_id}, ${balance})">
+    <button
+        class="btn btn-success btn-sm fw-bold shadow-sm"
+        onclick="processIssue(
+            ${req.id},
+            ${req.material_id},
+            ${balance}
+        )">
+
         Issue All
+
     </button>
 </td>
-                <td class="table-info fw-bold ${currentStock < balance ? 'text-danger' : 'text-dark'}">${currentStock}</td>
             `;
             tableBody.appendChild(tr);
         });

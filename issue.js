@@ -99,9 +99,110 @@ const deptName =
                 stockRecord?.current_stock || 0
             );
 
-            const tr = document.createElement('tr');
+const tr = document.createElement('tr');
 
 tr.innerHTML = `
+
+    <td>
+        ${formatDate(req.created_at)}
+    </td>
+
+    <td class="fw-bold">
+        ${req.ticket_no}
+    </td>
+
+    <td>
+        <small>
+            ${req.location_name || 'N/A'}
+        </small>
+    </td>
+
+    <td>
+        ${deptName}
+    </td>
+
+    <td>
+        ${material.material_code || ''}
+        <br>
+        <strong>
+            ${material.material_name || 'N/A'}
+        </strong>
+    </td>
+
+    <td>
+        ${req.requested_qty}
+    </td>
+
+    <td>
+        ${issuedQty}
+    </td>
+
+    <!-- BALANCE -->
+    <td
+        class="table-warning fw-bold ${
+            balance > 0
+                ? 'text-danger'
+                : 'text-success'
+        }"
+        id="balance-${req.id}">
+
+        ${balance}
+
+    </td>
+
+    <!-- UNIT COST -->
+    <td>
+        ${formatCurrency(unitCost)}
+    </td>
+
+    <!-- AMOUNT -->
+    <td class="fw-bold text-success">
+
+        ${formatCurrency(
+            balance * unitCost
+        )}
+
+    </td>
+
+    <!-- ISSUE ALL QUANTITY -->
+    <td class="fw-bold text-primary">
+
+        ${balance}
+
+    </td>
+
+    <!-- ACTION -->
+    <td>
+
+        <button
+            class="btn btn-success btn-sm fw-bold shadow-sm"
+            onclick="processIssue(
+                ${req.id},
+                ${req.material_id},
+                ${balance}
+            )">
+
+            Issue All
+
+        </button>
+
+    </td>
+
+    <!-- CURRENT STOCK -->
+    <td
+        class="table-info fw-bold ${
+            currentStock < balance
+                ? 'text-danger'
+                : 'text-dark'
+        }">
+
+        ${currentStock}
+
+    </td>
+
+`;
+
+tableBody.appendChild(tr);
     <td>
         ${formatDate(req.created_at)}
     </td>

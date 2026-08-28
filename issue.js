@@ -171,26 +171,22 @@ tr.innerHTML = `
     </td>
 
     <td class="fw-bold text-primary">
+    ${balance}
+</td>
 
-        ${balance}
+<td>
+    <button
+        class="btn btn-success btn-sm fw-bold shadow-sm"
+        onclick="processIssue(
+            ${req.id},
+            ${req.material_id},
+            ${balance}
+        )">
 
-    </td>
+        Issue All
 
-    <td>
-
-        <button
-            class="btn btn-success btn-sm fw-bold shadow-sm"
-            onclick="processIssue(
-                ${req.id},
-                ${req.material_id},
-                ${balance}
-            )">
-
-            Issue All
-
-        </button>
-
-    </td>
+    </button>
+</td>
 `;
             tableBody.appendChild(tr);
         });

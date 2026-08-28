@@ -46,12 +46,15 @@ async function loadApprovedRequests() {
             .from('material_requests')
             .select(`
                 *,
-                materials!material_requests_material_id_fkey (
-                    material_name,
-                    material_code,
-                    unit_cost,
-                    department_id
-                )
+    materials!material_requests_material_id_fkey (
+    material_name,
+    material_code,
+    unit_cost,
+    department_id,
+    departments (
+        department_name
+    )
+)
         `)
         .eq('request_status', 'APPROVED')
             .order('created_at', { ascending: true });
@@ -78,8 +81,9 @@ async function loadApprovedRequests() {
         requests.forEach(req => {
             const material = req.materials || {};
 
-            const deptName = "-";
-
+const deptName =
+    material.departments?.department_name ||
+    "-";
             const unitCost = Number(material.unit_cost || 0);
 
             const issuedQty = Number(req.issued_qty || 0);

@@ -53,7 +53,7 @@ async function loadPendingApprovals() {
         department_name
     )
 )
-        `)
+`)
         .eq('request_status', 'PENDING')
             .order('created_at', { ascending: true }); // Oldest first
 
@@ -95,6 +95,10 @@ const unitCost =
     Number(
         material.unit_cost || 0
     );
+
+const deptName =
+    material.departments?.department_name ||
+    "-";
 
 const techName =
     req.technician_name || "-";

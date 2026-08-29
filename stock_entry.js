@@ -73,18 +73,23 @@ function refreshMaterialDropdowns(){
 async function loadMaterials() {
     try {
         const { data, error } = await supabase
-    .from("materials")
-    .select(`
-        id,
-        material_name,
-        material_code,
-        unit,
-        department_id,
-        departments(
-            department_name
-        )
-    `)
-    .order("material_name", { ascending: true });
+.from('materials')
+.select(`
+    id,
+    material_name,
+    material_code,
+    department_id,
+    brand,
+    item_type,
+    item_size,
+    specification,
+    unit,
+    unit_cost,
+    departments(
+        department_name
+    )
+`)
+.order('material_name', { ascending: true });
             
         if (error) throw error;
         
@@ -98,7 +103,20 @@ async function loadMaterials() {
         showAlert(`Database Error: ${error.message}. Please check Supabase Table settings.`, "error");
     }
 }
+// ====================================================
+// HTML ESCAPE HELPER
+// ====================================================
 
+function escapeHtml(value) {
+
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+
+}
 // --- DYNAMIC ROWS & CALCULATIONS ---
 function addRow(prefillData = null) {
     rowCount++;
@@ -106,24 +124,63 @@ function addRow(prefillData = null) {
     const tr = document.createElement('tr');
     tr.id = `row-${rowCount}`;
 
-    let optionsHtml = '<option value="" selected disabled>Select Material...</option>';
-    materialsData.forEach(mat => {
-        const deptName =
-    mat.departments?.department_name || "-";
+    let optionsHtml =
+    '<option value="" selected disabled>Select Material...</option>';
 
-optionsHtml +=
-`<option value="${mat.id}">
-${deptName} - ${mat.material_name}
-</option>`;
-    });
+materialsData.forEach(mat => {
+
+    const deptName =
+        mat.departments?.department_name || "-";
+
+    const details = [
+
+        mat.material_code,
+        mat.material_name,
+        mat.brand,
+        mat.item_type,
+        mat.item_size,
+        mat.specification
+
+    ]
+    .filter(value =>
+        String(value ?? "").trim() !== ""
+    )
+    .join(" | ");
+
+
+    optionsHtml += `
+        <option value="${mat.id}">
+            ${escapeHtml(details)}
+        </option>
+    `;
+
+});
 
     tr.innerHTML = `
         <td class="align-middle fw-bold text-muted">${rowCount}</td>
         <td>
-            <select class="form-select form-select-sm item-select" required id="material-${rowCount}">
-                ${optionsHtml}
-            </select>
-        </td>
+
+    <select
+        class="form-select form-select-sm item-select"
+        required
+        id="material-${rowCount}">
+
+        ${optionsHtml}
+
+    </select>
+
+
+    <div
+        id="materialDetails-${rowCount}"
+        class="mt-2 p-2 border rounded bg-light small text-start">
+
+        <span class="text-muted">
+            Select a material to view full details.
+        </span>
+
+    </div>
+
+</td>
         <td>
     <input type="number"
            class="form-control form-control-sm item-row-input mx-auto qty-input"
@@ -167,6 +224,116 @@ ${deptName} - ${mat.material_name}
         </td>
     `;
     tbody.appendChild(tr);
+    // ====================================================
+// SHOW FULL MATERIAL DETAILS WHEN SELECTED
+// ====================================================
+
+document
+    .getElementById(`material-${rowCount}`)
+    .addEventListener(
+        "change",
+        function () {
+
+            const material =
+                materialsData.find(
+                    m =>
+                        Number(m.id) ===
+                        Number(this.value)
+                );
+
+
+            const detailsBox =
+                document.getElementById(
+                    `materialDetails-${rowCount}`
+                );
+
+
+            if (!material) {
+
+                detailsBox.innerHTML = `
+                    <span class="text-muted">
+                        Select a material to view full details.
+                    </span>
+                `;
+
+                return;
+
+            }
+
+
+            detailsBox.innerHTML = `
+
+                <div class="fw-bold text-primary mb-1">
+                    ${escapeHtml(
+                        material.material_code || "-"
+                    )}
+                    |
+                    ${escapeHtml(
+                        material.material_name || "-"
+                    )}
+                </div>
+
+
+                <div>
+                    <strong>Department:</strong>
+                    ${escapeHtml(
+                        material.departments
+                            ?.department_name || "-"
+                    )}
+                </div>
+
+
+                <div>
+                    <strong>Brand:</strong>
+                    ${escapeHtml(
+                        material.brand || "-"
+                    )}
+                </div>
+
+
+                <div>
+                    <strong>Item Type:</strong>
+                    ${escapeHtml(
+                        material.item_type || "-"
+                    )}
+                </div>
+
+
+                <div>
+                    <strong>Item Size:</strong>
+                    ${escapeHtml(
+                        material.item_size || "-"
+                    )}
+                </div>
+
+
+                <div>
+                    <strong>Specification:</strong>
+                    ${escapeHtml(
+                        material.specification || "-"
+                    )}
+                </div>
+
+
+                <div>
+                    <strong>Unit:</strong>
+                    ${escapeHtml(
+                        material.unit || "-"
+                    )}
+                </div>
+
+
+                <div>
+                    <strong>Unit Cost:</strong>
+                    ₹${Number(
+                        material.unit_cost || 0
+                    ).toFixed(2)}
+                </div>
+
+            `;
+
+        }
+    );
     document
     .getElementById(`material-${rowCount}`)
     .addEventListener("change", function () {
@@ -185,7 +352,20 @@ ${deptName} - ${mat.material_name}
         // Try to match by Material_ID exactly
         const matMatch = materialsData.find(m => m.id == prefillData.Material_ID);
         if (matMatch) {
-            document.getElementById(`material-${rowCount}`).value = matMatch.id;
+
+    const materialSelect =
+        document.getElementById(
+            `material-${rowCount}`
+        );
+
+    materialSelect.value =
+        matMatch.id;
+
+    materialSelect.dispatchEvent(
+        new Event("change")
+    );
+
+}
             document.getElementById(`unit-${rowCount}`).innerText =
 matMatch.unit || "-";
         }

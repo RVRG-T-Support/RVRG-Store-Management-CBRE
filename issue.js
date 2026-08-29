@@ -133,11 +133,6 @@ tr.innerHTML = `
         ${req.requested_qty}
     </td>
 
-    <!-- ALREADY ISSUED -->
-    <td>
-        ${issuedQty}
-    </td>
-
     <!-- CURRENT STOCK -->
     <td
         class="table-info fw-bold ${

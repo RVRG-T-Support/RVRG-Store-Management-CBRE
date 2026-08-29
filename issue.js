@@ -215,9 +215,7 @@ tr.innerHTML = `
 `;
 
 tableBody.appendChild(tr);
-`;
-            tableBody.appendChild(tr);
-        });
+});
 
     } catch (error) {
         console.error("Error loading issue desk:", error.message);

@@ -225,146 +225,521 @@ tableBody.appendChild(tr);
 
 // --- ISSUE PROCESS WORKFLOW ---
 
-window.processIssue = async function(requestId, materialId, balance) {
-    const issueQty = balance;
-    const user = getCurrentUser();
+// ====================================================
+// MANUAL MATERIAL ISSUE
+// ====================================================
 
-    const newStatus = 'ISSUED';
-    const confirmMsg = `Issue all ${issueQty} item(s) and close this request?`;
-    
-if (!confirm(confirmMsg)) return;
+window.processIssue = async function(
+    requestId,
+    materialId
+){
 
-try {
+    const inputEl =
+        document.getElementById(
+            `issueInput-${requestId}`
+        );
 
-    // ====================================================
-    // FINAL STOCK VALIDATION
-    // ====================================================
+    const issueQty =
+        Number(
+            inputEl.value || 0
+        );
 
-    const { data: stockRecord, error: stockError } =
-        await supabaseClient
-            .from("current_stock")
-            .select("current_stock")
-            .eq("material_id", materialId)
-            .single();
+    const user =
+        getCurrentUser();
 
-    if (stockError) {
-        throw stockError;
-    }
 
-    const currentStock =
-        Number(stockRecord?.current_stock || 0);
+    // ------------------------------------------------
+    // VALIDATE ENTERED QUANTITY
+    // ------------------------------------------------
 
-    if (issueQty > currentStock) {
+    if(
+        !issueQty ||
+        issueQty <= 0
+    ){
 
         showAlert(
-            "Insufficient stock.\n\n" +
-            "Available stock: " +
-            currentStock +
-            "\nRequested quantity: " +
-            issueQty +
-            "\n\nMaterial cannot be issued.",
+            "Please enter the issued quantity.",
+            "warning"
+        );
+
+        return;
+
+    }
+
+
+    // ------------------------------------------------
+    // GET LATEST REQUEST DATA
+    // ------------------------------------------------
+
+    const {
+        data: requestData,
+        error: requestError
+    } = await supabaseClient
+
+        .from("material_requests")
+
+        .select(
+            "requested_qty, issued_qty, ticket_no"
+        )
+
+        .eq(
+            "id",
+            requestId
+        )
+
+        .single();
+
+
+    if(requestError){
+
+        showAlert(
+            requestError.message,
             "danger"
         );
 
         return;
+
     }
-// Step 1: Insert into material_issue_register
-// Step 1: Fetch request details
-const { data: requestInfo, error: requestError } = await supabaseClient
-    .from("material_requests")
-    .select(`
-        ticket_no,
-        location_name,
-        location_type,
-        technician_id,
-        materials!material_requests_material_id_fkey (
-            unit_cost
+
+
+    const requestedQty =
+        Number(
+            requestData.requested_qty || 0
+        );
+
+    const alreadyIssued =
+        Number(
+            requestData.issued_qty || 0
+        );
+
+    const remainingQty =
+        requestedQty -
+        alreadyIssued;
+
+
+    // ------------------------------------------------
+    // GET REAL-TIME STOCK
+    // ------------------------------------------------
+
+    const {
+        data: stockRecord,
+        error: stockError
+    } = await supabaseClient
+
+        .from("current_stock")
+
+        .select(
+            "current_stock"
         )
-    `)
-    .eq("id", requestId)
-    .single();
 
-if (requestError) throw requestError;
+        .eq(
+            "material_id",
+            materialId
+        )
 
-const unitCost =
-    Number(requestInfo.materials?.unit_cost || 0);
+        .single();
 
-const totalCost =
-    unitCost * issueQty;
 
-// Step 2: Insert into material_issue_register
-const { data: issueData, error: issueError } = await supabase
-    .from("material_issue_register")
-    .insert([{
-        request_id: requestId,
-        material_id: materialId,
-        ticket_no: requestInfo.ticket_no,
-        location_name: requestInfo.location_name,
-        location_type: requestInfo.location_type,
-        technician_name: requestInfo.technician_id,
-        issued_qty: issueQty,
-        unit_cost: unitCost,
-        total_cost: totalCost,
-        remarks: "Material Issued",
-        issued_by: user.name
-    }])
-    .select();
-        if (issueError) throw issueError;
-        const newIssueId = issueData[0].id;
+    if(stockError){
 
-        // Step 2: Update stock_ledger (ISSUE type)
-        const { error: ledgerError } = await supabase
-            .from('stock_ledger')
-            .insert([{
-    material_id: materialId,
+        showAlert(
+            stockError.message,
+            "danger"
+        );
 
-    transaction_type: 'ISSUE',
+        return;
 
-    quantity: -Math.abs(issueQty),
+    }
 
-    reference_no: newIssueId.toString(),
 
-    request_id: requestId,
+    const currentStock =
+        Number(
+            stockRecord?.current_stock || 0
+        );
 
-    remarks: `Issued against ticket ${requestId}`,
 
-    created_by: user.id,
+    // ------------------------------------------------
+    // VALIDATE AGAINST REQUEST
+    // ------------------------------------------------
 
-    transaction_date: new Date().toISOString()
-}]);
+    if(
+        issueQty > remainingQty
+    ){
 
-        if (ledgerError) throw ledgerError;
+        showAlert(
+            "Issued quantity cannot be greater than the remaining requested quantity.\n\n" +
+            "Remaining requested quantity: " +
+            remainingQty +
+            "\nEntered issue quantity: " +
+            issueQty,
+            "danger"
+        );
 
-        // Step 3: Fetch current issued_qty from requests, then update material_requests table
-        const { data: reqData, error: reqFetchError } = await supabase
-            .from('material_requests')
-            .select('issued_qty')
-            .eq('id', requestId)
+        return;
+
+    }
+
+
+    // ------------------------------------------------
+    // VALIDATE AGAINST STOCK
+    // ------------------------------------------------
+
+    if(
+        issueQty > currentStock
+    ){
+
+        showAlert(
+            "Issued quantity cannot be greater than current stock.\n\n" +
+            "Current stock: " +
+            currentStock +
+            "\nEntered issue quantity: " +
+            issueQty,
+            "danger"
+        );
+
+        return;
+
+    }
+
+
+    // ------------------------------------------------
+    // CALCULATE NEW TOTAL ISSUED
+    // ------------------------------------------------
+
+    const newTotalIssued =
+        alreadyIssued +
+        issueQty;
+
+
+    // ------------------------------------------------
+    // REQUEST COMPLETION RULE
+    // ------------------------------------------------
+    //
+    // Request is complete when:
+    //
+    // A) requested quantity has been fulfilled
+    // OR
+    // B) current stock becomes zero after this issue
+    //
+    // Example:
+    // Requested = 5
+    // Already Issued = 0
+    // Current Stock = 4
+    // Issue Now = 4
+    //
+    // Result:
+    // Issued Total = 4
+    // Stock = 0
+    // Request = ISSUED / CLOSED
+    // ------------------------------------------------
+
+    let newStatus;
+
+    if(
+        newTotalIssued >= requestedQty ||
+        issueQty >= currentStock
+    ){
+
+        newStatus =
+            "ISSUED";
+
+    }
+    else{
+
+        newStatus =
+            "PARTIALLY_ISSUED";
+
+    }
+
+
+    // ------------------------------------------------
+    // CONFIRMATION MESSAGE
+    // ------------------------------------------------
+
+    const confirmMsg =
+
+        "Confirm material issue?\n\n" +
+
+        "Requested: " +
+        requestedQty +
+        "\n" +
+
+        "Previously Issued: " +
+        alreadyIssued +
+        "\n" +
+
+        "Issuing Now: " +
+        issueQty +
+        "\n" +
+
+        "Current Stock: " +
+        currentStock +
+        "\n\n" +
+
+        (
+            newStatus === "ISSUED"
+                ? "This request will be marked COMPLETED."
+                : "Remaining quantity will stay pending."
+        );
+
+
+    if(
+        !confirm(
+            confirmMsg
+        )
+    ){
+
+        return;
+
+    }
+
+
+    try{
+
+        // ------------------------------------------------
+        // FETCH MATERIAL COST
+        // ------------------------------------------------
+
+        const {
+            data: requestInfo,
+            error: requestInfoError
+        } = await supabaseClient
+
+            .from("material_requests")
+
+            .select(`
+                ticket_no,
+                location_name,
+                location_type,
+                technician_name,
+
+                materials!material_requests_material_id_fkey (
+                    unit_cost
+                )
+            `)
+
+            .eq(
+                "id",
+                requestId
+            )
+
             .single();
-            
-        if (reqFetchError) throw reqFetchError;
-        
-        const previousIssued = reqData.issued_qty || 0;
-        const newTotalIssued = previousIssued + issueQty;
 
-        const { error: updateError } = await supabase
-    .from('material_requests')
-    .update({
-        issued_qty: newTotalIssued,
-        request_status: newStatus
-    })
-    .eq('id', requestId);
 
-        if (updateError) throw updateError;
+        if(requestInfoError)
+            throw requestInfoError;
 
-        // Success!
-        showAlert(`Successfully issued ${issueQty} items!`, 'success');
-        
-        // Refresh the table to update balances and stock views
+
+        const unitCost =
+            Number(
+                requestInfo
+                    .materials
+                    ?.unit_cost || 0
+            );
+
+
+        const totalCost =
+            unitCost *
+            issueQty;
+
+
+        // ------------------------------------------------
+        // INSERT ISSUE REGISTER
+        // ------------------------------------------------
+
+        const {
+            data: issueData,
+            error: issueError
+        } = await supabaseClient
+
+            .from(
+                "material_issue_register"
+            )
+
+            .insert([{
+
+                request_id:
+                    requestId,
+
+                material_id:
+                    materialId,
+
+                ticket_no:
+                    requestInfo.ticket_no,
+
+                location_name:
+                    requestInfo.location_name,
+
+                location_type:
+                    requestInfo.location_type,
+
+                technician_name:
+                    requestInfo.technician_name,
+
+                issued_qty:
+                    issueQty,
+
+                unit_cost:
+                    unitCost,
+
+                total_cost:
+                    totalCost,
+
+                remarks:
+                    "Material issued manually",
+
+                issued_by:
+                    user.name
+
+            }])
+
+            .select();
+
+
+        if(issueError)
+            throw issueError;
+
+
+        const newIssueId =
+            issueData[0].id;
+
+
+        // ------------------------------------------------
+        // REDUCE STOCK
+        // ------------------------------------------------
+
+        const {
+            error: ledgerError
+        } = await supabaseClient
+
+            .from(
+                "stock_ledger"
+            )
+
+            .insert([{
+
+                material_id:
+                    materialId,
+
+                transaction_type:
+                    "ISSUE",
+
+                // IMPORTANT:
+                // ISSUE reduces stock
+
+                quantity:
+                    -Math.abs(
+                        issueQty
+                    ),
+
+                reference_no:
+                    newIssueId.toString(),
+
+                request_id:
+                    requestId,
+
+                remarks:
+                    `Issued against ticket ${requestInfo.ticket_no}`,
+
+                created_by:
+                    user.id,
+
+                transaction_date:
+                    new Date()
+                        .toISOString()
+
+            }]);
+
+
+        if(ledgerError)
+            throw ledgerError;
+
+
+        // ------------------------------------------------
+        // UPDATE REQUEST
+        // ------------------------------------------------
+
+        const {
+            error: updateError
+        } = await supabaseClient
+
+            .from(
+                "material_requests"
+            )
+
+            .update({
+
+                issued_qty:
+                    newTotalIssued,
+
+                request_status:
+                    newStatus
+
+            })
+
+            .eq(
+                "id",
+                requestId
+            );
+
+
+        if(updateError)
+            throw updateError;
+
+
+        // ------------------------------------------------
+        // SUCCESS MESSAGE
+        // ------------------------------------------------
+
+        if(
+            newStatus === "ISSUED" &&
+            newTotalIssued < requestedQty
+        ){
+
+            showAlert(
+
+                "Issued " +
+                issueQty +
+                " item(s).\n\n" +
+
+                "Current stock has been exhausted, " +
+                "so this request has been completed.",
+
+                "success"
+
+            );
+
+        }
+        else{
+
+            showAlert(
+
+                "Successfully issued " +
+                issueQty +
+                " item(s).",
+
+                "success"
+
+            );
+
+        }
+
+
         loadApprovedRequests();
 
-    } catch (error) {
-        console.error("Transaction Error:", error.message);
-        showAlert(error.message, "danger");
     }
+    catch(error){
+
+        console.error(
+            "Transaction Error:",
+            error.message
+        );
+
+        showAlert(
+            error.message,
+            "danger"
+        );
+
+    }
+
 };

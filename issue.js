@@ -102,7 +102,6 @@ const deptName =
 const tr = document.createElement('tr');
 
 tr.innerHTML = `
-
     <td>
         ${formatDate(req.created_at)}
     </td>
@@ -129,24 +128,25 @@ tr.innerHTML = `
         </strong>
     </td>
 
+    <!-- REQUESTED -->
     <td>
         ${req.requested_qty}
     </td>
 
+    <!-- ALREADY ISSUED -->
     <td>
         ${issuedQty}
     </td>
 
-    <!-- BALANCE -->
+    <!-- CURRENT STOCK -->
     <td
-        class="table-warning fw-bold ${
-            balance > 0
+        class="table-info fw-bold ${
+            currentStock <= 0
                 ? 'text-danger'
-                : 'text-success'
-        }"
-        id="balance-${req.id}">
+                : 'text-dark'
+        }">
 
-        ${balance}
+        ${currentStock}
 
     </td>
 
@@ -156,18 +156,41 @@ tr.innerHTML = `
     </td>
 
     <!-- AMOUNT -->
-    <td class="fw-bold text-success">
+    <td
+        class="fw-bold text-success"
+        id="amount-${req.id}">
 
-        ${formatCurrency(
-            balance * unitCost
-        )}
+        ₹ 0.00
 
     </td>
 
-    <!-- ISSUE ALL QUANTITY -->
-    <td class="fw-bold text-primary">
+    <!-- MANUAL ISSUE QUANTITY -->
+    <td class="bg-primary-subtle">
 
-        ${balance}
+        <input
+            type="number"
+            class="form-control form-control-sm issue-input mx-auto"
+            id="issueInput-${req.id}"
+
+            min="1"
+
+            max="${Math.min(
+                Number(req.requested_qty) - issuedQty,
+                currentStock
+            )}"
+
+            placeholder="Qty"
+
+            oninput="calculateAmount(
+                ${req.id},
+                ${unitCost},
+                ${Math.min(
+                    Number(req.requested_qty) - issuedQty,
+                    currentStock
+                )}
+            )"
+
+        >
 
     </td>
 
@@ -175,29 +198,23 @@ tr.innerHTML = `
     <td>
 
         <button
-            class="btn btn-success btn-sm fw-bold shadow-sm"
+            class="btn btn-primary btn-sm fw-bold shadow-sm"
+
             onclick="processIssue(
                 ${req.id},
-                ${req.material_id},
-                ${balance}
-            )">
+                ${req.material_id}
+            )"
 
-            Issue All
+            id="btnIssue-${req.id}">
+
+            Issue
 
         </button>
 
     </td>
+`;
 
-    <!-- CURRENT STOCK -->
-    <td
-        class="table-info fw-bold ${
-            currentStock < balance
-                ? 'text-danger'
-                : 'text-dark'
-        }">
-
-        ${currentStock}
-    </td>
+tableBody.appendChild(tr);
 `;
             tableBody.appendChild(tr);
         });

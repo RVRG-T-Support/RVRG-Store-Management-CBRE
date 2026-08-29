@@ -86,7 +86,7 @@ const deptName =
     "-";
             const unitCost = Number(material.unit_cost || 0);
 
-            const issuedQty = Number(req.issued_qty || 0);
+            //const issuedQty = Number(req.issued_qty || 0);
 
             const balance = Number(req.requested_qty) - issuedQty;
 

@@ -51,13 +51,14 @@ function refreshMaterialDropdowns(){
     });
 
 }
-    // Add one blank row immediately
-    addRow();
-    // Load materials for the dropdown
-    await loadMaterials();
+   // Load materials first
+await loadMaterials();
 
-    // Refresh material dropdowns after materials are loaded
-    refreshMaterialDropdowns();
+// Then create the first blank row
+addRow();
+
+// Refresh all material dropdowns
+refreshMaterialDropdowns();
     // Event Listeners
     document.getElementById('btnAddRow').addEventListener('click', () => addRow());
     document.getElementById('transportationCost').addEventListener('input', calculateGrandTotal);

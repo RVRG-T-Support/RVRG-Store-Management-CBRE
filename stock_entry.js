@@ -347,33 +347,58 @@ document
             material?.unit || "-";
 
     });
+// If Excel data is passed in, auto-fill the row
+if (prefillData) {
 
-    // If Excel data is passed in, auto-fill the row
-    if (prefillData) {
-        // Try to match by Material_ID exactly
-        const matMatch = materialsData.find(m => m.id == prefillData.Material_ID);
-        if (matMatch) {
-
-    const materialSelect =
-        document.getElementById(
-            `material-${rowCount}`
+    const matMatch =
+        materialsData.find(
+            m =>
+                m.id == prefillData.Material_ID
         );
 
-    materialSelect.value =
-        matMatch.id;
 
-    materialSelect.dispatchEvent(
-        new Event("change")
+    if (matMatch) {
+
+        const materialSelect =
+            document.getElementById(
+                `material-${rowCount}`
+            );
+
+        materialSelect.value =
+            matMatch.id;
+
+
+        materialSelect.dispatchEvent(
+            new Event("change")
+        );
+
+
+        document.getElementById(
+            `unit-${rowCount}`
+        ).innerText =
+            matMatch.unit || "-";
+
+    }
+
+
+    document.getElementById(
+        `qty-${rowCount}`
+    ).value =
+        prefillData.Quantity || 0;
+
+
+    document.getElementById(
+        `price-${rowCount}`
+    ).value =
+        prefillData.Unit_Price || 0;
+
+
+    calculateRowTotal(
+        rowCount
     );
 
 }
-            document.getElementById(`unit-${rowCount}`).innerText =
-matMatch.unit || "-";
-        }
-        document.getElementById(`qty-${rowCount}`).value = prefillData.Quantity || 0;
-        document.getElementById(`price-${rowCount}`).value = prefillData.Unit_Price || 0;
-        calculateRowTotal(rowCount);
-    }
+
 }
 
 function removeRow(id) {

@@ -529,13 +529,45 @@ function renderStockTable() {
                     </td>
 
  <td>
-    <strong>
+    <div class="fw-bold">
         ${escapeHtml(
-            item.material_code || "-"
+            item.material_name || "-"
         )}
-    </strong>
-</td>
+    </div>
 
+    <div class="small text-muted">
+        <strong>Category:</strong>
+        ${escapeHtml(
+            item.category || "-"
+        )}
+        &nbsp; | &nbsp;
+
+        <strong>Brand:</strong>
+        ${escapeHtml(
+            item.brand || "-"
+        )}
+    </div>
+
+    <div class="small text-muted">
+        <strong>Type:</strong>
+        ${escapeHtml(
+            item.item_type || "-"
+        )}
+        &nbsp; | &nbsp;
+
+        <strong>Size:</strong>
+        ${escapeHtml(
+            item.item_size || "-"
+        )}
+    </div>
+
+    <div class="small text-muted">
+        <strong>Specification:</strong>
+        ${escapeHtml(
+            item.specification || "-"
+        )}
+    </div>
+</td>
 <td>
     <div class="fw-bold">
         ${escapeHtml(

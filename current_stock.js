@@ -49,130 +49,151 @@ async function loadCurrentStock() {
 
         tbody.innerHTML = `
             <tr>
-                <td colspan="10" class="text-center text-muted py-5">
+                <td colspan="10"
+                    class="text-center text-muted py-5">
+
                     <div class="spinner-border spinner-border-sm text-success me-2"></div>
+
                     Loading current stock...
+
                 </td>
             </tr>
         `;
 
 
+        // ------------------------------------------------
+        // LOAD STOCK DATA
+        // ------------------------------------------------
+
         const {
-    data: stockRows,
-    error: stockError
-} = await window.supabaseClient
-    .from("current_stock")
-    .select(`
-        material_id,
-        material_code,
-        material_name,
-        department_name,
-        unit,
-        unit_cost,
-        current_stock,
-        minimum_stock
-    `)
-    .order("material_code", {
-        ascending: true
-    });
+            data: stockRows,
+            error: stockError
+        } = await window.supabaseClient
+
+            .from("current_stock")
+
+            .select(`
+                material_id,
+                material_code,
+                material_name,
+                department_name,
+                unit,
+                unit_cost,
+                current_stock,
+                minimum_stock
+            `)
+
+            .order(
+                "material_code",
+                {
+                    ascending: true
+                }
+            );
 
 
-if (stockError)
-    throw stockError;
+        if (stockError)
+            throw stockError;
 
 
-// ---------------------------------------------
-// LOAD MATERIAL MASTER DETAILS SEPARATELY
-// ---------------------------------------------
+        // ------------------------------------------------
+        // LOAD MATERIAL MASTER DETAILS
+        // ------------------------------------------------
 
-const {
-    data: materialRows,
-    error: materialError
-} = await window.supabaseClient
-    .from("materials")
-    .select(`
-        id,
-        category,
-        brand,
-        item_type,
-        item_size,
-        specification
-    `);
+        const {
+            data: materialRows,
+            error: materialError
+        } = await window.supabaseClient
 
+            .from("materials")
 
-if (materialError)
-    throw materialError;
+            .select(`
+                id,
+                category,
+                brand,
+                item_type,
+                item_size,
+                specification
+            `);
 
 
-// ---------------------------------------------
-// MERGE MATERIAL DETAILS WITH STOCK
-// ---------------------------------------------
-
-const materialMap = {};
-
-(materialRows || []).forEach(material => {
-
-    materialMap[
-        String(material.id)
-    ] = material;
-
-});
+        if (materialError)
+            throw materialError;
 
 
-stockData =
-    (stockRows || []).map(stock => {
+        // ------------------------------------------------
+        // CREATE MATERIAL LOOKUP
+        // ------------------------------------------------
 
-        const details =
-            materialMap[
-                String(stock.material_id)
-            ] || {};
-
-        return {
-
-            ...stock,
-
-            category:
-                details.category || "",
-
-            brand:
-                details.brand || "",
-
-            item_type:
-                details.item_type || "",
-
-            item_size:
-                details.item_size || "",
-
-            specification:
-                details.specification || ""
-
-        };
-
-    });
+        const materialMap = {};
 
 
-filteredStockData =
-    [...stockData];
+        (materialRows || []).forEach(
+            material => {
+
+                materialMap[
+                    String(material.id)
+                ] = material;
+
+            }
+        );
 
 
-        if (error)
-            throw error;
+        // ------------------------------------------------
+        // MERGE STOCK + MATERIAL DETAILS
+        // ------------------------------------------------
+
+        stockData =
+            (stockRows || []).map(
+                stock => {
+
+                    const details =
+                        materialMap[
+                            String(
+                                stock.material_id
+                            )
+                        ] || {};
 
 
-        stockData = data || [];
+                    return {
 
-        filteredStockData = [...stockData];
+                        ...stock,
+
+                        category:
+                            details.category || "",
+
+                        brand:
+                            details.brand || "",
+
+                        item_type:
+                            details.item_type || "",
+
+                        item_size:
+                            details.item_size || "",
+
+                        specification:
+                            details.specification || ""
+
+                    };
+
+                }
+            );
 
 
-populateDepartmentFilter();
+        filteredStockData =
+            [...stockData];
 
-renderStockTable();
 
-updateStockSummary();
+        populateDepartmentFilter();
 
-reconcileStockTotal();
-        
-    } catch (error) {
+        renderStockTable();
+
+        updateStockSummary();
+
+        reconcileStockTotal();
+
+
+    }
+    catch (error) {
 
         console.error(
             "Load Current Stock Error:",
@@ -196,14 +217,16 @@ reconcileStockTotal();
 
         showAlert(
             "Failed to load current stock: " +
-            error.message,
+            (
+                error?.message ||
+                String(error)
+            ),
             "error"
         );
 
     }
 
 }
-
 
 //====================================================
 // POPULATE DEPARTMENT FILTER

@@ -826,23 +826,90 @@ async function submitMaterialRequest(e){
     }
 
 
-    // ------------------------------------------------
-    // GENERATE ONE TICKET NUMBER
-    // ------------------------------------------------
+// ------------------------------------------------
+// GENERATE SEQUENTIAL TICKET NUMBER
+// ------------------------------------------------
 
-    const year =
-        new Date().getFullYear();
+const year =
+    new Date().getFullYear();
+
+const prefix =
+    `MR-${year}-`;
 
 
-    const random =
-        Math.floor(
-            1000 +
-            Math.random() * 9000
+// Get existing tickets for this year
+const {
+    data: existingTickets,
+    error: ticketError
+} = await supabase
+
+    .from("material_requests")
+
+    .select("ticket_no")
+
+    .like(
+        "ticket_no",
+        `${prefix}%`
+    );
+
+
+if(ticketError)
+    throw ticketError;
+
+
+// Find the highest existing sequence number
+let maxSequence = 0;
+
+(existingTickets || []).forEach(row => {
+
+    const ticketNo =
+        String(
+            row.ticket_no || ""
+        ).trim();
+
+
+    if(
+        !ticketNo.startsWith(prefix)
+    )
+        return;
+
+
+    const suffix =
+        ticketNo.substring(
+            prefix.length
         );
 
 
-    const ticketNo =
-        `MR-${year}-${random}`;
+    const number =
+        parseInt(
+            suffix,
+            10
+        );
+
+
+    if(
+        Number.isFinite(number) &&
+        number > maxSequence
+    ){
+
+        maxSequence =
+            number;
+
+    }
+
+});
+
+
+// Generate next sequential number
+const nextSequence =
+    maxSequence + 1;
+
+
+// Keep 4 digits
+const ticketNo =
+    `${prefix}${String(
+        nextSequence
+    ).padStart(4, "0")}`;
 
 
     // ------------------------------------------------

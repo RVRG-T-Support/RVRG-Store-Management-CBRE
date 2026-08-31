@@ -21,9 +21,6 @@ document.addEventListener('DOMContentLoaded', async () => {
    // Load materials first
 await loadMaterials();
 
-// Then create the first blank row
-addRow();
-
     // Event Listeners
     document.getElementById('btnAddRow').addEventListener('click', () => addRow());
     document.getElementById('transportationCost').addEventListener('input', calculateGrandTotal);
@@ -138,17 +135,6 @@ materialsData.forEach(mat => {
 
     </select>
 
-
-    <div
-        id="materialDetails-${rowCount}"
-        class="mt-2 p-2 border rounded bg-light small text-start">
-
-        <span class="text-muted">
-            Select a material to view full details.
-        </span>
-
-    </div>
-
 </td>
         <td>
     <input type="number"
@@ -183,7 +169,8 @@ materialsData.forEach(mat => {
            value="${document.getElementById('gstType').value || 18}"
            min="0"
            max="100"
-           oninput="calculateRowTotal(${rowCount})">
+           oninput="calculateRowTotal(${rowCount})"
+           onkeydown="handleEnterKey(event, ${rowCount})">
 </td>
         <td class="align-middle fw-bold row-total" id="total-${rowCount}" data-value="0">₹ 0.00</td>
         <td class="align-middle">
@@ -193,158 +180,7 @@ materialsData.forEach(mat => {
         </td>
     `;
     tbody.appendChild(tr);
-    // ====================================================
-// SHOW FULL MATERIAL DETAILS WHEN SELECTED
-// ====================================================
 
-document
-    .getElementById(`material-${rowCount}`)
-    .addEventListener(
-        "change",
-        function () {
-
-            const material =
-                materialsData.find(
-                    m =>
-                        Number(m.id) ===
-                        Number(this.value)
-                );
-
-
-            const detailsBox =
-                document.getElementById(
-                    `materialDetails-${rowCount}`
-                );
-
-
-            if (!material) {
-
-                detailsBox.innerHTML = `
-                    <span class="text-muted">
-                        Select a material to view full details.
-                    </span>
-                `;
-
-                return;
-
-            }
-
-
-            detailsBox.innerHTML = `
-
-    <div class="fw-bold text-primary fs-6 mb-2">
-        ${escapeHtml(
-            material.material_code || "-"
-        )}
-        —
-        ${escapeHtml(
-            material.material_name || "-"
-        )}
-    </div>
-
-
-    <div class="row g-2 small">
-
-        <div class="col-md-6">
-            <div class="border rounded p-2 bg-white">
-                <strong>Department:</strong><br>
-                ${escapeHtml(
-                    material.departments
-                        ?.department_name || "-"
-                )}
-            </div>
-        </div>
-
-
-        <div class="col-md-6">
-            <div class="border rounded p-2 bg-white">
-                <strong>Category:</strong><br>
-                ${escapeHtml(
-                    material.category || "-"
-                )}
-            </div>
-        </div>
-
-
-        <div class="col-md-6">
-            <div class="border rounded p-2 bg-white">
-                <strong>Brand:</strong><br>
-                ${escapeHtml(
-                    material.brand || "-"
-                )}
-            </div>
-        </div>
-
-
-        <div class="col-md-6">
-            <div class="border rounded p-2 bg-white">
-                <strong>Item Type:</strong><br>
-                ${escapeHtml(
-                    material.item_type || "-"
-                )}
-            </div>
-        </div>
-
-
-        <div class="col-md-6">
-            <div class="border rounded p-2 bg-white">
-                <strong>Item Size:</strong><br>
-                ${escapeHtml(
-                    material.item_size || "-"
-                )}
-            </div>
-        </div>
-
-
-        <div class="col-md-6">
-            <div class="border rounded p-2 bg-white">
-                <strong>Unit:</strong><br>
-                ${escapeHtml(
-                    material.unit || "-"
-                )}
-            </div>
-        </div>
-
-
-        <div class="col-12">
-            <div class="border rounded p-2 bg-white">
-                <strong>Specification:</strong><br>
-                ${escapeHtml(
-                    material.specification || "-"
-                )}
-            </div>
-        </div>
-
-
-        <div class="col-md-6">
-            <div class="border rounded p-2 bg-white">
-                <strong>Unit Cost:</strong><br>
-                ₹${Number(
-                    material.unit_cost || 0
-                ).toFixed(2)}
-            </div>
-        </div>
-
-
-        <div class="col-md-6">
-            <div class="border rounded p-2 bg-white">
-                <strong>GST:</strong><br>
-                ${escapeHtml(
-                    material.gst_type || "-"
-                )}
-                /
-                ${Number(
-                    material.gst_percentage || 0
-                ).toFixed(2)}%
-            </div>
-        </div>
-
-    </div>
-
-`;
-
-        }
-    );
     document
     .getElementById(`material-${rowCount}`)
     .addEventListener("change", function () {

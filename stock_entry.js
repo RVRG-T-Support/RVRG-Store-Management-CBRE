@@ -17,48 +17,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     confirmModalInstance = new bootstrap.Modal(document.getElementById('confirmStockModal'));
     document.getElementById('invoiceDate').value = new Date().toISOString().split('T')[0];
 
-//====================================================
-// REFRESH MATERIAL DROPDOWNS
-//====================================================
 
-function refreshMaterialDropdowns(){
-
-    document.querySelectorAll('.item-select').forEach(select => {
-
-        const currentValue = select.value;
-
-        let optionsHtml =
-            '<option value="" disabled>Select Material...</option>';
-
-        materialsData.forEach(mat => {
-
-            const deptName =
-                mat.departments?.department_name || "-";
-
-            optionsHtml += `
-                <option value="${mat.id}">
-                    ${deptName} - ${mat.material_name}
-                </option>
-            `;
-
-        });
-
-        select.innerHTML = optionsHtml;
-
-        if(currentValue)
-            select.value = currentValue;
-
-    });
-
-}
    // Load materials first
 await loadMaterials();
 
 // Then create the first blank row
 addRow();
 
-// Refresh all material dropdowns
-refreshMaterialDropdowns();
     // Event Listeners
     document.getElementById('btnAddRow').addEventListener('click', () => addRow());
     document.getElementById('transportationCost').addEventListener('input', calculateGrandTotal);
@@ -80,12 +45,15 @@ async function loadMaterials() {
     material_name,
     material_code,
     department_id,
+    category,
     brand,
     item_type,
     item_size,
     specification,
     unit,
     unit_cost,
+    gst_type,
+    gst_percentage,
     departments(
         department_name
     )
@@ -264,74 +232,116 @@ document
 
             detailsBox.innerHTML = `
 
-                <div class="fw-bold text-primary mb-1">
-                    ${escapeHtml(
-                        material.material_code || "-"
-                    )}
-                    |
-                    ${escapeHtml(
-                        material.material_name || "-"
-                    )}
-                </div>
+    <div class="fw-bold text-primary fs-6 mb-2">
+        ${escapeHtml(
+            material.material_code || "-"
+        )}
+        —
+        ${escapeHtml(
+            material.material_name || "-"
+        )}
+    </div>
 
 
-                <div>
-                    <strong>Department:</strong>
-                    ${escapeHtml(
-                        material.departments
-                            ?.department_name || "-"
-                    )}
-                </div>
+    <div class="row g-2 small">
+
+        <div class="col-md-6">
+            <div class="border rounded p-2 bg-white">
+                <strong>Department:</strong><br>
+                ${escapeHtml(
+                    material.departments
+                        ?.department_name || "-"
+                )}
+            </div>
+        </div>
 
 
-                <div>
-                    <strong>Brand:</strong>
-                    ${escapeHtml(
-                        material.brand || "-"
-                    )}
-                </div>
+        <div class="col-md-6">
+            <div class="border rounded p-2 bg-white">
+                <strong>Category:</strong><br>
+                ${escapeHtml(
+                    material.category || "-"
+                )}
+            </div>
+        </div>
 
 
-                <div>
-                    <strong>Item Type:</strong>
-                    ${escapeHtml(
-                        material.item_type || "-"
-                    )}
-                </div>
+        <div class="col-md-6">
+            <div class="border rounded p-2 bg-white">
+                <strong>Brand:</strong><br>
+                ${escapeHtml(
+                    material.brand || "-"
+                )}
+            </div>
+        </div>
 
 
-                <div>
-                    <strong>Item Size:</strong>
-                    ${escapeHtml(
-                        material.item_size || "-"
-                    )}
-                </div>
+        <div class="col-md-6">
+            <div class="border rounded p-2 bg-white">
+                <strong>Item Type:</strong><br>
+                ${escapeHtml(
+                    material.item_type || "-"
+                )}
+            </div>
+        </div>
 
 
-                <div>
-                    <strong>Specification:</strong>
-                    ${escapeHtml(
-                        material.specification || "-"
-                    )}
-                </div>
+        <div class="col-md-6">
+            <div class="border rounded p-2 bg-white">
+                <strong>Item Size:</strong><br>
+                ${escapeHtml(
+                    material.item_size || "-"
+                )}
+            </div>
+        </div>
 
 
-                <div>
-                    <strong>Unit:</strong>
-                    ${escapeHtml(
-                        material.unit || "-"
-                    )}
-                </div>
+        <div class="col-md-6">
+            <div class="border rounded p-2 bg-white">
+                <strong>Unit:</strong><br>
+                ${escapeHtml(
+                    material.unit || "-"
+                )}
+            </div>
+        </div>
 
 
-                <div>
-                    <strong>Unit Cost:</strong>
-                    ₹${Number(
-                        material.unit_cost || 0
-                    ).toFixed(2)}
-                </div>
+        <div class="col-12">
+            <div class="border rounded p-2 bg-white">
+                <strong>Specification:</strong><br>
+                ${escapeHtml(
+                    material.specification || "-"
+                )}
+            </div>
+        </div>
 
-            `;
+
+        <div class="col-md-6">
+            <div class="border rounded p-2 bg-white">
+                <strong>Unit Cost:</strong><br>
+                ₹${Number(
+                    material.unit_cost || 0
+                ).toFixed(2)}
+            </div>
+        </div>
+
+
+        <div class="col-md-6">
+            <div class="border rounded p-2 bg-white">
+                <strong>GST:</strong><br>
+                ${escapeHtml(
+                    material.gst_type || "-"
+                )}
+                /
+                ${Number(
+                    material.gst_percentage || 0
+                ).toFixed(2)}%
+            </div>
+        </div>
+
+    </div>
+
+`;
 
         }
     );

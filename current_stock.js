@@ -58,31 +58,101 @@ async function loadCurrentStock() {
 
 
         const {
-            data,
-            error
-        } = await window.supabaseClient
+    data: stockRows,
+    error: stockError
+} = await window.supabaseClient
+    .from("current_stock")
+    .select(`
+        material_id,
+        material_code,
+        material_name,
+        department_name,
+        unit,
+        unit_cost,
+        current_stock,
+        minimum_stock
+    `)
+    .order("material_code", {
+        ascending: true
+    });
 
-            .from("current_stock")
 
-            .select(`
-    material_id,
-    material_code,
-    material_name,
-    department_name,
-    category,
-    brand,
-    item_type,
-    item_size,
-    specification,
-    unit,
-    unit_cost,
-    current_stock,
-    minimum_stock
-`)
+if (stockError)
+    throw stockError;
 
-            .order("material_code", {
-                ascending: true
-            });
+
+// ---------------------------------------------
+// LOAD MATERIAL MASTER DETAILS SEPARATELY
+// ---------------------------------------------
+
+const {
+    data: materialRows,
+    error: materialError
+} = await window.supabaseClient
+    .from("materials")
+    .select(`
+        id,
+        category,
+        brand,
+        item_type,
+        item_size,
+        specification
+    `);
+
+
+if (materialError)
+    throw materialError;
+
+
+// ---------------------------------------------
+// MERGE MATERIAL DETAILS WITH STOCK
+// ---------------------------------------------
+
+const materialMap = {};
+
+(materialRows || []).forEach(material => {
+
+    materialMap[
+        String(material.id)
+    ] = material;
+
+});
+
+
+stockData =
+    (stockRows || []).map(stock => {
+
+        const details =
+            materialMap[
+                String(stock.material_id)
+            ] || {};
+
+        return {
+
+            ...stock,
+
+            category:
+                details.category || "",
+
+            brand:
+                details.brand || "",
+
+            item_type:
+                details.item_type || "",
+
+            item_size:
+                details.item_size || "",
+
+            specification:
+                details.specification || ""
+
+        };
+
+    });
+
+
+filteredStockData =
+    [...stockData];
 
 
         if (error)
@@ -469,10 +539,45 @@ function renderStockTable() {
 </td>
 
                     <td>
-                        ${escapeHtml(
-                            item.department_name || "-"
-                        )}
-                    </td>
+    <div class="fw-bold">
+        ${escapeHtml(
+            item.material_name || "-"
+        )}
+    </div>
+
+    <div class="small text-muted">
+        <strong>Category:</strong>
+        ${escapeHtml(
+            item.category || "-"
+        )}
+        &nbsp; | &nbsp;
+
+        <strong>Brand:</strong>
+        ${escapeHtml(
+            item.brand || "-"
+        )}
+    </div>
+
+    <div class="small text-muted">
+        <strong>Type:</strong>
+        ${escapeHtml(
+            item.item_type || "-"
+        )}
+        &nbsp; | &nbsp;
+
+        <strong>Size:</strong>
+        ${escapeHtml(
+            item.item_size || "-"
+        )}
+    </div>
+
+    <div class="small text-muted">
+        <strong>Specification:</strong>
+        ${escapeHtml(
+            item.specification || "-"
+        )}
+    </div>
+</td>
 
                     <td>
                         ${escapeHtml(

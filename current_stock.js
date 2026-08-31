@@ -65,15 +65,20 @@ async function loadCurrentStock() {
             .from("current_stock")
 
             .select(`
-                material_id,
-                material_code,
-                material_name,
-                department_name,
-                unit,
-                unit_cost,
-                current_stock,
-                minimum_stock
-            `)
+    material_id,
+    material_code,
+    material_name,
+    department_name,
+    category,
+    brand,
+    item_type,
+    item_size,
+    specification,
+    unit,
+    unit_cost,
+    current_stock,
+    minimum_stock
+`)
 
             .order("material_code", {
                 ascending: true
@@ -431,10 +436,37 @@ function renderStockTable() {
                     </td>
 
                     <td>
-                        ${escapeHtml(
-                            item.material_name || "-"
-                        )}
-                    </td>
+    <div class="fw-bold">
+        ${escapeHtml(
+            item.material_name || "-"
+        )}
+    </div>
+
+    <div class="small text-muted">
+        <strong>Category:</strong>
+        ${escapeHtml(item.category || "-")}
+        &nbsp; | &nbsp;
+
+        <strong>Brand:</strong>
+        ${escapeHtml(item.brand || "-")}
+    </div>
+
+    <div class="small text-muted">
+        <strong>Type:</strong>
+        ${escapeHtml(item.item_type || "-")}
+        &nbsp; | &nbsp;
+
+        <strong>Size:</strong>
+        ${escapeHtml(item.item_size || "-")}
+    </div>
+
+    <div class="small text-muted">
+        <strong>Specification:</strong>
+        ${escapeHtml(
+            item.specification || "-"
+        )}
+    </div>
+</td>
 
                     <td>
                         ${escapeHtml(

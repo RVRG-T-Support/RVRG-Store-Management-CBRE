@@ -2612,6 +2612,7 @@ function normalizeImportMatch(value){
 
 //====================================================
 // FIND EXISTING MATERIAL
+// SMART MATCH + DATA ENRICHMENT
 //====================================================
 
 function findExistingMaterial(
@@ -2641,51 +2642,191 @@ function findExistingMaterial(
         normalizeImportMatch(specification);
 
 
-    return (materials || []).find(item => {
+    // ------------------------------------------------
+    // FIRST: EXACT MATCH INCLUDING BRAND
+    // ------------------------------------------------
 
-        return (
+    const exactMatch =
+        (materials || []).find(item => {
 
-            Number(item.department_id) ===
-            Number(departmentId)
+            return (
 
-            &&
+                Number(item.department_id) ===
+                Number(departmentId)
 
-            normalizeImportMatch(
-                item.material_name
-            ) === targetName
+                &&
 
-            &&
+                Number(item.category_id || 0) ===
+                Number(categoryId || 0)
 
-            Number(item.category_id || 0) ===
-            Number(categoryId || 0)
+                &&
 
-            &&
+                normalizeImportMatch(
+                    item.material_name
+                ) === targetName
 
-            normalizeImportMatch(
-                item.brand
-            ) === targetBrand
+                &&
 
-            &&
+                normalizeImportMatch(
+                    item.brand
+                ) === targetBrand
 
-            normalizeImportMatch(
-                item.item_type
-            ) === targetItemType
+                &&
 
-            &&
+                normalizeImportMatch(
+                    item.item_type
+                ) === targetItemType
 
-            normalizeImportMatch(
-                item.item_size
-            ) === targetItemSize
+                &&
 
-            &&
+                normalizeImportMatch(
+                    item.item_size
+                ) === targetItemSize
 
-            normalizeImportMatch(
-                item.specification
-            ) === targetSpecification
+                &&
 
+                normalizeImportMatch(
+                    item.specification
+                ) === targetSpecification
+
+            );
+
+        });
+
+
+    if(exactMatch){
+        return exactMatch;
+    }
+
+
+    // ------------------------------------------------
+    // SECOND: SMART ENRICHMENT MATCH
+    //
+    // Brand is intentionally excluded here.
+    //
+    // This allows:
+    //
+    // Existing:
+    //   LED PANEL
+    //   Brand = blank
+    //
+    // Excel:
+    //   LED PANEL
+    //   Brand = PHILIPS
+    //
+    // to update the existing material.
+    // ------------------------------------------------
+
+    const candidates =
+        (materials || []).filter(item => {
+
+            return (
+
+                Number(item.department_id) ===
+                Number(departmentId)
+
+                &&
+
+                Number(item.category_id || 0) ===
+                Number(categoryId || 0)
+
+                &&
+
+                normalizeImportMatch(
+                    item.material_name
+                ) === targetName
+
+                &&
+
+                normalizeImportMatch(
+                    item.item_type
+                ) === targetItemType
+
+                &&
+
+                normalizeImportMatch(
+                    item.item_size
+                ) === targetItemSize
+
+                &&
+
+                normalizeImportMatch(
+                    item.specification
+                ) === targetSpecification
+
+            );
+
+        });
+
+
+    // ------------------------------------------------
+    // NO CORE MATCH
+    // ------------------------------------------------
+
+    if(candidates.length === 0){
+        return null;
+    }
+
+
+    // ------------------------------------------------
+    // BRAND SAFETY
+    //
+    // If Excel Brand is blank:
+    // preserve existing material.
+    //
+    // If existing Brand is blank:
+    // allow new Excel Brand to enrich it.
+    //
+    // If both Brands are different:
+    // treat as a different material.
+    // ------------------------------------------------
+
+    const brandCompatible =
+        candidates.filter(item => {
+
+            const existingBrand =
+                normalizeImportMatch(
+                    item.brand
+                );
+
+
+            return (
+                existingBrand === "" ||
+                targetBrand === "" ||
+                existingBrand === targetBrand
+            );
+
+        });
+
+
+    // ------------------------------------------------
+    // EXACTLY ONE SAFE MATCH
+    // ------------------------------------------------
+
+    if(brandCompatible.length === 1){
+
+        return brandCompatible[0];
+
+    }
+
+
+    // ------------------------------------------------
+    // MULTIPLE POSSIBLE MATCHES
+    // DO NOT GUESS
+    // ------------------------------------------------
+
+    if(brandCompatible.length > 1){
+
+        throw new Error(
+            "Multiple existing materials match '" +
+            materialName +
+            "'. Please use the correct Material Code."
         );
 
-    });
+    }
+
+
+    return null;
 
 }
 
@@ -3522,18 +3663,26 @@ async function importMaterialsFromExcel(){
     error: materialError
 } = await supabase
     .from("materials")
-    .select(`
-        id,
-        material_code,
-        material_name,
-        department_id,
-        category_id,
-        brand,
-        item_type,
-        item_size,
-        specification
-    `);
-
+   .select(`
+    id,
+    material_code,
+    material_name,
+    department_id,
+    category_id,
+    category,
+    brand,
+    item_type,
+    item_size,
+    specification,
+    unit,
+    minimum_stock,
+    rack_location,
+    status,
+    unit_cost,
+    gst_type,
+    gst_percentage,
+    description
+`)
         if(materialError){
 
             throw materialError;
@@ -3991,10 +4140,13 @@ let existingMaterial = null;
 
 if(materialCode){
 
+    // --------------------------------------------
+    // FIRST: MATCH BY MATERIAL CODE
+    // --------------------------------------------
+
     existingMaterial =
         (existingMaterials || []).find(
             item =>
-
                 String(
                     item.material_code || ""
                 )
@@ -4004,17 +4156,64 @@ if(materialCode){
         );
 
 
+    // --------------------------------------------
+    // CODE NOT FOUND
+    // TRY SMART MATERIAL MATCH
+    // --------------------------------------------
+
     if(!existingMaterial){
 
-        throw new Error(
-            "Material Code not found: " +
-            materialCode
-        );
+        existingMaterial =
+            findExistingMaterial(
+                existingMaterials,
+
+                materialName,
+
+                department.id,
+
+                category
+                    ? category.id
+                    : null,
+
+                row.Brand,
+
+                row.Item_Type,
+
+                row.Item_Size,
+
+                row.Specification
+            );
+
+
+        // ----------------------------------------
+        // SMART MATCH FOUND
+        // KEEP OLD MATERIAL CODE
+        // ----------------------------------------
+
+        if(existingMaterial){
+
+            materialCode =
+                existingMaterial.material_code;
+
+        }
+
+
+        // ----------------------------------------
+        // NOTHING MATCHED
+        // ----------------------------------------
+
+        else{
+
+            throw new Error(
+                "Material Code not found and no matching existing material was found: " +
+                materialCode
+            );
+
+        }
 
     }
 
 }
-
 
 // ==================================================
 // CASE 2
@@ -4135,7 +4334,29 @@ else{
                     .trim()
                     .toUpperCase();
 
+//====================================================
+// MERGE EXCEL DATA WITH EXISTING MATERIAL
+//====================================================
 
+function importValue(
+    incoming,
+    existing
+){
+
+    const incomingText =
+        String(
+            incoming ?? ""
+        ).trim();
+
+
+    if(incomingText !== ""){
+        return incoming;
+    }
+
+
+    return existing ?? "";
+
+}
                 const material = {
 
                     material_code:
@@ -4179,44 +4400,37 @@ else{
 
 
                     brand:
-                        String(
-                            row.Brand ||
-                            ""
-                        )
-                        .trim(),
+        importValue(
+        row.Brand,
+        existingMaterial?.brand
+        ),
 
 
-                    item_type:
-                        String(
-                            row.Item_Type ||
-                            ""
-                        )
-                        .trim(),
+       item_type:
+    importValue(
+        row.Item_Type,
+        existingMaterial?.item_type
+    ),
+
+    item_type:
+    importValue(
+        row.Item_Type,
+        existingMaterial?.item_type
+    ),
 
 
-                    specification:
-                        String(
-                            row.Specification ||
-                            ""
-                        )
-                        .trim(),
+    item_size:
+    importValue(
+        row.Item_Size,
+        existingMaterial?.item_size
+    ),
 
 
-                    item_size:
-                        String(
-                            row.Item_Size ||
-                            ""
-                        )
-                        .trim(),
-
-
-                    unit:
-                        String(
-                            row.Unit ||
-                            ""
-                        )
-                        .trim(),
-
+    unit:
+    importValue(
+        row.Unit,
+        existingMaterial?.unit
+    ),
 
                     minimum_stock:
                         Number(
@@ -4225,12 +4439,11 @@ else{
                         ),
 
 
-                    rack_location:
-                        String(
-                            row.Rack_Location ||
-                            ""
-                        )
-                        .trim(),
+    rack_location:
+    importValue(
+        row.Rack_Location,
+        existingMaterial?.rack_location
+    ),
 
 
                     status:
@@ -4260,12 +4473,11 @@ else{
                         ),
 
 
-                    description:
-                        String(
-                            row.Description ||
-                            ""
-                        )
-                        .trim(),
+     description:
+    importValue(
+        row.Description,
+        existingMaterial?.description
+    ),
 
 
                     searchable_text:

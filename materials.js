@@ -2612,7 +2612,7 @@ function normalizeImportMatch(value){
 
 //====================================================
 // FIND EXISTING MATERIAL
-// SMART MATCH + DATA ENRICHMENT
+// SMART IDENTITY + ENRICHMENT MATCH
 //====================================================
 
 function findExistingMaterial(
@@ -2643,78 +2643,10 @@ function findExistingMaterial(
 
 
     // ------------------------------------------------
-    // FIRST: EXACT MATCH INCLUDING BRAND
-    // ------------------------------------------------
-
-    const exactMatch =
-        (materials || []).find(item => {
-
-            return (
-
-                Number(item.department_id) ===
-                Number(departmentId)
-
-                &&
-
-                Number(item.category_id || 0) ===
-                Number(categoryId || 0)
-
-                &&
-
-                normalizeImportMatch(
-                    item.material_name
-                ) === targetName
-
-                &&
-
-                normalizeImportMatch(
-                    item.brand
-                ) === targetBrand
-
-                &&
-
-                normalizeImportMatch(
-                    item.item_type
-                ) === targetItemType
-
-                &&
-
-                normalizeImportMatch(
-                    item.item_size
-                ) === targetItemSize
-
-                &&
-
-                normalizeImportMatch(
-                    item.specification
-                ) === targetSpecification
-
-            );
-
-        });
-
-
-    if(exactMatch){
-        return exactMatch;
-    }
-
-
-    // ------------------------------------------------
-    // SECOND: SMART ENRICHMENT MATCH
+    // FIND CORE MATERIALS
     //
-    // Brand is intentionally excluded here.
-    //
-    // This allows:
-    //
-    // Existing:
-    //   LED PANEL
-    //   Brand = blank
-    //
-    // Excel:
-    //   LED PANEL
-    //   Brand = PHILIPS
-    //
-    // to update the existing material.
+    // Core identity:
+    // Department + Category + Material Name
     // ------------------------------------------------
 
     const candidates =
@@ -2736,32 +2668,10 @@ function findExistingMaterial(
                     item.material_name
                 ) === targetName
 
-                &&
-
-                normalizeImportMatch(
-                    item.item_type
-                ) === targetItemType
-
-                &&
-
-                normalizeImportMatch(
-                    item.item_size
-                ) === targetItemSize
-
-                &&
-
-                normalizeImportMatch(
-                    item.specification
-                ) === targetSpecification
-
             );
 
         });
 
-
-    // ------------------------------------------------
-    // NO CORE MATCH
-    // ------------------------------------------------
 
     if(candidates.length === 0){
         return null;
@@ -2769,19 +2679,15 @@ function findExistingMaterial(
 
 
     // ------------------------------------------------
-    // BRAND SAFETY
+    // CHECK COMPATIBILITY OF OPTIONAL DETAILS
     //
-    // If Excel Brand is blank:
-    // preserve existing material.
-    //
-    // If existing Brand is blank:
-    // allow new Excel Brand to enrich it.
-    //
-    // If both Brands are different:
-    // treat as a different material.
+    // Blank existing value  = can be enriched
+    // Blank Excel value     = preserve existing
+    // Same value             = compatible
+    // Different values       = conflict
     // ------------------------------------------------
 
-    const brandCompatible =
+    const compatible =
         candidates.filter(item => {
 
             const existingBrand =
@@ -2789,11 +2695,52 @@ function findExistingMaterial(
                     item.brand
                 );
 
+            const existingItemType =
+                normalizeImportMatch(
+                    item.item_type
+                );
 
-            return (
+            const existingItemSize =
+                normalizeImportMatch(
+                    item.item_size
+                );
+
+            const existingSpecification =
+                normalizeImportMatch(
+                    item.specification
+                );
+
+
+            const brandOK =
                 existingBrand === "" ||
                 targetBrand === "" ||
-                existingBrand === targetBrand
+                existingBrand === targetBrand;
+
+
+            const itemTypeOK =
+                existingItemType === "" ||
+                targetItemType === "" ||
+                existingItemType === targetItemType;
+
+
+            const itemSizeOK =
+                existingItemSize === "" ||
+                targetItemSize === "" ||
+                existingItemSize === targetItemSize;
+
+
+            const specificationOK =
+                existingSpecification === "" ||
+                targetSpecification === "" ||
+                existingSpecification ===
+                    targetSpecification;
+
+
+            return (
+                brandOK &&
+                itemTypeOK &&
+                itemSizeOK &&
+                specificationOK
             );
 
         });
@@ -2803,24 +2750,23 @@ function findExistingMaterial(
     // EXACTLY ONE SAFE MATCH
     // ------------------------------------------------
 
-    if(brandCompatible.length === 1){
-
-        return brandCompatible[0];
-
+    if(compatible.length === 1){
+        return compatible[0];
     }
 
 
     // ------------------------------------------------
     // MULTIPLE POSSIBLE MATCHES
-    // DO NOT GUESS
+    // NEVER GUESS
     // ------------------------------------------------
 
-    if(brandCompatible.length > 1){
+    if(compatible.length > 1){
 
         throw new Error(
             "Multiple existing materials match '" +
             materialName +
-            "'. Please use the correct Material Code."
+            "'. " +
+            "Please provide the correct Material Code."
         );
 
     }

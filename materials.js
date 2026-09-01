@@ -2609,10 +2609,9 @@ function normalizeImportMatch(value){
 
 }
 
-
 //====================================================
 // FIND EXISTING MATERIAL
-// SMART IDENTITY + ENRICHMENT MATCH
+// SMART MATCH + ENRICHMENT
 //====================================================
 
 function findExistingMaterial(
@@ -2643,9 +2642,7 @@ function findExistingMaterial(
 
 
     // ------------------------------------------------
-    // FIND CORE MATERIALS
-    //
-    // Core identity:
+    // CORE MATERIAL MATCH
     // Department + Category + Material Name
     // ------------------------------------------------
 
@@ -2674,105 +2671,236 @@ function findExistingMaterial(
 
 
     if(candidates.length === 0){
+
         return null;
+
     }
 
 
     // ------------------------------------------------
-    // CHECK COMPATIBILITY OF OPTIONAL DETAILS
+    // SCORE EACH EXISTING MATERIAL
     //
-    // Blank existing value  = can be enriched
-    // Blank Excel value     = preserve existing
-    // Same value             = compatible
-    // Different values       = conflict
+    // A populated incoming field must either:
+    // 1. match existing value
+    // OR
+    // 2. existing value must be blank so it can
+    //    be enriched.
+    //
+    // Different populated values = NOT a match.
     // ------------------------------------------------
 
-    const compatible =
-        candidates.filter(item => {
-
-            const existingBrand =
-                normalizeImportMatch(
-                    item.brand
-                );
-
-            const existingItemType =
-                normalizeImportMatch(
-                    item.item_type
-                );
-
-            const existingItemSize =
-                normalizeImportMatch(
-                    item.item_size
-                );
-
-            const existingSpecification =
-                normalizeImportMatch(
-                    item.specification
-                );
+    const scored = [];
 
 
-            const brandOK =
-                existingBrand === "" ||
-                targetBrand === "" ||
-                existingBrand === targetBrand;
+    candidates.forEach(item => {
 
-
-            const itemTypeOK =
-                existingItemType === "" ||
-                targetItemType === "" ||
-                existingItemType === targetItemType;
-
-
-            const itemSizeOK =
-                existingItemSize === "" ||
-                targetItemSize === "" ||
-                existingItemSize === targetItemSize;
-
-
-            const specificationOK =
-                existingSpecification === "" ||
-                targetSpecification === "" ||
-                existingSpecification ===
-                    targetSpecification;
-
-
-            return (
-                brandOK &&
-                itemTypeOK &&
-                itemSizeOK &&
-                specificationOK
+        const existingBrand =
+            normalizeImportMatch(
+                item.brand
             );
 
-        });
+        const existingItemType =
+            normalizeImportMatch(
+                item.item_type
+            );
+
+        const existingItemSize =
+            normalizeImportMatch(
+                item.item_size
+            );
+
+        const existingSpecification =
+            normalizeImportMatch(
+                item.specification
+            );
+
+
+        let compatible = true;
+
+        let score = 0;
+
+
+        // --------------------------------------------
+        // BRAND
+        // --------------------------------------------
+
+        if(targetBrand !== ""){
+
+            if(
+                existingBrand !== "" &&
+                existingBrand !== targetBrand
+            ){
+
+                compatible = false;
+
+            }
+            else if(
+                existingBrand === targetBrand
+            ){
+
+                score += 4;
+
+            }
+
+        }
+        else if(existingBrand === ""){
+
+            score += 1;
+
+        }
+
+
+        // --------------------------------------------
+        // ITEM TYPE
+        // --------------------------------------------
+
+        if(targetItemType !== ""){
+
+            if(
+                existingItemType !== "" &&
+                existingItemType !== targetItemType
+            ){
+
+                compatible = false;
+
+            }
+            else if(
+                existingItemType === targetItemType
+            ){
+
+                score += 3;
+
+            }
+
+        }
+        else if(existingItemType === ""){
+
+            score += 1;
+
+        }
+
+
+        // --------------------------------------------
+        // ITEM SIZE
+        // --------------------------------------------
+
+        if(targetItemSize !== ""){
+
+            if(
+                existingItemSize !== "" &&
+                existingItemSize !== targetItemSize
+            ){
+
+                compatible = false;
+
+            }
+            else if(
+                existingItemSize === targetItemSize
+            ){
+
+                score += 3;
+
+            }
+
+        }
+        else if(existingItemSize === ""){
+
+            score += 1;
+
+        }
+
+
+        // --------------------------------------------
+        // SPECIFICATION
+        // --------------------------------------------
+
+        if(targetSpecification !== ""){
+
+            if(
+                existingSpecification !== "" &&
+                existingSpecification !==
+                    targetSpecification
+            ){
+
+                compatible = false;
+
+            }
+            else if(
+                existingSpecification ===
+                    targetSpecification
+            ){
+
+                score += 5;
+
+            }
+
+        }
+        else if(existingSpecification === ""){
+
+            score += 1;
+
+        }
+
+
+        if(compatible){
+
+            scored.push({
+                item: item,
+                score: score
+            });
+
+        }
+
+    });
 
 
     // ------------------------------------------------
-    // EXACTLY ONE SAFE MATCH
+    // NO COMPATIBLE MATERIAL
+    //
+    // This is NOT an error.
+    // It means this is a different material variant.
     // ------------------------------------------------
 
-    if(compatible.length === 1){
-        return compatible[0];
+    if(scored.length === 0){
+
+        return null;
+
     }
 
 
     // ------------------------------------------------
-    // MULTIPLE POSSIBLE MATCHES
-    // NEVER GUESS
+    // SORT BY BEST MATCH
     // ------------------------------------------------
 
-    if(compatible.length > 1){
+    scored.sort(
+        (a,b) =>
+            b.score - a.score
+    );
 
-        throw new Error(
-            "Multiple existing materials match '" +
-            materialName +
-            "'. " +
-            "Please provide the correct Material Code."
-        );
+
+    const best =
+        scored[0];
+
+
+    // ------------------------------------------------
+    // ONLY RETURN A MATCH WHEN IT IS UNAMBIGUOUS
+    //
+    // If two materials have exactly the same score,
+    // do NOT guess.
+    // Return null so a new material can be created.
+    // ------------------------------------------------
+
+    if(
+        scored.length > 1 &&
+        scored[0].score === scored[1].score
+    ){
+
+        return null;
 
     }
 
 
-    return null;
+    return best.item;
 
 }
 

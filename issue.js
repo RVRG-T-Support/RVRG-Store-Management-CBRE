@@ -189,21 +189,34 @@ tr.innerHTML = `
 
     </td>
 
-    <!-- ACTION -->
-    <td>
+       <!-- ISSUE ACTION -->
+    <td class="text-center">
 
         <button
             class="btn btn-primary btn-sm fw-bold shadow-sm"
-
             onclick="processIssue(
                 ${req.id},
                 ${req.material_id}
             )"
-
             id="btnIssue-${req.id}">
 
+            <i class="fa-solid fa-box-arrow-up me-1"></i>
             Issue
+        </button>
 
+    </td>
+
+    <!-- REJECT ACTION -->
+    <td class="text-center">
+
+        <button
+            class="btn btn-danger btn-sm fw-bold shadow-sm"
+            onclick="rejectRequest(
+                ${req.id}
+            )">
+
+            <i class="fa-solid fa-xmark me-1"></i>
+            Reject
         </button>
 
     </td>
@@ -745,6 +758,74 @@ window.processIssue = async function(
             "danger"
         );
 
+    }
+
+};
+
+//====================================================
+// REJECT MATERIAL REQUEST
+//====================================================
+
+window.rejectRequest = async function(requestId){
+
+    const user = getCurrentUser();
+
+    if (!user) {
+        showAlert(
+            "User session not found.",
+            "danger"
+        );
+        return;
+    }
+
+    const confirmReject = confirm(
+        "Reject this material request?\n\n" +
+        "The request will be removed from the Issue Desk."
+    );
+
+    if (!confirmReject)
+        return;
+
+    try {
+
+        const {
+            error
+        } = await supabaseClient
+
+            .from("material_requests")
+
+            .update({
+                request_status: "REJECTED"
+            })
+
+            .eq(
+                "id",
+                requestId
+            );
+
+        if (error)
+            throw error;
+
+        showAlert(
+            "Material request rejected successfully.",
+            "success"
+        );
+
+        loadApprovedRequests();
+
+    }
+    catch(error){
+
+        console.error(
+            "Reject Request Error:",
+            error.message
+        );
+
+        showAlert(
+            "Failed to reject request.\n\n" +
+            error.message,
+            "danger"
+        );
     }
 
 };

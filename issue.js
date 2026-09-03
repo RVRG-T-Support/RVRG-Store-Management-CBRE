@@ -354,24 +354,34 @@ window.processIssue = async function(
 
 
     // ------------------------------------------------
-    // VALIDATE AGAINST REQUEST
+    // VALIDATE AGAINST STOCK
     // ------------------------------------------------
 
-    if(
-        issueQty > remainingQty
-    ){
+    if (currentStock <= 0) {
 
         showAlert(
-            "Issued quantity cannot be greater than the remaining requested quantity.\n\n" +
-            "Remaining requested quantity: " +
-            remainingQty +
-            "\nEntered issue quantity: " +
-            issueQty,
-            "danger"
+            "Material cannot be issued.\n\n" +
+            "Current stock is 0.\n\n" +
+            "Please arrange stock availability before issuing this request.",
+            "warning"
         );
 
         return;
+    }
 
+    if (issueQty > currentStock) {
+
+        showAlert(
+            "Insufficient stock available.\n\n" +
+            "Available stock: " +
+            currentStock +
+            "\nEntered issue quantity: " +
+            issueQty +
+            "\n\nPlease enter a quantity within the available stock.",
+            "warning"
+        );
+
+        return;
     }
 
 

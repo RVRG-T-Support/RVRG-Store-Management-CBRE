@@ -564,18 +564,12 @@ function renderStockTable() {
         item.department_name || "-"
     )}
 </td>
+
 <td>
     ${escapeHtml(
-        item.department_name || "-"
+        item.unit || "-"
     )}
 </td>
-
-                    <td>
-                        ${escapeHtml(
-                            item.unit || "-"
-                        )}
-                    </td>
-
                     <td class="text-end">
                         ₹${formatNumber(unitCost)}
                     </td>

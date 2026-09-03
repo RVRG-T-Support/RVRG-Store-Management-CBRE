@@ -4486,14 +4486,13 @@ function importValue(
         existingMaterial?.item_type
     ),
 
-    item_type:
+specification:
     importValue(
-        row.Item_Type,
-        existingMaterial?.item_type
+        row.Specification,
+        existingMaterial?.specification
     ),
 
-
-    item_size:
+item_size:
     importValue(
         row.Item_Size,
         existingMaterial?.item_size

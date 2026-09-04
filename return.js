@@ -15,8 +15,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Event Listeners
     document.getElementById('btnSearchTicket').addEventListener('click', searchTicket);
     document.getElementById('btnLoadRecent').addEventListener('click', loadRecentIssues);
-});
 
+    // Load return history
+    loadReturnHistory();
+});
 // --- DATA LOADING LOGIC ---
 
 async function loadRecentIssues() {
@@ -181,19 +183,317 @@ remarks: remarks || "Unused material returned"
 
         if (ledgerError) throw ledgerError;
 
-        // Success!
-        showAlert(`Successfully returned ${returnQty} items to inventory!`, 'success');
-        
-        // Refresh the current view
-        const ticketSearchValue = document.getElementById('searchTicketNo').value.trim();
-        if (ticketSearchValue) {
-            fetchIssues(ticketSearchValue);
-        } else {
-            loadRecentIssues();
-        }
+// Success!
+showAlert(`Successfully returned ${returnQty} items to inventory!`, 'success');
+
+// Refresh the current view
+const ticketSearchValue =
+    document.getElementById('searchTicketNo').value.trim();
+
+if (ticketSearchValue) {
+
+    fetchIssues(ticketSearchValue);
+
+} else {
+
+    loadRecentIssues();
+
+}
+
+// Refresh return history
+loadReturnHistory();
 
     } catch (error) {
         console.error("Return Transaction Error:", error.message);
         showAlert("Failed to complete return process. Check console.", "error");
     }
 };
+
+// ====================================================
+// RETURN HISTORY
+// ====================================================
+
+async function loadReturnHistory() {
+
+    const tableBody =
+        document.getElementById("returnHistoryTable");
+
+    if (!tableBody)
+        return;
+
+    tableBody.innerHTML = `
+        <tr>
+            <td colspan="8"
+                class="text-center text-muted py-4">
+
+                Loading return history...
+
+            </td>
+        </tr>
+    `;
+
+    try {
+
+        const {
+            data: returns,
+            error
+        } = await supabase
+
+            .from("material_returns")
+
+            .select(`
+                id,
+                returned_qty,
+                return_condition,
+                return_date,
+                remarks,
+                issue_id,
+
+                material_issue_register!material_returns_issue_id_fkey (
+                    ticket_no,
+                    issued_qty,
+                    technician_name,
+
+                    materials!material_issue_register_material_id_fkey (
+                        material_name
+                    ),
+
+                    material_requests!material_issue_register_request_id_fkey (
+                        anacity_complaint_no,
+                        ticket_no
+                    )
+                )
+            `)
+
+            .order(
+                "return_date",
+                {
+                    ascending: false
+                }
+            )
+
+            .limit(50);
+
+
+        if (error)
+            throw error;
+
+
+        if (
+            !returns ||
+            returns.length === 0
+        ) {
+
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="8"
+                        class="text-center text-muted py-4">
+
+                        No return history yet.
+
+                    </td>
+                </tr>
+            `;
+
+            return;
+
+        }
+
+
+        tableBody.innerHTML = "";
+
+
+        returns.forEach(returnRecord => {
+
+            const issue =
+                returnRecord.material_issue_register || {};
+
+            const request =
+                issue.material_requests || {};
+
+            const material =
+                issue.materials || {};
+
+
+            const complaintNumber =
+                request.anacity_complaint_no || "N/A";
+
+
+            const requestNumber =
+                request.ticket_no ||
+                issue.ticket_no ||
+                "N/A";
+
+
+            const materialName =
+                material.material_name || "-";
+
+
+            const technician =
+                issue.technician_name || "-";
+
+
+            const issuedQty =
+                Number(
+                    issue.issued_qty || 0
+                );
+
+
+            const returnedQty =
+                Number(
+                    returnRecord.returned_qty || 0
+                );
+
+
+            const condition =
+                returnRecord.return_condition || "-";
+
+
+            const remarks =
+                returnRecord.remarks || "-";
+
+
+            const returnDate =
+                returnRecord.return_date
+                    ? formatDate(
+                        returnRecord.return_date
+                    )
+                    : "N/A";
+
+
+            const tr =
+                document.createElement("tr");
+
+
+            tr.innerHTML = `
+
+                <!-- COMPLAINT / REQUEST -->
+
+                <td>
+
+                    <div class="fw-bold text-success">
+
+                        Complaint Number:
+                        ${complaintNumber}
+
+                    </div>
+
+                    <div class="fw-bold text-primary">
+
+                        MR:
+                        ${requestNumber}
+
+                    </div>
+
+                </td>
+
+
+                <!-- MATERIAL -->
+
+                <td>
+
+                    ${materialName}
+
+                </td>
+
+
+                <!-- TECHNICIAN -->
+
+                <td>
+
+                    ${technician}
+
+                </td>
+
+
+                <!-- ISSUED -->
+
+                <td>
+
+                    <span class="badge bg-secondary">
+
+                        ${issuedQty}
+
+                    </span>
+
+                </td>
+
+
+                <!-- RETURNED -->
+
+                <td>
+
+                    <span class="badge bg-success">
+
+                        ${returnedQty}
+
+                    </span>
+
+                </td>
+
+
+                <!-- CONDITION -->
+
+                <td>
+
+                    <span class="badge bg-success">
+
+                        ${condition}
+
+                    </span>
+
+                </td>
+
+
+                <!-- REMARKS -->
+
+                <td>
+
+                    ${remarks}
+
+                </td>
+
+
+                <!-- RETURN DATE -->
+
+                <td>
+
+                    <small class="text-muted">
+
+                        ${returnDate}
+
+                    </small>
+
+                </td>
+
+            `;
+
+
+            tableBody.appendChild(tr);
+
+        });
+
+
+    }
+    catch(error) {
+
+        console.error(
+            "Error loading return history:",
+            error.message
+        );
+
+
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="8"
+                    class="text-center text-danger py-4">
+
+                    Failed to load return history.
+
+                </td>
+            </tr>
+        `;
+
+    }
+
+}

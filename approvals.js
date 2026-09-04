@@ -176,15 +176,45 @@ const techName =
     </div>
 
 </td>
-                <td><h5><span class="badge bg-secondary">${req.requested_qty}</span></h5></td>
+                <td>
+    <div class="fw-bold mb-1">
+        Requested:
+        <span class="badge bg-secondary">
+            ${req.requested_qty}
+        </span>
+    </div>
+
+    <div class="mt-2">
+        <label
+            for="approvedQty_${req.id}"
+            class="form-label small mb-1"
+        >
+            Approve Qty
+        </label>
+
+        <input
+            type="number"
+            class="form-control form-control-sm text-center"
+            id="approvedQty_${req.id}"
+            value="${req.requested_qty}"
+            min="1"
+            max="${req.requested_qty}"
+            step="1"
+        >
+    </div>
+</td>
                 <td>
                     ${req.location_type}<br>
                     <small class="text-muted">${req.location_name || 'N/A'}</small>
                 </td>
                 <td class="text-center">
-                    <button class="btn btn-success btn-sm me-1 mb-1" onclick="approveRequest(${req.id}, '${req.ticket_no}')" title="Approve">
-                        <i class="fa-solid fa-check"></i> Approve
-                    </button>
+                    <<button
+    class="btn btn-success btn-sm me-1 mb-1"
+    onclick="approveRequest(${req.id}, '${req.ticket_no}')"
+    title="Approve"
+>
+    <i class="fa-solid fa-check"></i> Approve
+</button>
                     <button class="btn btn-outline-danger btn-sm mb-1" onclick="openRejectModal(${req.id}, '${req.ticket_no}')" title="Reject">
                         <i class="fa-solid fa-xmark"></i> Reject
                     </button>
@@ -202,34 +232,107 @@ const techName =
 // --- APPROVAL LOGIC ---
 
 async function approveRequest(requestId, ticketNo) {
-    if (!confirm(`Are you sure you want to APPROVE ticket ${ticketNo}?`)) return;
+
+    const approvedQtyInput =
+        document.getElementById(`approvedQty_${requestId}`);
+
+    if (!approvedQtyInput) {
+        showAlert("Approved quantity field was not found.", "danger");
+        return;
+    }
+
+    const approvedQty =
+        Number(approvedQtyInput.value);
+
+    if (!Number.isFinite(approvedQty) || approvedQty <= 0) {
+        showAlert("Please enter a valid approved quantity.", "warning");
+        approvedQtyInput.focus();
+        return;
+    }
+
+    // Get the originally requested quantity
+    const requestedQty =
+        Number(
+            approvedQtyInput.getAttribute("max")
+        );
+
+    if (!Number.isFinite(requestedQty) || requestedQty <= 0) {
+        showAlert("Original requested quantity is invalid.", "danger");
+        return;
+    }
+
+    if (approvedQty > requestedQty) {
+        showAlert(
+            `Approved quantity cannot be greater than requested quantity (${requestedQty}).`,
+            "warning"
+        );
+
+        approvedQtyInput.focus();
+        return;
+    }
+
+    const approvalType =
+        approvedQty < requestedQty
+            ? "PARTIALLY_APPROVED"
+            : "APPROVED";
+
+    const confirmationMessage =
+        approvalType === "PARTIALLY_APPROVED"
+            ? `Ticket ${ticketNo}\n\nRequested Quantity: ${requestedQty}\nApproved Quantity: ${approvedQty}\n\nThis request will be marked as PARTIALLY APPROVED.\n\nContinue?`
+            : `Ticket ${ticketNo}\n\nRequested Quantity: ${requestedQty}\nApproved Quantity: ${approvedQty}\n\nThis request will be fully APPROVED.\n\nContinue?`;
+
+    if (!confirm(confirmationMessage)) {
+        return;
+    }
 
     try {
+
         const user = getCurrentUser();
 
-        // Update status to APPROVED in database
         const { error } = await supabase
             .from('material_requests')
-            .update({ 
-                request_status: 'APPROVED',
-                approved_by: user.id, // Assuming you have this column or track it
+            .update({
+                request_status: approvalType,
+                approved_qty: approvedQty,
+                approved_by: user.id,
                 approval_date: new Date().toISOString()
             })
             .eq('id', requestId);
 
         if (error) throw error;
 
-        showAlert(`Ticket ${ticketNo} successfully approved!`, 'success');
-        
-        // Refresh the table to remove the approved item
+        if (approvalType === "PARTIALLY_APPROVED") {
+
+            showAlert(
+                `Ticket ${ticketNo} partially approved: ${approvedQty} of ${requestedQty}.`,
+                "warning"
+            );
+
+        } else {
+
+            showAlert(
+                `Ticket ${ticketNo} successfully approved!`,
+                "success"
+            );
+        }
+
+        // Refresh both sections
         loadPendingApprovals();
+        loadApprovedHistory();
 
     } catch (error) {
-        console.error("Error approving request:", error.message);
-        showAlert("Failed to approve request.", "danger");
+
+        console.error(
+            "Error approving request:",
+            error.message
+        );
+
+        showAlert(
+            "Failed to approve request.",
+            "danger"
+        );
     }
 }
-
 // --- REJECTION LOGIC ---
 
 function openRejectModal(requestId, ticketNo) {
@@ -279,17 +382,23 @@ async function processRejection() {
 // --- APPROVED HISTORY LOGIC ---
 
 async function loadApprovedHistory() {
-    const tableBody = document.getElementById('approvedHistoryTable');
+
+    const tableBody =
+        document.getElementById('approvedHistoryTable');
+
+    if (!tableBody) return;
 
     tableBody.innerHTML = `
         <tr>
-            <td colspan="6" class="text-center text-muted py-4">
+            <td colspan="8"
+                class="text-center text-muted py-4">
                 Loading approved history...
             </td>
         </tr>
     `;
 
     try {
+
         const { data, error } = await supabase
             .from('material_requests')
             .select(`
@@ -309,19 +418,28 @@ async function loadApprovedHistory() {
                     )
                 )
             `)
-            .eq('request_status', 'APPROVED')
-            .order('approval_date', { ascending: false });
+            .in(
+                'request_status',
+                ['APPROVED', 'PARTIALLY_APPROVED']
+            )
+            .order(
+                'approval_date',
+                { ascending: false }
+            );
 
         if (error) throw error;
 
         if (!data || data.length === 0) {
+
             tableBody.innerHTML = `
                 <tr>
-                    <td colspan="6" class="text-center text-muted py-4">
+                    <td colspan="8"
+                        class="text-center text-muted py-4">
                         No approved requests yet.
                     </td>
                 </tr>
             `;
+
             return;
         }
 
@@ -329,7 +447,8 @@ async function loadApprovedHistory() {
 
         data.forEach(req => {
 
-            const material = req.materials || {};
+            const material =
+                req.materials || {};
 
             const materialCode =
                 material.material_code || "-";
@@ -361,14 +480,40 @@ async function loadApprovedHistory() {
             const techName =
                 req.technician_name || "-";
 
-            const approvedDate =
+            const requestedQty =
+                Number(req.requested_qty || 0);
+
+            const approvedQty =
+                Number(
+                    req.approved_qty ?? requestedQty
+                );
+
+            const status =
+                req.request_status;
+
+            const statusBadge =
+                status === "PARTIALLY_APPROVED"
+                    ? `
+                        <span class="badge bg-warning text-dark">
+                            Partially Approved
+                        </span>
+                    `
+                    : `
+                        <span class="badge bg-success">
+                            Approved
+                        </span>
+                    `;
+
+            const approvalDate =
                 req.approval_date
                     ? formatDate(req.approval_date)
                     : "N/A";
 
-            const tr = document.createElement('tr');
+            const tr =
+                document.createElement('tr');
 
             tr.innerHTML = `
+
                 <td>
 
                     <div class="fw-bold text-success">
@@ -384,11 +529,18 @@ async function loadApprovedHistory() {
                 </td>
 
                 <td>
-                    <strong>${deptName}</strong><br>
+
+                    <strong>
+                        ${deptName}
+                    </strong>
+
+                    <br>
+
                     <small class="text-muted">
                         <i class="fa-solid fa-user-wrench me-1"></i>
                         ${techName}
                     </small>
+
                 </td>
 
                 <td>
@@ -438,31 +590,66 @@ async function loadApprovedHistory() {
                 </td>
 
                 <td>
-                    <h5>
-                        <span class="badge bg-secondary">
-                            ${req.requested_qty}
-                        </span>
-                    </h5>
+
+                    <span class="badge bg-secondary">
+                        ${requestedQty}
+                    </span>
+
                 </td>
 
                 <td>
-                    ${req.location_type || "N/A"}<br>
+
+                    <span class="badge ${
+                        approvedQty < requestedQty
+                            ? "bg-warning text-dark"
+                            : "bg-success"
+                    }">
+
+                        ${approvedQty}
+
+                    </span>
+
+                    ${
+                        approvedQty < requestedQty
+                            ? `
+                                <div class="small text-muted mt-1">
+                                    of ${requestedQty}
+                                </div>
+                            `
+                            : ""
+                    }
+
+                </td>
+
+                <td>
+
+                    ${req.location_type || "N/A"}
+
+                    <br>
+
                     <small class="text-muted">
                         ${req.location_name || "N/A"}
                     </small>
+
+                </td>
+
+                <td>
+                    ${statusBadge}
                 </td>
 
                 <td>
                     <small class="text-muted">
-                        ${approvedDate}
+                        ${approvalDate}
                     </small>
                 </td>
+
             `;
 
             tableBody.appendChild(tr);
         });
 
     } catch (error) {
+
         console.error(
             "Error loading approved history:",
             error.message
@@ -470,8 +657,11 @@ async function loadApprovedHistory() {
 
         tableBody.innerHTML = `
             <tr>
-                <td colspan="6" class="text-center text-danger py-4">
+                <td colspan="8"
+                    class="text-center text-danger py-4">
+
                     Failed to load approved history.
+
                 </td>
             </tr>
         `;

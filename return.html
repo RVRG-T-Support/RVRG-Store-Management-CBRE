@@ -70,37 +70,86 @@
                 </div>
             </div>
 
-            <!-- Return Processing Table -->
-            <div class="col-lg-12">
-                <div class="card shadow-sm border-0">
-                    <div class="card-header bg-secondary text-white fw-bold">
-                        Issued Materials Available for Return
-                    </div>
-                    <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-bordered table-hover table-vertical-middle mb-0 text-center">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Ticket No</th>
-                                        <th>Material</th>
-                                        <th>Technician</th>
-                                        <th class="table-info">Total Issued</th>
-                                        <th class="table-warning">Return Qty</th>
-                                        <th>Remarks (Optional)</th>
-                                        <th>Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="returnTableBody">
-                                    <tr>
-                                        <td colspan="7" class="text-center text-muted py-4">Search for a ticket or load recent issues to process returns.</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
+<!-- Return Processing Table -->
+<div class="col-lg-12 mb-4">
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-secondary text-white fw-bold">
+            Issued Materials Available for Return
+        </div>
+
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover table-vertical-middle mb-0 text-center">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Ticket No</th>
+                            <th>Material</th>
+                            <th>Technician</th>
+                            <th class="table-info">Total Issued</th>
+                            <th class="table-warning">Return Qty</th>
+                            <th>Remarks (Optional)</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="returnTableBody">
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">
+                                Search for a ticket or load recent issues to process returns.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
+    </div>
+</div>
+
+<!-- Return History -->
+<div class="col-lg-12">
+    <div class="card shadow-sm border-0">
+
+        <div class="card-header bg-success text-white fw-bold">
+            <i class="fa-solid fa-clock-rotate-left me-2"></i>
+            Return History
+        </div>
+
+        <div class="card-body p-0">
+            <div class="table-responsive">
+
+                <table class="table table-bordered table-hover table-vertical-middle mb-0 text-center text-nowrap">
+
+                    <thead class="table-light">
+                        <tr>
+                            <th>Complaint Number / Request No.</th>
+                            <th>Material</th>
+                            <th>Technician</th>
+                            <th>Issued Qty</th>
+                            <th>Returned Qty</th>
+                            <th>Condition</th>
+                            <th>Remarks</th>
+                            <th>Return Date</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="returnHistoryTable">
+
+                        <tr>
+                            <td colspan="8"
+                                class="text-center text-muted py-4">
+                                Loading return history...
+                            </td>
+                        </tr>
+
+                    </tbody>
+
+                </table>
+
+            </div>
+        </div>
+
+    </div>
+</div>        </div>
     </div>
 </div>
     <!-- Dependencies -->

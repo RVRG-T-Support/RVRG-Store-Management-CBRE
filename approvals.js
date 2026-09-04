@@ -208,7 +208,7 @@ const techName =
                     <small class="text-muted">${req.location_name || 'N/A'}</small>
                 </td>
                 <td class="text-center">
-                    <<button
+                    <button
     class="btn btn-success btn-sm me-1 mb-1"
     onclick="approveRequest(${req.id}, '${req.ticket_no}')"
     title="Approve"

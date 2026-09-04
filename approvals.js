@@ -207,18 +207,23 @@ const techName =
                     ${req.location_type}<br>
                     <small class="text-muted">${req.location_name || 'N/A'}</small>
                 </td>
-                <td class="text-center">
-                    <button
-    class="btn btn-success btn-sm me-1 mb-1"
-    onclick="approveRequest(${req.id}, '${req.ticket_no}')"
-    title="Approve"
->
-    <i class="fa-solid fa-check"></i> Approve
-</button>
-                    <button class="btn btn-outline-danger btn-sm mb-1" onclick="openRejectModal(${req.id}, '${req.ticket_no}')" title="Reject">
-                        <i class="fa-solid fa-xmark"></i> Reject
-                    </button>
-                </td>
+<td class="text-center">
+    <button
+        class="btn btn-success btn-sm me-1 mb-1"
+        onclick="approveRequest(${req.id}, '${req.ticket_no}')"
+        title="Approve"
+    >
+        <i class="fa-solid fa-check"></i> Approve
+    </button>
+
+    <button
+        class="btn btn-outline-danger btn-sm mb-1"
+        onclick="openRejectModal(${req.id}, '${req.ticket_no}')"
+        title="Reject"
+    >
+        <i class="fa-solid fa-xmark"></i> Reject
+    </button>
+</td>
             `;
             tableBody.appendChild(tr);
         });

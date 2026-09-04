@@ -106,9 +106,19 @@ tr.innerHTML = `
         ${formatDate(req.created_at)}
     </td>
 
-    <td class="fw-bold">
-        ${req.ticket_no}
-    </td>
+    <td>
+
+    <div class="fw-bold text-success">
+        Anacity:
+        ${req.anacity_complaint_no || "N/A"}
+    </div>
+
+    <div class="fw-bold text-primary">
+        MR:
+        ${req.ticket_no || "N/A"}
+    </div>
+
+</td>
 
     <td>
         <small>

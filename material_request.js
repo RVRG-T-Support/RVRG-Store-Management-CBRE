@@ -244,9 +244,12 @@ function escapeHtml(value){
 
 let requestItemCount = 0;
 
+// Holds the ticket number currently being edited.
+// null means we are creating a new request.
+let editingTicketNo = null;
+
 
 function createRequestItem(){
-
     requestItemCount++;
 
 
@@ -916,16 +919,20 @@ const ticketNo =
     ).padStart(4, "0")}`;
 
 
-    // ------------------------------------------------
-    // BUILD INSERT ROWS
-    // ------------------------------------------------
+// ------------------------------------------------
+// BUILD REQUEST ROWS
+// ------------------------------------------------
 
-    const insertRows =
+const saveTicketNo =
+    editingTicketNo || ticketNo;
+
+
+const requestRows =
     validItems.map(
         item => ({
 
             ticket_no:
-                ticketNo,
+                saveTicketNo,
 
             anacity_complaint_no:
                 anacityComplaintNo,
@@ -965,24 +972,84 @@ const ticketNo =
     );
 
 
-    try{
+try{
+
+    // ====================================================
+    // EDIT EXISTING PENDING TICKET
+    // ====================================================
+
+    if(editingTicketNo){
+
+        // Delete the old pending material rows
+        // for this ticket before saving the edited version.
 
         const {
-            error
-        } =
-            await supabase
+            error: deleteError
+        } = await supabase
 
-                .from(
-                    "material_requests"
-                )
+            .from("material_requests")
 
-                .insert(
-                    insertRows
-                );
+            .delete()
+
+            .eq(
+                "ticket_no",
+                editingTicketNo
+            )
+
+            .eq(
+                "request_status",
+                "PENDING"
+            );
 
 
-        if(error)
-            throw error;
+        if(deleteError)
+            throw deleteError;
+
+
+        // Insert the edited rows using
+        // the same ticket number.
+
+        const {
+            error: insertEditError
+        } = await supabase
+
+            .from("material_requests")
+
+            .insert(
+                requestRows
+            );
+
+
+        if(insertEditError)
+            throw insertEditError;
+
+
+        showAlert(
+            `Request ${editingTicketNo} updated successfully.`,
+            "success"
+        );
+
+    }
+
+    // ====================================================
+    // CREATE NEW TICKET
+    // ====================================================
+
+    else{
+
+        const {
+            error: insertError
+        } = await supabase
+
+            .from("material_requests")
+
+            .insert(
+                requestRows
+            );
+
+
+        if(insertError)
+            throw insertError;
 
 
         showAlert(
@@ -990,51 +1057,52 @@ const ticketNo =
             "success"
         );
 
-
-        // Reset form
-        document
-            .getElementById(
-                "materialRequestForm"
-            )
-            .reset();
-
-
-        window.requestItems = [
-            createRequestItem()
-        ];
-
-
-        window.currentMaterials = [];
-
-
-        document
-            .getElementById(
-                "materialSelect"
-            );
-
-
-        renderRequestItems();
-
-
-        loadRecentRequests();
-
     }
 
-    catch(err){
 
-        console.error(
-            "Submit Material Request:",
-            err
-        );
+    // ====================================================
+    // RESET FORM
+    // ====================================================
+
+    editingTicketNo = null;
 
 
-        showAlert(
-            err.message,
-            "danger"
-        );
+    document
+        .getElementById(
+            "materialRequestForm"
+        )
+        .reset();
 
-    }
 
+    window.requestItems = [
+        createRequestItem()
+    ];
+
+
+    window.currentMaterials = [];
+
+
+    renderRequestItems();
+
+
+    loadRecentRequests();
+
+}
+
+catch(err){
+
+    console.error(
+        "Submit Material Request:",
+        err
+    );
+
+
+    showAlert(
+        err.message,
+        "danger"
+    );
+
+}
 }
 
 // --- RECENT REQUESTS TABLE LOGIC ---
@@ -1046,21 +1114,30 @@ async function loadRecentRequests() {
             "recentRequestsTable"
         );
 
-    table.innerHTML =
-        `<tr>
-            <td colspan="5">
+
+    table.innerHTML = `
+        <tr>
+            <td colspan="6"
+                class="text-center text-muted py-4">
+
                 Loading...
+
             </td>
-        </tr>`;
+        </tr>
+    `;
+
 
     try {
 
-        const { data, error } =
-            await supabase
+        const {
+            data,
+            error
+        } = await supabase
 
             .from("material_requests")
 
             .select(`
+                id,
                 ticket_no,
                 anacity_complaint_no,
                 location_name,
@@ -1068,68 +1145,168 @@ async function loadRecentRequests() {
                 requested_qty,
                 request_status,
                 created_at,
+                material_id,
+
                 materials!material_requests_material_id_fkey (
-                material_name
+                    material_name,
+                    department_id
                 )
             `)
 
-            .order("created_at",
-                {ascending:false})
+            .order(
+                "created_at",
+                {
+                    ascending: false
+                }
+            )
 
-            .limit(10);
+            .limit(20);
 
-        if(error) throw error;
 
-        table.innerHTML="";
+        if(error)
+            throw error;
 
-        data.forEach(req=>{
+
+        table.innerHTML = "";
+
+
+        if(
+            !data ||
+            data.length === 0
+        ){
+
+            table.innerHTML = `
+                <tr>
+                    <td colspan="6"
+                        class="text-center text-muted py-4">
+
+                        No material requests found.
+
+                    </td>
+                </tr>
+            `;
+
+            return;
+
+        }
+
+
+        data.forEach(req => {
+
+            const isPending =
+                req.request_status ===
+                "PENDING";
+
+
+            const actionButtons =
+                isPending
+
+                ? `
+
+                    <button
+                        type="button"
+                        class="btn btn-outline-primary btn-sm me-1"
+                        onclick="editMaterialRequest('${req.ticket_no}')"
+                        title="Edit Request">
+
+                        <i class="fa-solid fa-pen-to-square"></i>
+                        Edit
+
+                    </button>
+
+                    <button
+                        type="button"
+                        class="btn btn-outline-danger btn-sm"
+                        onclick="deleteMaterialRequest('${req.ticket_no}')"
+                        title="Delete Request">
+
+                        <i class="fa-solid fa-trash"></i>
+                        Delete
+
+                    </button>
+
+                  `
+
+                : `
+
+                    <span class="text-muted">
+                        -
+                    </span>
+
+                  `;
+
 
             table.innerHTML += `
 
-            <tr>
+                <tr>
 
-                <td>
+                    <td>
 
-                    ${req.ticket_no}
+                        <strong>
+                            ${req.ticket_no}
+                        </strong>
 
-                </td>
+                    </td>
 
-                <td>
 
-        <strong>
-            ${req.location_name || "-"}
-        </strong>
+                    <td>
 
-        <br>
+                        <strong>
+                            ${escapeHtml(
+                                req.location_name || "-"
+                            )}
+                        </strong>
 
-        <small class="text-muted">
-        Anacity:
-            ${req.anacity_complaint_no || "-"}
-        </small>
+                        <br>
 
-        </td>
+                        <small class="text-muted">
 
-                <td>
+                            Complaint Number:
+                            ${
+                                escapeHtml(
+                                    req.anacity_complaint_no || "-"
+                                )
+                            }
 
-                    ${req.materials?.material_name ?? "-"}
+                        </small>
 
-                </td>
+                    </td>
 
-                <td>
 
-                    ${req.requested_qty}
+                    <td>
 
-                </td>
+                        ${
+                            escapeHtml(
+                                req.materials?.material_name || "-"
+                            )
+                        }
 
-                <td>
+                    </td>
 
-                    ${getStatusBadge(
-                        req.request_status
-                    )}
 
-                </td>
+                    <td>
 
-            </tr>
+                        ${req.requested_qty}
+
+                    </td>
+
+
+                    <td>
+
+                        ${getStatusBadge(
+                            req.request_status
+                        )}
+
+                    </td>
+
+
+                    <td class="text-center text-nowrap">
+
+                        ${actionButtons}
+
+                    </td>
+
+                </tr>
 
             `;
 
@@ -1139,19 +1316,404 @@ async function loadRecentRequests() {
 
     catch(err){
 
-        console.error(err);
+        console.error(
+            "Load Recent Requests:",
+            err
+        );
 
-        table.innerHTML=
-        `<tr>
-            <td colspan="5"
-                class="text-danger">
 
-                Failed to load requests
+        table.innerHTML = `
+            <tr>
+                <td colspan="6"
+                    class="text-center text-danger py-4">
 
-            </td>
-        </tr>`;
+                    Failed to load requests.
+
+                </td>
+            </tr>
+        `;
 
     }
 
 }
 
+// ====================================================
+// EDIT PENDING MATERIAL REQUEST
+// ====================================================
+
+window.editMaterialRequest = async function(
+    ticketNo
+){
+
+    try{
+
+        // Load all rows belonging to this ticket
+        const {
+            data,
+            error
+        } = await supabase
+
+            .from("material_requests")
+
+            .select(`
+                id,
+                ticket_no,
+                anacity_complaint_no,
+                location_name,
+                location_type,
+                technician_name,
+                requested_qty,
+                remarks,
+                request_status,
+                material_id,
+
+                materials!material_requests_material_id_fkey (
+                    department_id
+                )
+            `)
+
+            .eq(
+                "ticket_no",
+                ticketNo
+            )
+
+            .eq(
+                "request_status",
+                "PENDING"
+            )
+
+            .order(
+                "id",
+                {
+                    ascending: true
+                }
+            );
+
+
+        if(error)
+            throw error;
+
+
+        if(
+            !data ||
+            !data.length
+        ){
+
+            showAlert(
+                "This request can no longer be edited.",
+                "warning"
+            );
+
+            loadRecentRequests();
+
+            return;
+
+        }
+
+
+        // ------------------------------------------------
+        // Fill main form fields
+        // ------------------------------------------------
+
+        document
+            .getElementById(
+                "anacityComplaintNo"
+            )
+            .value =
+            data[0].anacity_complaint_no || "";
+
+
+        document
+            .getElementById(
+                "ticketType"
+            )
+            .value =
+            data[0].location_type || "";
+
+
+        document
+            .getElementById(
+                "locationInput"
+            )
+            .value =
+            data[0].location_name || "";
+
+
+        document
+            .getElementById(
+                "technicianName"
+            )
+            .value =
+            data[0].technician_name || "";
+
+
+        document
+            .getElementById(
+                "requestRemarks"
+            )
+            .value =
+            data[0].remarks || "";
+
+
+        // ------------------------------------------------
+        // Load department from first material
+        // ------------------------------------------------
+
+        const departmentId =
+            data[0]
+                .materials
+                ?.department_id;
+
+
+        if(!departmentId){
+
+            showAlert(
+                "Unable to determine the request department.",
+                "danger"
+            );
+
+            return;
+
+        }
+
+
+        const departmentSelect =
+            document.getElementById(
+                "departmentSelect"
+            );
+
+
+        departmentSelect.value =
+            String(
+                departmentId
+            );
+
+
+        await loadMaterials(
+            Number(
+                departmentId
+            )
+        );
+
+
+        // ------------------------------------------------
+        // Rebuild all requested material rows
+        // ------------------------------------------------
+
+        requestItemCount = 0;
+
+
+        window.requestItems =
+            data.map(
+                row => ({
+
+                    id:
+                        ++requestItemCount,
+
+                    materialId:
+                        String(
+                            row.material_id
+                        ),
+
+                    quantity:
+                        row.requested_qty
+
+                })
+            );
+
+
+        renderRequestItems();
+
+
+        // ------------------------------------------------
+        // Enter edit mode
+        // ------------------------------------------------
+
+        editingTicketNo =
+            ticketNo;
+
+
+        // Scroll back to the form
+        document
+            .getElementById(
+                "materialRequestForm"
+            )
+            .scrollIntoView({
+                behavior: "smooth",
+                block: "start"
+            });
+
+
+        showAlert(
+            `Editing request ${ticketNo}. Make your changes and submit again.`,
+            "info"
+        );
+
+    }
+
+    catch(error){
+
+        console.error(
+            "Edit Material Request:",
+            error
+        );
+
+
+        showAlert(
+            "Failed to load request for editing.",
+            "danger"
+        );
+
+    }
+
+};
+
+// ====================================================
+// DELETE PENDING MATERIAL REQUEST
+// ====================================================
+
+window.deleteMaterialRequest = async function(
+    ticketNo
+){
+
+    const confirmed =
+        confirm(
+            `Are you sure you want to DELETE request ${ticketNo}?\n\nThis will delete the complete material request ticket.`
+        );
+
+
+    if(!confirmed)
+        return;
+
+
+    try{
+
+        // Safety check:
+        // Only PENDING requests can be deleted.
+
+        const {
+            data,
+            error: checkError
+        } = await supabase
+
+            .from("material_requests")
+
+            .select(
+                "id, request_status"
+            )
+
+            .eq(
+                "ticket_no",
+                ticketNo
+            );
+
+
+        if(checkError)
+            throw checkError;
+
+
+        if(
+            !data ||
+            !data.length
+        ){
+
+            showAlert(
+                "Request not found.",
+                "warning"
+            );
+
+            loadRecentRequests();
+
+            return;
+
+        }
+
+
+        const allPending =
+            data.every(
+                row =>
+                    row.request_status ===
+                    "PENDING"
+            );
+
+
+        if(!allPending){
+
+            showAlert(
+                "This request has already been approved or processed and cannot be deleted.",
+                "warning"
+            );
+
+            loadRecentRequests();
+
+            return;
+
+        }
+
+
+        // Delete all material rows
+        // belonging to this ticket.
+
+        const {
+            error: deleteError
+        } = await supabase
+
+            .from("material_requests")
+
+            .delete()
+
+            .eq(
+                "ticket_no",
+                ticketNo
+            )
+
+            .eq(
+                "request_status",
+                "PENDING"
+            );
+
+
+        if(deleteError)
+            throw deleteError;
+
+
+        // If the user was editing this ticket,
+        // cancel edit mode.
+
+        if(
+            editingTicketNo ===
+            ticketNo
+        ){
+
+            editingTicketNo =
+                null;
+
+        }
+
+
+        showAlert(
+            `Request ${ticketNo} deleted successfully.`,
+            "success"
+        );
+
+
+        loadRecentRequests();
+
+    }
+
+    catch(error){
+
+        console.error(
+            "Delete Material Request:",
+            error
+        );
+
+
+        showAlert(
+            "Failed to delete request.",
+            "danger"
+        );
+
+    }
+
+};

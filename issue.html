@@ -40,36 +40,76 @@
             </button>
         </div>
 
-        <!-- Issue Table Card -->
-        <div class="card shadow-sm border-0">
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-bordered table-hover table-vertical-middle mb-0 text-center text-nowrap">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Date</th>
-                                <th>Complaint Number / Request No.</th>
-                                <th>Location</th>
-                                <th>Department</th>
-                                <th>Material</th>
-                                <th>Requested</th>
-                                <th class="table-info">Current Stock</th>
-                                <th>Unit Cost</th>
-                                <th>Amount</th>
-                                <th class="bg-success text-white">Issued Qty</th>
-                                <th>Issue</th>
-                                <th>Reject</th>
-                            </tr>
-                        </thead>
-                        <tbody id="approvedRequestsTable">
-                            <tr>
-                                <td colspan="12" class="text-center text-muted py-4">Loading approved requests...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+       <!-- Issue Table Card -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover table-vertical-middle mb-0 text-center text-nowrap">
+                <thead class="table-light">
+                    <tr>
+                        <th>Date</th>
+                        <th>Complaint Number / Request No.</th>
+                        <th>Location</th>
+                        <th>Department</th>
+                        <th>Material</th>
+                        <th>Requested</th>
+                        <th class="table-info">Current Stock</th>
+                        <th>Unit Cost</th>
+                        <th>Amount</th>
+                        <th class="bg-success text-white">Issued Qty</th>
+                        <th>Issue</th>
+                        <th>Reject</th>
+                    </tr>
+                </thead>
+
+                <tbody id="approvedRequestsTable">
+                    <tr>
+                        <td colspan="12" class="text-center text-muted py-4">
+                            Loading approved requests...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
+    </div>
+</div>
+
+<!-- Issued History -->
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-success text-white fw-bold">
+        <i class="fa-solid fa-clock-rotate-left me-2"></i>
+        Issued History
+    </div>
+
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover table-vertical-middle mb-0 text-center text-nowrap">
+
+                <thead class="table-light">
+                    <tr>
+                        <th>Complaint Number / Request No.</th>
+                        <th>Department & Tech</th>
+                        <th>Material</th>
+                        <th>Requested</th>
+                        <th>Approved</th>
+                        <th>Issued</th>
+                        <th>Location & Type</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+
+                <tbody id="issuedHistoryTable">
+                    <tr>
+                        <td colspan="8" class="text-center text-muted py-4">
+                            Loading issued history...
+                        </td>
+                    </tr>
+                </tbody>
+
+            </table>
+        </div>
+    </div>
+</div>
     </div>
 </div>
 </div>

@@ -107,10 +107,10 @@ const techName =
             tr.innerHTML = `
                 <td>
 
-    <div class="fw-bold text-success">
-        Anacity:
-        ${req.anacity_complaint_no || "N/A"}
-    </div>
+   <div class="fw-bold text-success">
+    Complaint Number:
+    ${req.anacity_complaint_no || "N/A"}
+</div>
 
     <div class="fw-bold text-primary">
         MR:

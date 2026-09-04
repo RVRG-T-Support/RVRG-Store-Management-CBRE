@@ -16,11 +16,15 @@ document.addEventListener('DOMContentLoaded', () => {
     
 // User information is handled by navigation.js
     
-    // Load initial data
-    loadApprovedRequests();
+// Load initial data
+loadApprovedRequests();
+loadIssuedHistory();
 
-    // Event Listeners
-    document.getElementById('btnRefreshIssueList').addEventListener('click', loadApprovedRequests);
+// Event Listeners
+document.getElementById('btnRefreshIssueList').addEventListener('click', () => {
+    loadApprovedRequests();
+    loadIssuedHistory();
+});
 });
 
 //====================================================
@@ -754,7 +758,7 @@ window.processIssue = async function(
 
 
         loadApprovedRequests();
-
+        loadIssuedHistory();
     }
     catch(error){
 
@@ -822,7 +826,7 @@ window.rejectRequest = async function(requestId){
         );
 
         loadApprovedRequests();
-
+        loadIssuedHistory();
     }
     catch(error){
 
@@ -839,3 +843,320 @@ window.rejectRequest = async function(requestId){
     }
 
 };
+
+// ====================================================
+// ISSUED HISTORY
+// ====================================================
+
+async function loadIssuedHistory() {
+
+    const tableBody =
+        document.getElementById("issuedHistoryTable");
+
+    if (!tableBody)
+        return;
+
+    tableBody.innerHTML = `
+        <tr>
+            <td colspan="8"
+                class="text-center text-muted py-4">
+                Loading issued history...
+            </td>
+        </tr>
+    `;
+
+    try {
+
+        const {
+            data: requests,
+            error: requestError
+        } = await supabaseClient
+
+            .from("material_requests")
+
+            .select(`
+                *,
+                materials!material_requests_material_id_fkey (
+                    material_code,
+                    material_name,
+                    department_id,
+                    unit_cost,
+                    departments (
+                        department_name
+                    )
+                )
+            `)
+
+            .in(
+                "request_status",
+                [
+                    "ISSUED",
+                    "PARTIALLY_ISSUED"
+                ]
+            )
+
+            .order(
+                "created_at",
+                {
+                    ascending: false
+                }
+            );
+
+
+        if (requestError)
+            throw requestError;
+
+
+        if (
+            !requests ||
+            requests.length === 0
+        ) {
+
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="8"
+                        class="text-center text-muted py-4">
+
+                        No issued material history yet.
+
+                    </td>
+                </tr>
+            `;
+
+            return;
+
+        }
+
+
+        tableBody.innerHTML = "";
+
+
+        requests.forEach(req => {
+
+            const material =
+                req.materials || {};
+
+
+            const deptName =
+                material.departments
+                    ?.department_name || "-";
+
+
+            const requestedQty =
+                Number(
+                    req.requested_qty || 0
+                );
+
+
+            const approvedQty =
+                Number(
+                    req.approved_qty ??
+                    requestedQty
+                );
+
+
+            const issuedQty =
+                Number(
+                    req.issued_qty || 0
+                );
+
+
+            const isPartial =
+                req.request_status ===
+                "PARTIALLY_ISSUED";
+
+
+            const statusBadge =
+                isPartial
+
+                    ? `
+                        <span class="badge bg-warning text-dark">
+                            Partially Issued
+                        </span>
+                    `
+
+                    : `
+                        <span class="badge bg-success">
+                            Issued
+                        </span>
+                    `;
+
+
+            const tr =
+                document.createElement("tr");
+
+
+            tr.innerHTML = `
+
+                <!-- COMPLAINT / REQUEST -->
+
+                <td>
+
+                    <div class="fw-bold text-success">
+
+                        Complaint Number:
+                        ${req.anacity_complaint_no || "N/A"}
+
+                    </div>
+
+                    <div class="fw-bold text-primary">
+
+                        MR:
+                        ${req.ticket_no || "N/A"}
+
+                    </div>
+
+                </td>
+
+
+                <!-- DEPARTMENT / TECH -->
+
+                <td>
+
+                    <strong>
+                        ${deptName}
+                    </strong>
+
+                    <br>
+
+                    <small class="text-muted">
+
+                        <i class="fa-solid fa-user-wrench me-1"></i>
+
+                        ${req.technician_name || "N/A"}
+
+                    </small>
+
+                </td>
+
+
+                <!-- MATERIAL -->
+
+                <td>
+
+                    <div class="fw-bold text-primary">
+
+                        ${material.material_code || "N/A"}
+
+                    </div>
+
+                    <div class="fw-semibold">
+
+                        ${material.material_name || "N/A"}
+
+                    </div>
+
+                </td>
+
+
+                <!-- REQUESTED -->
+
+                <td>
+
+                    <span class="badge bg-secondary">
+
+                        ${requestedQty}
+
+                    </span>
+
+                </td>
+
+
+                <!-- APPROVED -->
+
+                <td>
+
+                    <span class="badge bg-info text-dark">
+
+                        ${approvedQty}
+
+                    </span>
+
+                </td>
+
+
+                <!-- ISSUED -->
+
+                <td>
+
+                    <span class="badge ${
+                        issuedQty < approvedQty
+                            ? "bg-warning text-dark"
+                            : "bg-success"
+                    }">
+
+                        ${issuedQty}
+
+                    </span>
+
+                    ${
+                        issuedQty < approvedQty
+
+                        ? `
+                            <div class="small text-muted mt-1">
+                                of ${approvedQty}
+                            </div>
+                        `
+
+                        : ""
+                    }
+
+                </td>
+
+
+                <!-- LOCATION -->
+
+                <td>
+
+                    ${req.location_type || "N/A"}
+
+                    <br>
+
+                    <small class="text-muted">
+
+                        ${req.location_name || "N/A"}
+
+                    </small>
+
+                </td>
+
+
+                <!-- STATUS -->
+
+                <td>
+
+                    ${statusBadge}
+
+                </td>
+
+            `;
+
+
+            tableBody.appendChild(tr);
+
+        });
+
+
+    }
+    catch(error){
+
+        console.error(
+            "Error loading issued history:",
+            error.message
+        );
+
+
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="8"
+                    class="text-center text-danger py-4">
+
+                    Failed to load issued history.
+
+                </td>
+            </tr>
+        `;
+
+    }
+
+}

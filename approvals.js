@@ -50,7 +50,7 @@ async function loadPendingApprovals() {
     unit_cost,
     department_id,
     departments (
-        department_name
+    department_name
     )
 )
 `)
@@ -106,9 +106,22 @@ const techName =
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>
-                    <span class="fw-bold text-primary">${req.ticket_no}</span><br>
-                    <small class="text-muted">${formatDate(req.created_at)}</small>
-                </td>
+
+    <div class="fw-bold text-success">
+        Anacity:
+        ${req.anacity_complaint_no || "N/A"}
+    </div>
+
+    <div class="fw-bold text-primary">
+        MR:
+        ${req.ticket_no || "N/A"}
+    </div>
+
+    <small class="text-muted">
+        ${formatDate(req.created_at)}
+    </small>
+
+</td>
                 <td>
                     <strong>${deptName}</strong><br>
                     <small class="text-muted"><i class="fa-solid fa-user-wrench me-1"></i>${techName}</small>

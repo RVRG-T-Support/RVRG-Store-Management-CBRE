@@ -20,11 +20,16 @@ document.addEventListener('DOMContentLoaded', () => {
     rejectModalInstance = new bootstrap.Modal(document.getElementById('rejectModal'));
 
     // Load initial data
-    loadPendingApprovals();
+loadPendingApprovals();
+loadApprovedHistory();
 
     // Event Listeners
-    document.getElementById('btnRefreshApprovals').addEventListener('click', loadPendingApprovals);
-    document.getElementById('confirmRejectBtn').addEventListener('click', processRejection);
+document.getElementById('btnRefreshApprovals').addEventListener('click', () => {
+    loadPendingApprovals();
+    loadApprovedHistory();
+});
+
+document.getElementById('confirmRejectBtn').addEventListener('click', processRejection);
 });
 
 // --- DATA LOADING LOGIC ---
@@ -268,5 +273,207 @@ async function processRejection() {
         showAlert("Failed to reject request.", "danger");
     } finally {
         currentRejectId = null; // Reset
+    }
+}
+
+// --- APPROVED HISTORY LOGIC ---
+
+async function loadApprovedHistory() {
+    const tableBody = document.getElementById('approvedHistoryTable');
+
+    tableBody.innerHTML = `
+        <tr>
+            <td colspan="6" class="text-center text-muted py-4">
+                Loading approved history...
+            </td>
+        </tr>
+    `;
+
+    try {
+        const { data, error } = await supabase
+            .from('material_requests')
+            .select(`
+                *,
+                materials!material_requests_material_id_fkey (
+                    material_code,
+                    material_name,
+                    brand,
+                    item_type,
+                    item_size,
+                    specification,
+                    unit,
+                    unit_cost,
+                    department_id,
+                    departments (
+                        department_name
+                    )
+                )
+            `)
+            .eq('request_status', 'APPROVED')
+            .order('approval_date', { ascending: false });
+
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-4">
+                        No approved requests yet.
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        tableBody.innerHTML = '';
+
+        data.forEach(req => {
+
+            const material = req.materials || {};
+
+            const materialCode =
+                material.material_code || "-";
+
+            const materialName =
+                material.material_name || "-";
+
+            const brand =
+                material.brand || "-";
+
+            const itemType =
+                material.item_type || "-";
+
+            const itemSize =
+                material.item_size || "-";
+
+            const specification =
+                material.specification || "-";
+
+            const unit =
+                material.unit || "-";
+
+            const unitCost =
+                Number(material.unit_cost || 0);
+
+            const deptName =
+                material.departments?.department_name || "-";
+
+            const techName =
+                req.technician_name || "-";
+
+            const approvedDate =
+                req.approval_date
+                    ? formatDate(req.approval_date)
+                    : "N/A";
+
+            const tr = document.createElement('tr');
+
+            tr.innerHTML = `
+                <td>
+
+                    <div class="fw-bold text-success">
+                        Complaint Number:
+                        ${req.anacity_complaint_no || "N/A"}
+                    </div>
+
+                    <div class="fw-bold text-primary">
+                        MR:
+                        ${req.ticket_no || "N/A"}
+                    </div>
+
+                </td>
+
+                <td>
+                    <strong>${deptName}</strong><br>
+                    <small class="text-muted">
+                        <i class="fa-solid fa-user-wrench me-1"></i>
+                        ${techName}
+                    </small>
+                </td>
+
+                <td>
+
+                    <div class="fw-bold text-primary">
+                        ${materialCode}
+                    </div>
+
+                    <div class="fw-semibold">
+                        ${materialName}
+                    </div>
+
+                    <div class="small text-muted mt-1">
+
+                        <div>
+                            <strong>Brand:</strong>
+                            ${brand}
+                        </div>
+
+                        <div>
+                            <strong>Type:</strong>
+                            ${itemType}
+                        </div>
+
+                        <div>
+                            <strong>Size:</strong>
+                            ${itemSize}
+                        </div>
+
+                        <div>
+                            <strong>Specification:</strong>
+                            ${specification}
+                        </div>
+
+                        <div>
+                            <strong>Unit:</strong>
+                            ${unit}
+                        </div>
+
+                        <div>
+                            <strong>Unit Cost:</strong>
+                            ₹${unitCost.toFixed(2)}
+                        </div>
+
+                    </div>
+
+                </td>
+
+                <td>
+                    <h5>
+                        <span class="badge bg-secondary">
+                            ${req.requested_qty}
+                        </span>
+                    </h5>
+                </td>
+
+                <td>
+                    ${req.location_type || "N/A"}<br>
+                    <small class="text-muted">
+                        ${req.location_name || "N/A"}
+                    </small>
+                </td>
+
+                <td>
+                    <small class="text-muted">
+                        ${approvedDate}
+                    </small>
+                </td>
+            `;
+
+            tableBody.appendChild(tr);
+        });
+
+    } catch (error) {
+        console.error(
+            "Error loading approved history:",
+            error.message
+        );
+
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center text-danger py-4">
+                    Failed to load approved history.
+                </td>
+            </tr>
+        `;
     }
 }

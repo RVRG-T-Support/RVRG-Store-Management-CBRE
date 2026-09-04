@@ -749,7 +749,11 @@ async function submitMaterialRequest(e){
         document.getElementById(
             "ticketType"
         ).value;
-
+    
+    const anacityComplaintNo =
+        document.getElementById(
+        "anacityComplaintNo"
+        ).value.trim();
 
     const locationName =
         document.getElementById(
@@ -917,45 +921,48 @@ const ticketNo =
     // ------------------------------------------------
 
     const insertRows =
-        validItems.map(
-            item => ({
+    validItems.map(
+        item => ({
 
-                ticket_no:
-                    ticketNo,
+            ticket_no:
+                ticketNo,
 
-                location_type:
-                    locationType,
+            anacity_complaint_no:
+                anacityComplaintNo,
 
-                location_name:
-                    locationName,
+            location_type:
+                locationType,
 
-                technician_id:
-                    null,
+            location_name:
+                locationName,
 
-                technician_name:
-                    technicianName,
+            technician_id:
+                null,
 
-                material_id:
-                    Number(
-                        item.materialId
-                    ),
+            technician_name:
+                technicianName,
 
-                requested_qty:
-                    Number(
-                        item.quantity
-                    ),
+            material_id:
+                Number(
+                    item.materialId
+                ),
 
-                remarks:
-                    remarks,
+            requested_qty:
+                Number(
+                    item.quantity
+                ),
 
-                request_status:
-                    "PENDING",
+            remarks:
+                remarks,
 
-                requested_by:
-                    user.id
+            request_status:
+                "PENDING",
 
-            })
-        );
+            requested_by:
+                user.id
+
+        })
+    );
 
 
     try{
@@ -1055,14 +1062,15 @@ async function loadRecentRequests() {
 
             .select(`
                 ticket_no,
+                anacity_complaint_no,
                 location_name,
                 location_type,
                 requested_qty,
                 request_status,
                 created_at,
                 materials!material_requests_material_id_fkey (
-    material_name
-)
+                material_name
+                )
             `)
 
             .order("created_at",
@@ -1088,9 +1096,18 @@ async function loadRecentRequests() {
 
                 <td>
 
-                    ${req.location_name}
+        <strong>
+            ${req.location_name || "-"}
+        </strong>
 
-                </td>
+        <br>
+
+        <small class="text-muted">
+        Anacity:
+            ${req.anacity_complaint_no || "-"}
+        </small>
+
+        </td>
 
                 <td>
 

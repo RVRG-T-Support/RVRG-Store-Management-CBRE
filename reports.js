@@ -86,12 +86,20 @@ document.addEventListener("DOMContentLoaded", () => {
         );
 
 
-    document
-        .getElementById("btnExportReport")
-        .addEventListener(
-            "click",
-            exportToExcel
-        );
+document
+    .getElementById("btnExportReport")
+    .addEventListener(
+        "click",
+        exportToExcel
+    );
+
+
+document
+    .getElementById("btnReportHistory")
+    .addEventListener(
+        "click",
+        loadReportDownloadHistory
+    );
 
 });
 
@@ -1526,6 +1534,35 @@ function exportToExcel() {
         );
 
 
+        // -----------------------------------------------
+        // SAVE DOWNLOAD HISTORY
+        // -----------------------------------------------
+
+        const user =
+            getCurrentUser();
+
+
+        const departmentSelect =
+            document.getElementById(
+                "filterDepartment"
+            );
+
+
+        const department =
+            departmentSelect
+                ?.options[
+                    departmentSelect.selectedIndex
+                ]
+                ?.text
+            || "All Departments";
+
+
+        saveReportDownloadHistory(
+            user?.name || "Unknown User",
+            department
+        );
+
+
         showAlert(
             "Report downloaded successfully!",
             "success"
@@ -1544,6 +1581,222 @@ function exportToExcel() {
             "Failed to export report.",
             "error"
         );
+
+    }
+
+}
+
+// ====================================================
+// SAVE REPORT DOWNLOAD HISTORY
+// ====================================================
+
+async function saveReportDownloadHistory(
+    downloadedBy,
+    department
+) {
+
+    try {
+
+        const {
+            error
+        } = await supabase
+
+            .from(
+                "report_download_history"
+            )
+
+            .insert([
+
+                {
+                    downloaded_by:
+                        downloadedBy,
+
+                    department:
+                        department
+
+                }
+
+            ]);
+
+
+        if (error) {
+
+            console.error(
+                "Failed to save report download history:",
+                error.message
+            );
+
+        }
+
+    }
+    catch (error) {
+
+        console.error(
+            "Report history error:",
+            error
+        );
+
+    }
+
+}
+
+
+// ====================================================
+// LOAD REPORT DOWNLOAD HISTORY
+// ====================================================
+
+async function loadReportDownloadHistory() {
+
+    const tableBody =
+        document.getElementById(
+            "reportHistoryTable"
+        );
+
+
+    if (!tableBody)
+        return;
+
+
+    tableBody.innerHTML = `
+        <tr>
+            <td
+                colspan="3"
+                class="text-center text-muted py-4"
+            >
+                Loading history...
+            </td>
+        </tr>
+    `;
+
+
+    try {
+
+        const {
+            data,
+            error
+        } = await supabase
+
+            .from(
+                "report_download_history"
+            )
+
+            .select(`
+                downloaded_at,
+                downloaded_by,
+                department
+            `)
+
+            .order(
+                "downloaded_at",
+                {
+                    ascending: false
+                }
+            )
+
+            .limit(50);
+
+
+        if (error)
+            throw error;
+
+
+        if (
+            !data ||
+            data.length === 0
+        ) {
+
+            tableBody.innerHTML = `
+                <tr>
+                    <td
+                        colspan="3"
+                        class="text-center text-muted py-4"
+                    >
+                        No report downloads yet.
+                    </td>
+                </tr>
+            `;
+
+            return;
+
+        }
+
+
+        tableBody.innerHTML = "";
+
+
+        data.forEach(
+            record => {
+
+                const row =
+                    document.createElement(
+                        "tr"
+                    );
+
+
+                const downloadDate =
+                    record.downloaded_at
+                        ? new Date(
+                            record.downloaded_at
+                        ).toLocaleString(
+                            "en-IN",
+                            {
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit"
+                            }
+                        )
+                        : "-";
+
+
+                row.innerHTML = `
+
+                    <td>
+                        ${downloadDate}
+                    </td>
+
+                    <td class="fw-semibold">
+                        ${record.downloaded_by || "-"}
+                    </td>
+
+                    <td>
+                        ${record.department || "-"}
+                    </td>
+
+                `;
+
+
+                tableBody.appendChild(
+                    row
+                );
+
+            }
+        );
+
+    }
+    catch (error) {
+
+        console.error(
+            "Error loading report download history:",
+            error.message
+        );
+
+
+        tableBody.innerHTML = `
+            <tr>
+
+                <td
+                    colspan="3"
+                    class="text-center text-danger py-4"
+                >
+
+                    Failed to load report history.
+
+                </td>
+
+            </tr>
+        `;
 
     }
 

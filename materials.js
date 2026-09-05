@@ -151,25 +151,31 @@ async function loadDepartments(){
     // SHOW ALL DEPARTMENTS
     // ---------------------------------------------
 
-    if(filterDepartment){
+   if(filterDepartment){
 
-        (data || [])
-            .forEach(item => {
+    (data || [])
 
-                filterDepartment.innerHTML += `
+        .filter(
+            item =>
+                item.is_active !== false
+        )
 
-                    <option
-                        value="${item.id}">
+        .forEach(item => {
 
-                        ${item.department_name}
+            filterDepartment.innerHTML += `
 
-                    </option>
+                <option
+                    value="${item.id}">
 
-                `;
+                    ${item.department_name}
 
-            });
+                </option>
 
-    }
+            `;
+
+        });
+
+}
 
 }
 

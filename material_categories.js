@@ -38,13 +38,14 @@ async function loadDepartments() {
 
             .from("departments")
 
-            .select(`
-                id,
-                department_code,
-                department_name,
-                created_at,
-                prefix
-            `)
+.select(`
+    id,
+    department_code,
+    department_name,
+    created_at,
+    prefix,
+    is_active
+`)
 
             .order("id", {
                 ascending: true
@@ -157,17 +158,43 @@ function renderDepartments() {
                 ${formatDate(dept.created_at)}
             </td>
 
-            <td>
+<td>
 
-                <button
-                    class="btn btn-sm btn-primary"
-                        onclick="editDepartment(${dept.id})">
+    <button
+        class="btn btn-sm btn-primary me-1"
+        onclick="editDepartment(${dept.id})">
 
-                    <i class="fa-solid fa-pen"></i>
-                    Edit
+        <i class="fa-solid fa-pen"></i>
+        Edit
 
-                </button>
-            </td>
+    </button>
+
+    <button
+        class="btn btn-sm ${
+            dept.is_active
+                ? "btn-danger"
+                : "btn-success"
+        }"
+        onclick="toggleDepartmentStatus(
+            ${dept.id},
+            ${dept.is_active}
+        )">
+
+        <i class="fa-solid ${
+            dept.is_active
+                ? "fa-ban"
+                : "fa-check"
+        }"></i>
+
+        ${
+            dept.is_active
+                ? "Deactivate"
+                : "Activate"
+        }
+
+    </button>
+
+</td>
 
         `;
 
@@ -200,13 +227,21 @@ function populateDepartmentDropdown() {
     `;
 
 
-    departmentsData.forEach(dept => {
+ departmentsData
+
+    .filter(
+        dept =>
+            dept.is_active !== false
+    )
+
+    .forEach(dept => {
 
         const option =
             document.createElement("option");
 
 
-        option.value = dept.id;
+        option.value =
+            dept.id;
 
 
         option.textContent =
@@ -1213,6 +1248,98 @@ async function toggleCategoryStatus(id, currentStatus) {
             "Category Status Error:",
             error
         );
+
+        showAlert(
+            error.message,
+            "danger"
+        );
+
+    }
+
+}
+
+//====================================================
+// ACTIVATE / DEACTIVATE DEPARTMENT
+//====================================================
+
+async function toggleDepartmentStatus(
+    id,
+    currentStatus
+) {
+
+    try {
+
+        const action =
+            currentStatus
+                ? "deactivate this department"
+                : "activate this department";
+
+
+        const confirmed =
+            confirm(
+                `Are you sure you want to ${action}?`
+            );
+
+
+        if (!confirmed)
+            return;
+
+
+        const newStatus =
+            !currentStatus;
+
+
+        const {
+            error
+        } = await supabaseClient
+
+            .from("departments")
+
+            .update({
+
+                is_active:
+                    newStatus
+
+            })
+
+            .eq(
+                "id",
+                id
+            );
+
+
+        if (error)
+            throw error;
+
+
+        showAlert(
+
+            newStatus
+                ? "Department activated successfully."
+                : "Department deactivated successfully.",
+
+            "success"
+
+        );
+
+
+        // Reload departments and categories
+        // so dropdowns immediately reflect
+        // the new department status.
+
+        await loadDepartments();
+
+        await loadCategories();
+
+
+    }
+    catch (error) {
+
+        console.error(
+            "Department Status Error:",
+            error
+        );
+
 
         showAlert(
             error.message,

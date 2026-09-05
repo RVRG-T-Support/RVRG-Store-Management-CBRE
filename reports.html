@@ -24,10 +24,31 @@
     <div class="container-fluid px-4 my-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h3 class="fw-bold text-dark"><i class="fa-solid fa-chart-line me-2 text-success"></i>System Reports</h3>
-            <!-- Download Button (Hidden by default, enabled by JS for Master Users) -->
-            <button class="btn btn-success fw-bold d-none" id="btnExportReport">
-                <i class="fa-solid fa-file-excel me-2"></i>Download Report
-            </button>
+<!-- Report Actions -->
+<div class="d-flex gap-2">
+
+    <!-- Download Button -->
+    <button
+        class="btn btn-success fw-bold d-none"
+        id="btnExportReport"
+    >
+        <i class="fa-solid fa-file-excel me-2"></i>
+        Download Report
+    </button>
+
+    <!-- Download History Button -->
+    <button
+        class="btn btn-secondary fw-bold"
+        id="btnReportHistory"
+        type="button"
+        data-bs-toggle="modal"
+        data-bs-target="#reportHistoryModal"
+    >
+        <i class="fa-solid fa-clock-rotate-left me-2"></i>
+        History
+    </button>
+
+</div>
         </div>
 
         <!-- Filter Control Panel -->
@@ -170,7 +191,104 @@
 <script src="config.js"></script>
 <script src="common.js"></script>
 <script src="navigation.js"></script>
-<!-- Logic script for this module -->
+<!-- Report Download History Modal -->
+<div
+    class="modal fade"
+    id="reportHistoryModal"
+    tabindex="-1"
+    aria-labelledby="reportHistoryModalLabel"
+    aria-hidden="true"
+>
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+
+        <div class="modal-content">
+
+            <div class="modal-header bg-secondary text-white">
+
+                <h5
+                    class="modal-title"
+                    id="reportHistoryModalLabel"
+                >
+                    <i class="fa-solid fa-clock-rotate-left me-2"></i>
+                    Report Download History
+                </h5>
+
+                <button
+                    type="button"
+                    class="btn-close btn-close-white"
+                    data-bs-dismiss="modal"
+                    aria-label="Close"
+                ></button>
+
+            </div>
+
+            <div class="modal-body p-0">
+
+                <div class="table-responsive">
+
+                    <table
+                        class="table table-bordered table-hover align-middle mb-0 text-center"
+                    >
+
+                        <thead class="table-light">
+
+                            <tr>
+
+                                <th>
+                                    Date of Download
+                                </th>
+
+                                <th>
+                                    Download By
+                                </th>
+
+                                <th>
+                                    Department
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody id="reportHistoryTable">
+
+                            <tr>
+
+                                <td
+                                    colspan="3"
+                                    class="text-center text-muted py-4"
+                                >
+                                    Loading history...
+                                </td>
+
+                            </tr>
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+
+                <button
+                    type="button"
+                    class="btn btn-secondary"
+                    data-bs-dismiss="modal"
+                >
+                    Close
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+</div>
+
+<!-- Page-specific JS -->
 <script src="reports.js"></script>
 </body>
 </html>

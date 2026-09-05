@@ -676,6 +676,8 @@ return filtered.map(
     })
 );
 
+}
+
 
 // ====================================================
 // MATERIAL CONSUMPTION / ISSUE

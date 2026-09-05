@@ -145,14 +145,27 @@ async function handleDepartmentChange(e){
     ];
 
 
-    // Load materials for selected department
+    // No department selected
+
+    if(!departmentId){
+
+        window.currentMaterials = [];
+
+        renderRequestItems();
+
+        return;
+
+    }
+
+
+    // Load active materials for
+    // selected department
 
     await loadMaterials(
         departmentId
     );
 
 }
-
 // ====================================================
 // LOAD MATERIALS
 // ====================================================
@@ -273,7 +286,6 @@ window.requestItems = [
     createRequestItem()
 ];
 
-
 // ====================================================
 // RENDER REQUEST ITEMS
 // ====================================================
@@ -306,51 +318,13 @@ function renderRequestItems(){
                 "border rounded p-3 mb-3 bg-light";
 
 
-            const options =
+            const selectedMaterial =
                 (window.currentMaterials || [])
-                .map(mat => {
-
-                    const details = [
-
-                        mat.material_code,
-
-                        mat.material_name,
-
-                        mat.brand,
-
-                        mat.item_type,
-
-                        mat.item_size,
-
-                        mat.specification
-
-                    ]
-                    .filter(value =>
-                        String(
-                            value || ""
-                        ).trim() !== ""
-                    )
-                    .join(" | ");
-
-
-                    return `
-
-                        <option
-                            value="${mat.id}"
-                            ${String(
-                                item.materialId
-                            ) === String(mat.id)
-                                ? "selected"
-                                : ""}>
-
-                            ${escapeHtml(details)}
-
-                        </option>
-
-                    `;
-
-                })
-                .join("");
+                .find(
+                    material =>
+                        String(material.id) ===
+                        String(item.materialId)
+                );
 
 
             card.innerHTML = `
@@ -379,28 +353,110 @@ function renderRequestItems(){
                 </div>
 
 
-                <div class="mb-2">
+                <!-- MATERIAL SEARCH -->
 
-                    <label class="form-label small fw-semibold">
-                        Select Material
+                <div class="mb-2 position-relative">
+
+                    <label
+                        class="form-label small fw-semibold"
+                        for="materialSearch-${item.id}">
+
+                        Search Material
+
                     </label>
 
-                    <select
-                        class="form-select"
+
+                    <input
+                        type="text"
+                        class="form-control"
+                        id="materialSearch-${item.id}"
                         data-item-id="${item.id}"
-                        onchange="handleRequestItemMaterialChange(this)"
+                        value="${
+                            selectedMaterial
+                                ? buildMaterialSearchText(
+                                    selectedMaterial
+                                )
+                                : ""
+                        }"
+                        placeholder="Search code / material / brand / type / size / specification..."
+                        autocomplete="off"
+                        oninput="handleRequestItemSearch(this)"
+                        onfocus="handleRequestItemSearch(this)"
                         required>
 
-                        <option value="">
-                            Select Material
-                        </option>
 
-                        ${options}
-
-                    </select>
+                    <div
+                        id="materialSearchResults-${item.id}"
+                        class="list-group position-absolute w-100 shadow-sm"
+                        style="
+                            z-index:1050;
+                            display:none;
+                            max-height:260px;
+                            overflow-y:auto;
+                        ">
+                    </div>
 
                 </div>
 
+
+                <!-- SELECTED MATERIAL -->
+
+                <div
+                    id="selectedMaterial-${item.id}"
+                    class="border rounded bg-white p-2 mb-2 small">
+
+                    ${
+                        selectedMaterial
+
+                        ? `
+
+                            <div class="d-flex justify-content-between align-items-start">
+
+                                <div>
+
+                                    <div class="fw-bold text-primary">
+
+                                        ${escapeHtml(
+                                            buildMaterialSearchText(
+                                                selectedMaterial
+                                            )
+                                        )}
+
+                                    </div>
+
+                                </div>
+
+
+                                <button
+                                    type="button"
+                                    class="btn btn-sm btn-outline-danger"
+                                    onclick="clearRequestItemMaterial(${item.id})"
+                                    title="Change Material">
+
+                                    <i class="fa-solid fa-xmark"></i>
+
+                                </button>
+
+                            </div>
+
+                        `
+
+                        : `
+
+                            <span class="text-muted">
+
+                                Search and select a material.
+
+                            </span>
+
+                        `
+
+                    }
+
+                </div>
+
+
+                <!-- MATERIAL DETAILS -->
 
                 <div
                     id="materialDetails-${item.id}"
@@ -408,24 +464,36 @@ function renderRequestItems(){
 
                     ${
                         item.materialId
+
                         ? buildMaterialDetails(
                             item.materialId
                         )
+
                         : `
+
                             <span class="text-muted">
+
                                 Select a material to view full details.
+
                             </span>
+
                           `
                     }
 
                 </div>
 
 
+                <!-- QUANTITY -->
+
                 <div>
 
-                    <label class="form-label small fw-semibold">
+                    <label
+                        class="form-label small fw-semibold">
+
                         Requested Quantity
+
                     </label>
+
 
                     <input
                         type="number"
@@ -449,8 +517,458 @@ function renderRequestItems(){
         }
     );
 
+
+    // Close search result lists when clicking elsewhere
+
+    document.addEventListener(
+        "click",
+        closeAllMaterialSearchResults,
+        {
+            once: true
+        }
+    );
+
 }
 
+// ====================================================
+// BUILD MATERIAL SEARCH TEXT
+// ====================================================
+
+function buildMaterialSearchText(
+    material
+){
+
+    if(!material)
+        return "";
+
+
+    return [
+
+        material.material_code,
+        material.material_name,
+        material.brand,
+        material.item_type,
+        material.item_size,
+        material.specification
+
+    ]
+
+    .filter(
+        value =>
+            String(
+                value || ""
+            ).trim() !== ""
+    )
+
+    .join(" | ");
+
+}
+
+
+// ====================================================
+// SEARCH MATERIAL
+// ====================================================
+
+function handleRequestItemSearch(
+    input
+){
+
+    const itemId =
+        Number(
+            input.dataset.itemId
+        );
+
+
+    const results =
+        document.getElementById(
+            `materialSearchResults-${itemId}`
+        );
+
+
+    if(!results)
+        return;
+
+
+    const searchText =
+        input.value
+            .trim()
+            .toLowerCase();
+
+
+    if(!searchText){
+
+        renderMaterialSearchResults(
+            itemId,
+            window.currentMaterials || []
+        );
+
+        return;
+
+    }
+
+
+    const searchTerms =
+        searchText
+            .split(/\s+/)
+            .filter(Boolean);
+
+
+    const filtered =
+        (window.currentMaterials || [])
+        .filter(material => {
+
+            const searchableText =
+                [
+
+                    material.material_code,
+                    material.material_name,
+                    material.brand,
+                    material.item_type,
+                    material.item_size,
+                    material.specification
+
+                ]
+
+                .filter(
+                    value =>
+                        value !== null &&
+                        value !== undefined
+                )
+
+                .join(" ")
+                .toLowerCase();
+
+
+            return searchTerms.every(
+                term =>
+                    searchableText.includes(term)
+            );
+
+        });
+
+
+    renderMaterialSearchResults(
+        itemId,
+        filtered
+    );
+
+}
+
+
+// ====================================================
+// RENDER MATERIAL SEARCH RESULTS
+// ====================================================
+
+function renderMaterialSearchResults(
+    itemId,
+    materials
+){
+
+    const results =
+        document.getElementById(
+            `materialSearchResults-${itemId}`
+        );
+
+
+    if(!results)
+        return;
+
+
+    results.innerHTML = "";
+
+
+    if(!materials.length){
+
+        results.innerHTML = `
+
+            <div class="list-group-item text-muted">
+
+                No matching material found.
+
+            </div>
+
+        `;
+
+        results.style.display =
+            "block";
+
+        return;
+
+    }
+
+
+    const currentItem =
+        window.requestItems.find(
+            item =>
+                item.id === itemId
+        );
+
+
+    materials.forEach(
+        material => {
+
+            const alreadyUsed =
+                window.requestItems.some(
+                    item =>
+                        item.id !== itemId &&
+                        String(
+                            item.materialId
+                        ) ===
+                        String(
+                            material.id
+                        )
+                );
+
+
+            const button =
+                document.createElement(
+                    "button"
+                );
+
+
+            button.type =
+                "button";
+
+
+            button.className =
+                alreadyUsed
+                ? "list-group-item list-group-item-action disabled"
+                : "list-group-item list-group-item-action";
+
+
+            button.disabled =
+                alreadyUsed;
+
+
+            button.innerHTML = `
+
+                <div class="fw-bold text-primary">
+
+                    ${escapeHtml(
+                        material.material_code || "-"
+                    )}
+
+                </div>
+
+                <div class="fw-semibold">
+
+                    ${escapeHtml(
+                        material.material_name || "-"
+                    )}
+
+                </div>
+
+                <div class="small text-muted">
+
+                    ${
+                        escapeHtml(
+                            buildMaterialSearchText(
+                                material
+                            )
+                        )
+                    }
+
+                </div>
+
+                ${
+                    alreadyUsed
+
+                    ? `
+                        <div class="small text-danger mt-1">
+
+                            Already added to this request.
+
+                        </div>
+                      `
+
+                    : ""
+                }
+
+            `;
+
+
+            if(!alreadyUsed){
+
+                button.addEventListener(
+                    "click",
+                    () => {
+
+                        selectRequestMaterial(
+                            itemId,
+                            material.id
+                        );
+
+                    }
+                );
+
+            }
+
+
+            results.appendChild(
+                button
+            );
+
+        }
+    );
+
+
+    results.style.display =
+        "block";
+
+}
+
+
+// ====================================================
+// SELECT MATERIAL FROM SEARCH
+// ====================================================
+
+function selectRequestMaterial(
+    itemId,
+    materialId
+){
+
+    const item =
+        window.requestItems.find(
+            row =>
+                row.id === itemId
+        );
+
+
+    if(!item)
+        return;
+
+
+    // Prevent duplicate material
+
+    const duplicate =
+        window.requestItems.some(
+            row =>
+                row.id !== itemId &&
+                String(
+                    row.materialId
+                ) ===
+                String(
+                    materialId
+                )
+        );
+
+
+    if(duplicate){
+
+        showAlert(
+            "This material is already added to the request.",
+            "warning"
+        );
+
+        return;
+
+    }
+
+
+    item.materialId =
+        String(materialId);
+
+
+    item.quantity =
+        "";
+
+
+    renderRequestItems();
+
+
+    // Restore focus to quantity field
+
+    const quantityInput =
+        document.querySelector(
+            `#requestItemsContainer input[type="number"][data-item-id="${itemId}"]`
+        );
+
+
+    if(quantityInput){
+
+        quantityInput.focus();
+
+    }
+
+}
+
+
+// ====================================================
+// CLEAR SELECTED MATERIAL
+// ====================================================
+
+function clearRequestItemMaterial(
+    itemId
+){
+
+    const item =
+        window.requestItems.find(
+            row =>
+                row.id === itemId
+        );
+
+
+    if(!item)
+        return;
+
+
+    item.materialId =
+        "";
+
+    item.quantity =
+        "";
+
+
+    renderRequestItems();
+
+
+    const searchInput =
+        document.getElementById(
+            `materialSearch-${itemId}`
+        );
+
+
+    if(searchInput)
+        searchInput.focus();
+
+}
+
+
+// ====================================================
+// CLOSE SEARCH RESULTS
+// ====================================================
+
+function closeAllMaterialSearchResults(
+    event
+){
+
+    document
+        .querySelectorAll(
+            '[id^="materialSearchResults-"]'
+        )
+        .forEach(
+            results => {
+
+                const parent =
+                    results.parentElement;
+
+
+                if(
+                    parent &&
+                    !parent.contains(
+                        event.target
+                    )
+                ){
+
+                    results.style.display =
+                        "none";
+
+                }
+
+            }
+        );
+
+}
 
 // ====================================================
 // BUILD MATERIAL DETAILS

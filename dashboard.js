@@ -116,8 +116,9 @@ const tbody = document.getElementById('dashRecentRequests');
 try {
 const { data, error } = await supabase
     .from('material_requests')
-    .select(`
+.select(`
     ticket_no,
+    anacity_complaint_no,
     request_status,
     created_at,
     users_master!material_requests_requested_by_fkey(
@@ -149,11 +150,35 @@ const deptName =
 const tr = document.createElement('tr');
 
 tr.innerHTML = `
-    <td class="fw-bold text-primary">${req.ticket_no}</td>
-    <td>${req.users_master?.full_name || '-'}</td>
-    <td>${req.approver?.full_name || '-'}</td>
-    <td>${deptName}</td>
-    <td>${getStatusBadge(req.request_status)}</td>
+    <td>
+
+        <div class="fw-bold text-success">
+            Complaint Number:
+            ${req.anacity_complaint_no || 'N/A'}
+        </div>
+
+        <div class="fw-bold text-primary">
+            MR:
+            ${req.ticket_no || 'N/A'}
+        </div>
+
+    </td>
+
+    <td>
+        ${req.users_master?.full_name || '-'}
+    </td>
+
+    <td>
+        ${req.approver?.full_name || '-'}
+    </td>
+
+    <td>
+        ${deptName}
+    </td>
+
+    <td>
+        ${getStatusBadge(req.request_status)}
+    </td>
 `;
 tbody.appendChild(tr);
 });

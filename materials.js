@@ -52,33 +52,124 @@ function initializeDefaults(){
 
 async function loadDepartments(){
 
-    const department=document.getElementById("department");
+    const department =
+        document.getElementById("department");
 
-    department.innerHTML=
-    `<option value="">Select Department</option>`;
+    const filterDepartment =
+        document.getElementById("filterDepartment");
 
-    const { data, error } = await supabase
-    .from("departments")
-    .select("id, department_name, prefix")
-    .order("department_name");
 
-    if(error) throw error;
+    // ---------------------------------------------
+    // DEFAULT OPTIONS
+    // ---------------------------------------------
 
-    data.forEach(item=>{
+    if(department){
 
-        department.innerHTML+=`
+        department.innerHTML =
+            `<option value="">
+                Select Department
+            </option>`;
 
-        <option
-            value="${item.id}"
-            data-prefix="${item.prefix}">
+    }
 
-            ${item.department_name}
 
-        </option>
+    if(filterDepartment){
 
-        `;
+        filterDepartment.innerHTML =
+            `<option value="">
+                All Departments
+            </option>`;
 
-    });
+    }
+
+
+    // ---------------------------------------------
+    // LOAD ALL DEPARTMENTS
+    // ---------------------------------------------
+
+    const {
+        data,
+        error
+    } = await supabase
+
+        .from("departments")
+
+        .select(`
+            id,
+            department_name,
+            prefix,
+            is_active
+        `)
+
+        .order(
+            "department_name",
+            {
+                ascending: true
+            }
+        );
+
+
+    if(error)
+        throw error;
+
+
+    // ---------------------------------------------
+    // MAIN DEPARTMENT FIELD
+    // ONLY ACTIVE DEPARTMENTS
+    // ---------------------------------------------
+
+    if(department){
+
+        (data || [])
+
+            .filter(
+                item =>
+                    item.is_active !== false
+            )
+
+            .forEach(item => {
+
+                department.innerHTML += `
+
+                    <option
+                        value="${item.id}"
+                        data-prefix="${item.prefix || ""}">
+
+                        ${item.department_name}
+
+                    </option>
+
+                `;
+
+            });
+
+    }
+
+
+    // ---------------------------------------------
+    // MATERIAL MASTER FILTER
+    // SHOW ALL DEPARTMENTS
+    // ---------------------------------------------
+
+    if(filterDepartment){
+
+        (data || [])
+            .forEach(item => {
+
+                filterDepartment.innerHTML += `
+
+                    <option
+                        value="${item.id}">
+
+                        ${item.department_name}
+
+                    </option>
+
+                `;
+
+            });
+
+    }
 
 }
 

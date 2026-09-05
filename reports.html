@@ -64,14 +64,43 @@
                         </select>
                     </div>
 
-                    <!-- Transaction Type -->
-                    <div class="col-md-2">
-                        <label class="form-label fw-semibold small">Record Type</label>
-                        <select class="form-select form-select-sm" id="filterRecordType">
-                            <option value="CONSUMPTION">Material Consumption</option>
-                            <option value="PURCHASE">Stock Purchase (In)</option>
-                        </select>
-                    </div>
+<!-- Transaction Type -->
+<div class="col-md-2">
+    <label class="form-label fw-semibold small">
+        Record Type
+    </label>
+
+    <select
+        class="form-select form-select-sm"
+        id="filterRecordType"
+    >
+
+        <option value="REQUESTS">
+            Material Requests
+        </option>
+
+        <option value="APPROVALS">
+            Approval History
+        </option>
+
+        <option value="CONSUMPTION">
+            Material Consumption / Issue
+        </option>
+
+        <option value="RETURNS">
+            Material Returns
+        </option>
+
+        <option value="PURCHASE">
+            Stock Purchase (In)
+        </option>
+
+        <option value="ALL">
+            All Transactions
+        </option>
+
+    </select>
+</div>
 
                     <!-- Area Type -->
                     <div class="col-md-2">

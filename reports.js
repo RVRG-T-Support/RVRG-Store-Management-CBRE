@@ -362,25 +362,27 @@ async function fetchRequestData(
                 "material_requests"
             )
 
-            .select(`
-                id,
-                ticket_no,
-                anacity_complaint_no,
-                location_name,
-                location_type,
-                requested_qty,
-                request_status,
-                created_at,
-                technician_name,
+    .select(`
+    id,
+    ticket_no,
+    anacity_complaint_no,
+    location_name,
+    location_type,
+    requested_qty,
+    request_status,
+    created_at,
+    technician_name,
+    requested_by,
+    approved_by,
 
-                materials!material_requests_material_id_fkey(
-                    material_name,
-                    department_id,
-                    departments(
-                        department_name
-                    )
-                )
-            `)
+    materials!material_requests_material_id_fkey(
+        material_name,
+        department_id,
+        departments(
+            department_name
+        )
+    )
+`)       
 
             .gte(
                 "created_at",
@@ -444,49 +446,58 @@ async function fetchRequestData(
     }
 
 
-    return filtered.map(
-        row => ({
+   return filtered.map(
+    row => ({
 
-            date:
-                row.created_at,
+        date:
+            row.created_at,
 
-            reference:
-                row.ticket_no,
+        reference:
+            row.ticket_no,
 
-            material:
-                row.materials
-                    ?.material_name
-                || "-",
+        material:
+            row.materials
+                ?.material_name
+            || "-",
 
-            department:
-                row.materials
-                    ?.departments
-                    ?.department_name
-                || "-",
+        department:
+            row.materials
+                ?.departments
+                ?.department_name
+            || "-",
 
-            area:
-                row.location_type
-                || "-",
+        area:
+            row.location_type
+            || "-",
 
-            quantity:
-                Number(
-                    row.requested_qty || 0
-                ),
+        quantity:
+            Number(
+                row.requested_qty || 0
+            ),
 
-            value:
-                0,
+        value:
+            0,
 
-            extra:
-                `Complaint Number: ${
-                    row.anacity_complaint_no
-                    || "N/A"
-                } | Status: ${
-                    row.request_status
-                    || "-"
-                }`
+        requestedBy:
+            row.requested_by || "-",
 
-        })
-    );
+        approvedBy:
+            row.approved_by || "-",
+
+        issuedBy:
+            "-",
+
+        extra:
+            `Complaint Number: ${
+                row.anacity_complaint_no
+                || "N/A"
+            } | Status: ${
+                row.request_status
+                || "-"
+            }`
+
+    })
+);
 
 }
 
@@ -509,26 +520,27 @@ async function fetchApprovalData(
                 "material_requests"
             )
 
-            .select(`
-                id,
-                ticket_no,
-                anacity_complaint_no,
-                location_name,
-                location_type,
-                requested_qty,
-                approved_qty,
-                request_status,
-                approval_date,
-                technician_name,
+.select(`
+    id,
+    ticket_no,
+    anacity_complaint_no,
+    location_name,
+    location_type,
+    requested_qty,
+    request_status,
+    created_at,
+    technician_name,
+    requested_by,
+    approved_by,
 
-                materials!material_requests_material_id_fkey(
-                    material_name,
-                    department_id,
-                    departments(
-                        department_name
-                    )
-                )
-            `)
+    materials!material_requests_material_id_fkey(
+        material_name,
+        department_id,
+        departments(
+            department_name
+        )
+    )
+`)
 
             .in(
                 "request_status",
@@ -600,58 +612,67 @@ async function fetchApprovalData(
     }
 
 
-    return filtered.map(
-        row => ({
+return filtered.map(
+    row => ({
 
-            date:
-                row.approval_date,
+        date:
+            row.approval_date,
 
-            reference:
-                row.ticket_no,
+        reference:
+            row.ticket_no,
 
-            material:
-                row.materials
-                    ?.material_name
-                || "-",
+        material:
+            row.materials
+                ?.material_name
+            || "-",
 
-            department:
-                row.materials
-                    ?.departments
-                    ?.department_name
-                || "-",
+        department:
+            row.materials
+                ?.departments
+                ?.department_name
+            || "-",
 
-            area:
-                row.location_type
-                || "-",
+        area:
+            row.location_type
+            || "-",
 
-            quantity:
-                Number(
-                    row.approved_qty ??
-                    row.requested_qty ??
-                    0
-                ),
+        quantity:
+            Number(
+                row.approved_qty ??
+                row.requested_qty ??
+                0
+            ),
 
-            value:
-                0,
+        value:
+            0,
 
-            extra:
-                `Complaint Number: ${
-                    row.anacity_complaint_no
-                    || "N/A"
-                } | Requested: ${
-                    row.requested_qty
-                    || 0
-                } | Approved: ${
-                    row.approved_qty
-                    ?? row.requested_qty
-                    ?? 0
-                } | Status: ${
-                    row.request_status
-                    || "-"
-                }`
+        requestedBy:
+            row.requested_by || "-",
 
-        })
-    );
+        approvedBy:
+            row.approved_by || "-",
+
+        issuedBy:
+            "-",
+
+        extra:
+            `Complaint Number: ${
+                row.anacity_complaint_no
+                || "N/A"
+            } | Requested: ${
+                row.requested_qty
+                || 0
+            } | Approved: ${
+                row.approved_qty
+                ?? row.requested_qty
+                ?? 0
+            } | Status: ${
+                row.request_status
+                || "-"
+            }`
+
+    })
+);
 
 }
 
@@ -674,22 +695,23 @@ async function fetchConsumptionData(
                 "material_issue_register"
             )
 
-            .select(`
-                ticket_no,
-                location_type,
-                location_name,
-                issued_date,
-                issued_qty,
-                unit_cost,
+.select(`
+    ticket_no,
+    location_type,
+    location_name,
+    issued_date,
+    issued_qty,
+    unit_cost,
+    issued_by,
 
-                materials!material_issue_register_material_id_fkey(
-                    material_name,
-                    department_id,
-                    departments(
-                        department_name
-                    )
-                )
-            `)
+    materials!material_issue_register_material_id_fkey(
+        material_name,
+        department_id,
+        departments(
+            department_name
+        )
+    )
+`)
 
             .gte(
                 "issued_date",
@@ -753,46 +775,55 @@ async function fetchConsumptionData(
     }
 
 
-    return filtered.map(
-        row => ({
+return filtered.map(
+    row => ({
 
-            date:
-                row.issued_date,
+        date:
+            row.issued_date,
 
-            reference:
-                row.ticket_no,
+        reference:
+            row.ticket_no,
 
-            material:
-                row.materials
-                    ?.material_name
-                || "-",
+        material:
+            row.materials
+                ?.material_name
+            || "-",
 
-            department:
-                row.materials
-                    ?.departments
-                    ?.department_name
-                || "-",
+        department:
+            row.materials
+                ?.departments
+                ?.department_name
+            || "-",
 
-            area:
-                row.location_type
-                || "-",
+        area:
+            row.location_type
+            || "-",
 
-            quantity:
-                Number(
-                    row.issued_qty || 0
-                ),
+        quantity:
+            Number(
+                row.issued_qty || 0
+            ),
 
-            value:
-                Number(
-                    row.issued_qty || 0
-                )
-                *
-                Number(
-                    row.unit_cost || 0
-                )
+        value:
+            Number(
+                row.issued_qty || 0
+            )
+            *
+            Number(
+                row.unit_cost || 0
+            ),
 
-        })
-    );
+        requestedBy:
+            "-",
+
+        approvedBy:
+            "-",
+
+        issuedBy:
+            row.issued_by || "-"
+
+    })
+);
 
 }
 
@@ -907,63 +938,70 @@ async function fetchReturnData(
 
     }
 
-
     return filtered.map(
-        row => {
+    row => {
 
-            const issue =
-                row.material_issue_register
-                || {};
+        const issue =
+            row.material_issue_register
+            || {};
 
-            const material =
-                issue.materials
-                || {};
+        const material =
+            issue.materials
+            || {};
 
 
-            return {
+        return {
 
-                date:
-                    row.return_date,
+            date:
+                row.return_date,
 
-                reference:
-                    issue.ticket_no
-                    || "-",
+            reference:
+                issue.ticket_no
+                || "-",
 
-                material:
-                    material.material_name
-                    || "-",
+            material:
+                material.material_name
+                || "-",
 
-                department:
-                    material.departments
-                        ?.department_name
-                    || "-",
+            department:
+                material.departments
+                    ?.department_name
+                || "-",
 
-                area:
-                    issue.location_type
-                    || "-",
+            area:
+                issue.location_type
+                || "-",
 
-                quantity:
-                    Number(
-                        row.returned_qty || 0
-                    ),
+            quantity:
+                Number(
+                    row.returned_qty || 0
+                ),
 
-                value:
-                    0,
+            value:
+                0,
 
-                extra:
-                    `Condition: ${
-                        row.return_condition
-                        || "-"
-                    } | Remarks: ${
-                        row.remarks
-                        || "-"
-                    }`
+            requestedBy:
+                "-",
 
-            };
+            approvedBy:
+                "-",
 
-        }
-    );
+            issuedBy:
+                row.received_by || "-",
 
+            extra:
+                `Condition: ${
+                    row.return_condition
+                    || "-"
+                } | Remarks: ${
+                    row.remarks
+                    || "-"
+                }`
+
+        };
+
+    }
+);
 }
 
 
@@ -1223,6 +1261,76 @@ function renderReportTable(
             "reportTableFooter"
         );
 
+    const userActionHeader =
+    document.querySelector(
+        "#reportTableHeader th:last-child"
+    );
+
+
+if (userActionHeader) {
+
+    if (
+        recordType === "REQUESTS"
+    ) {
+
+        userActionHeader.innerText =
+            "Requested By";
+
+    }
+
+    else if (
+        recordType === "APPROVALS"
+    ) {
+
+        userActionHeader.innerText =
+            "Requested By / Approved By";
+
+    }
+
+    else if (
+        recordType === "CONSUMPTION"
+    ) {
+
+        userActionHeader.innerText =
+            "Issued By";
+
+    }
+
+    else if (
+        recordType === "RETURNS"
+    ) {
+
+        userActionHeader.innerText =
+            "Received By";
+
+    }
+
+    else if (
+        recordType === "PURCHASE"
+    ) {
+
+        userActionHeader.innerText =
+            "Entered By";
+
+    }
+
+    else if (
+        recordType === "ALL"
+    ) {
+
+        userActionHeader.innerText =
+            "Processed By";
+
+    }
+
+    else {
+
+        userActionHeader.innerText =
+            "User / Action";
+
+    }
+
+}
 
     if (
         !data ||
@@ -1345,44 +1453,179 @@ function renderReportTable(
                 rowClass;
 
 
-            tr.innerHTML = `
+   let userActionLabel =
+    "User / Action";
 
-                <td>
-                    ${formatDate(
-                        row.date
-                    )}
-                </td>
+let userActionValue =
+    "-";
 
-                <td class="fw-bold">
-                    ${reference}
-                </td>
 
-                <td>
-                    ${material}
-                </td>
+if (recordType === "REQUESTS") {
 
-                <td>
-                    ${department}
-                </td>
+    userActionLabel =
+        "Requested By";
 
-                <td>
-                    <small>
-                        ${area}
-                    </small>
-                </td>
+    userActionValue =
+        row.requestedBy || "-";
 
-                <td class="fw-bold">
-                    ${quantity}
-                </td>
+}
 
-                <td>
-                    ${formatCurrency(
-                        value
-                    )}
-                </td>
 
-            `;
+else if (recordType === "APPROVALS") {
 
+    userActionLabel =
+        "Requested By / Approved By";
+
+    userActionValue = `
+        <div>
+            <strong>Requested:</strong>
+            ${row.requestedBy || "-"}
+        </div>
+
+        <div>
+            <strong>Approved:</strong>
+            ${row.approvedBy || "-"}
+        </div>
+    `;
+
+}
+
+
+else if (recordType === "CONSUMPTION") {
+
+    userActionLabel =
+        "Issued By";
+
+    userActionValue =
+        row.issuedBy || "-";
+
+}
+
+
+else if (recordType === "RETURNS") {
+
+    userActionLabel =
+        "Received By";
+
+    userActionValue =
+        row.issuedBy || "-";
+
+}
+
+
+else if (recordType === "PURCHASE") {
+
+    userActionLabel =
+        "Entered By";
+
+    userActionValue =
+        row.requestedBy || "-";
+
+}
+
+
+else if (recordType === "ALL") {
+
+    userActionLabel =
+        "Processed By";
+
+    if (
+        row.transactionType ===
+        "REQUEST"
+    ) {
+
+        userActionValue =
+            row.requestedBy || "-";
+
+    }
+
+    else if (
+        row.transactionType ===
+        "APPROVAL"
+    ) {
+
+        userActionValue = `
+            Requested:
+            ${row.requestedBy || "-"}
+            <br>
+            Approved:
+            ${row.approvedBy || "-"}
+        `;
+
+    }
+
+    else if (
+        row.transactionType ===
+        "ISSUE"
+    ) {
+
+        userActionValue =
+            row.issuedBy || "-";
+
+    }
+
+    else if (
+        row.transactionType ===
+        "RETURN"
+    ) {
+
+        userActionValue =
+            row.issuedBy || "-";
+
+    }
+
+}
+
+
+tr.innerHTML = `
+
+    <td>
+        ${formatDate(
+            row.date
+        )}
+    </td>
+
+    <td class="fw-bold">
+        ${reference}
+    </td>
+
+    <td>
+        ${material}
+    </td>
+
+    <td>
+        ${department}
+    </td>
+
+    <td>
+        <small>
+            ${area}
+        </small>
+    </td>
+
+    <td class="fw-bold">
+        ${quantity}
+    </td>
+
+    <td>
+        ${formatCurrency(
+            value
+        )}
+    </td>
+
+    <td>
+        <small>
+            <strong>
+                ${userActionLabel}:
+            </strong>
+
+            <br>
+
+            ${userActionValue}
+        </small>
+    </td>
+
+`;
 
             tableBody.appendChild(
                 tr

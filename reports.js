@@ -446,7 +446,7 @@ async function fetchRequestData(
     }
 
 
-   return filtered.map(
+return filtered.map(
     row => ({
 
         date:
@@ -454,6 +454,10 @@ async function fetchRequestData(
 
         reference:
             row.ticket_no,
+
+        complaintNumber:
+            row.anacity_complaint_no
+            || "N/A",
 
         material:
             row.materials
@@ -488,10 +492,7 @@ async function fetchRequestData(
             "-",
 
         extra:
-            `Complaint Number: ${
-                row.anacity_complaint_no
-                || "N/A"
-            } | Status: ${
+            `Status: ${
                 row.request_status
                 || "-"
             }`
@@ -621,6 +622,10 @@ return filtered.map(
         reference:
             row.ticket_no,
 
+        complaintNumber:
+            row.anacity_complaint_no
+            || "N/A",
+
         material:
             row.materials
                 ?.material_name
@@ -656,10 +661,7 @@ return filtered.map(
             "-",
 
         extra:
-            `Complaint Number: ${
-                row.anacity_complaint_no
-                || "N/A"
-            } | Requested: ${
+            `Requested: ${
                 row.requested_qty
                 || 0
             } | Approved: ${
@@ -673,8 +675,6 @@ return filtered.map(
 
     })
 );
-
-}
 
 
 // ====================================================
@@ -1390,28 +1390,32 @@ if (userActionHeader) {
                 );
 
 
-            let reference =
-                row.reference || "-";
+let reference =
+    row.reference || "-";
 
 
-            let material =
-                row.material || "-";
+let complaintNumber =
+    row.complaintNumber || "";
 
 
-            let department =
-                row.department || "-";
+let material =
+    row.material || "-";
 
 
-            let area =
-                row.area || "-";
+let department =
+    row.department || "-";
 
 
-            let quantity =
-                row.quantity ?? 0;
+let area =
+    row.area || "-";
 
 
-            let value =
-                row.value ?? 0;
+let quantity =
+    row.quantity ?? 0;
+
+
+let value =
+    row.value ?? 0;
 
 
             if (
@@ -1585,9 +1589,29 @@ tr.innerHTML = `
         )}
     </td>
 
-    <td class="fw-bold">
+<td class="fw-bold">
+
+    ${
+        complaintNumber
+        ? `
+            <div class="text-success">
+                Complaint Number:
+                ${complaintNumber}
+            </div>
+        `
+        : ""
+    }
+
+    <div class="text-primary">
+        ${
+            recordType === "PURCHASE"
+                ? "Invoice: "
+                : "MR: "
+        }
         ${reference}
-    </td>
+    </div>
+
+</td>
 
     <td>
         ${material}

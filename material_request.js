@@ -1821,14 +1821,12 @@ async function loadRecentRequests() {
                     </td>
 
 
-                    <td>
+<td>
 
-                        ${req.requested_qty}
+    ${req.requested_qty}
 
-                    </td>
+</td>
 
-
-                    <td>
 
 <td>
 

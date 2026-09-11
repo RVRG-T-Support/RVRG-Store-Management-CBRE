@@ -1485,7 +1485,9 @@ const requestRows =
 
             requested_by:
                 user.id
-
+                
+            created_at:
+                new Date().toISOString(),
         })
     );
 
@@ -1714,7 +1716,24 @@ async function loadRecentRequests() {
             const isPending =
                 req.request_status ===
                 "PENDING";
-
+            
+            const requestDateTime =
+    req.created_at
+        ? new Date(
+            req.created_at
+        ).toLocaleString(
+            "en-IN",
+            {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+                hour12: true
+            }
+        )
+        : "-";
 
             const actionButtons =
                 isPending
@@ -1811,18 +1830,29 @@ async function loadRecentRequests() {
 
                     <td>
 
-                        ${getStatusBadge(
-                            req.request_status
-                        )}
+<td>
 
-                    </td>
+    ${getStatusBadge(
+        req.request_status
+    )}
+
+</td>
 
 
-                    <td class="text-center text-nowrap">
+<td>
 
-                        ${actionButtons}
+    <small>
+        ${requestDateTime}
+    </small>
 
-                    </td>
+</td>
+
+
+<td class="text-center text-nowrap">
+
+    ${actionButtons}
+
+</td>
 
                 </tr>
 

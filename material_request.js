@@ -1484,7 +1484,7 @@ const requestRows =
                 "PENDING",
 
             requested_by:
-                user.id
+                user.id,
                 
             created_at:
                 new Date().toISOString(),
@@ -1637,7 +1637,7 @@ async function loadRecentRequests() {
 
     table.innerHTML = `
         <tr>
-            <td colspan="6"
+            <td colspan="7"
                 class="text-center text-muted py-4">
 
                 Loading...

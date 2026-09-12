@@ -3882,11 +3882,8 @@ return {
 
     uploadWorksheet["!cols"] = [
 
-       uploadWorksheet["!cols"] = [
-
         { wch: 18 }, // Original Excel Row
         { wch: 18 }, // Material Code
-        { wch: 20 }, // Department
         { wch: 20 }, // Department
         { wch: 20 }, // Category
         { wch: 35 }, // Material Name

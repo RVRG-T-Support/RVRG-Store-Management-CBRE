@@ -3715,7 +3715,7 @@ else{
 
 // ====================================================
 // DOWNLOAD FAILED IMPORT ROWS
-// COMPLETE ORIGINAL DATA + EXCEL ROW + ERROR
+// UPLOAD-COMPATIBLE FORMAT
 // ====================================================
 
 function downloadFailedImportRows(
@@ -3726,9 +3726,7 @@ function downloadFailedImportRows(
         !failedRows ||
         !failedRows.length
     ){
-
         return;
-
     }
 
 
@@ -3745,69 +3743,113 @@ function downloadFailedImportRows(
     }
 
 
-    const exportRows =
+    // ====================================================
+    // SHEET 1
+    // EXACT SAME FORMAT AS MATERIAL MASTER UPLOAD
+    // ====================================================
+
+    const uploadRows =
         failedRows.map(
             item => {
 
+                const source =
+                    item.originalRow ||
+                    item;
+
+
                 return {
 
-                    "Excel Row":
-                        item.row || "",
+                    Material_Code:
+                        source.Material_Code || "",
 
-                    "Material Code":
-                        item.material_code || "",
+                    Department:
+                        source.Department || "",
 
-                    "Department":
-                        item.Department || "",
+                    Category:
+                        source.Category || "",
 
-                    "Category":
-                        item.Category || "",
-
-                    "Material Name":
-                        item.Material_Name ||
+                    Material_Name:
+                        source.Material_Name ||
                         item.material ||
                         "",
 
-                    "Brand":
-                        item.Brand || "",
+                    Brand:
+                        source.Brand || "",
 
-                    "Item Type":
-                        item.Item_Type || "",
+                    Item_Type:
+                        source.Item_Type || "",
 
-                    "Item Size":
-                        item.Item_Size || "",
+                    Item_Size:
+                        source.Item_Size || "",
 
-                    "Specification":
-                        item.Specification || "",
+                    Specification:
+                        source.Specification || "",
 
-                    "Unit":
-                        item.Unit || "",
+                    Unit:
+                        source.Unit || "",
 
-                    "Opening Stock":
-                        item.Opening_Stock ?? "",
+                    Opening_Stock:
+                        source.Opening_Stock ??
+                        "",
 
-                    "Minimum Stock":
-                        item.Minimum_Stock ?? "",
+                    Minimum_Stock:
+                        source.Minimum_Stock ??
+                        "",
 
-                    "Rack Location":
-                        item.Rack_Location || "",
+                    Rack_Location:
+                        source.Rack_Location || "",
 
-                    "Unit Cost":
-                        item.Unit_Cost ?? "",
+                    Unit_Cost:
+                        source.Unit_Cost ??
+                        "",
 
-                    "GST Type":
-                        item.GST_Type || "",
+                    GST_Type:
+                        source.GST_Type || "",
 
-                    "GST %":
-                        item.GST_Percentage ?? "",
+                    GST_Percentage:
+                        source.GST_Percentage ??
+                        "",
 
-                    "Description":
-                        item.Description || "",
+                    Description:
+                        source.Description || "",
 
-                    "Status":
-                        item.Status || "",
+                    Status:
+                        source.Status || ""
 
-                    "Failure Reason":
+                };
+
+            }
+        );
+
+
+    // ====================================================
+    // SHEET 2
+    // FAILURE DETAILS
+    // ====================================================
+
+    const failureDetails =
+        failedRows.map(
+            item => {
+
+                const source =
+                    item.originalRow ||
+                    item;
+
+
+                return {
+
+                    Excel_Row:
+                        item.row || "",
+
+                    Material_Code:
+                        source.Material_Code || "",
+
+                    Material_Name:
+                        source.Material_Name ||
+                        item.material ||
+                        "",
+
+                    Failure_Reason:
                         item.error ||
                         "Import failed"
 
@@ -3817,47 +3859,84 @@ function downloadFailedImportRows(
         );
 
 
-    const worksheet =
-        XLSX.utils.json_to_sheet(
-            exportRows
-        );
-
-
-    worksheet["!cols"] = [
-
-        { wch: 12 },
-        { wch: 20 },
-        { wch: 20 },
-        { wch: 20 },
-        { wch: 35 },
-        { wch: 20 },
-        { wch: 20 },
-        { wch: 18 },
-        { wch: 25 },
-        { wch: 12 },
-        { wch: 15 },
-        { wch: 15 },
-        { wch: 25 },
-        { wch: 15 },
-        { wch: 15 },
-        { wch: 10 },
-        { wch: 40 },
-        { wch: 12 },
-        { wch: 60 }
-
-    ];
-
+    // ====================================================
+    // CREATE WORKBOOK
+    // ====================================================
 
     const workbook =
         XLSX.utils.book_new();
 
 
+    // ====================================================
+    // MATERIAL MASTER SHEET
+    // ====================================================
+
+    const uploadWorksheet =
+        XLSX.utils.json_to_sheet(
+            uploadRows
+        );
+
+
+    uploadWorksheet["!cols"] = [
+
+        { wch: 18 }, // Material Code
+        { wch: 20 }, // Department
+        { wch: 20 }, // Category
+        { wch: 35 }, // Material Name
+        { wch: 20 }, // Brand
+        { wch: 20 }, // Item Type
+        { wch: 18 }, // Item Size
+        { wch: 25 }, // Specification
+        { wch: 12 }, // Unit
+        { wch: 15 }, // Opening Stock
+        { wch: 15 }, // Minimum Stock
+        { wch: 25 }, // Rack Location
+        { wch: 15 }, // Unit Cost
+        { wch: 15 }, // GST Type
+        { wch: 15 }, // GST Percentage
+        { wch: 40 }, // Description
+        { wch: 12 }  // Status
+
+    ];
+
+
     XLSX.utils.book_append_sheet(
         workbook,
-        worksheet,
-        "Failed Rows"
+        uploadWorksheet,
+        "Material_Master"
     );
 
+
+    // ====================================================
+    // FAILURE DETAILS SHEET
+    // ====================================================
+
+    const failureWorksheet =
+        XLSX.utils.json_to_sheet(
+            failureDetails
+        );
+
+
+    failureWorksheet["!cols"] = [
+
+        { wch: 12 },
+        { wch: 20 },
+        { wch: 35 },
+        { wch: 80 }
+
+    ];
+
+
+    XLSX.utils.book_append_sheet(
+        workbook,
+        failureWorksheet,
+        "Failure_Details"
+    );
+
+
+    // ====================================================
+    // DOWNLOAD
+    // ====================================================
 
     XLSX.writeFile(
         workbook,
@@ -3865,7 +3944,6 @@ function downloadFailedImportRows(
     );
 
 }
-
     // ====================================================
     // PREVENT DUPLICATE IMPORT EXECUTION
     // ====================================================
@@ -4200,8 +4278,10 @@ function downloadFailedImportRows(
 // IMPORT EACH ROW
 // ====================================================
 // ====================================================
-// STRICT PRE-VALIDATION
-// NOTHING IS WRITTEN BEFORE VALIDATION PASSES
+// ====================================================
+// PRE-VALIDATION
+// FAILED ROWS WILL BE SKIPPED
+// VALID ROWS WILL STILL BE IMPORTED
 // ====================================================
 
 const validationErrors =
@@ -4211,32 +4291,59 @@ const validationErrors =
         existingMaterials
     );
 
-if(validationErrors.length > 0){
 
-    console.error(
-        "Material Import Rejected:",
-        validationErrors
-    );
+// ====================================================
+// GROUP VALIDATION ERRORS BY EXCEL ROW
+// ONE FAILED ROW = ONE FAILURE RECORD
+// ====================================================
 
-
-    // --------------------------------------------
-    // BUILD COMPLETE FAILURE RECORDS
-    // --------------------------------------------
-
-    const validationFailures =
-        validationErrors.map(
-            item => {
-
-                const originalRow =
-                    importedMaterialRows[
-                        Number(item.row) - 2
-                    ] || {};
+const validationFailureMap =
+    new Map();
 
 
-                return {
+(validationErrors || []).forEach(
+    item => {
+
+        const rowNumber =
+            Number(item.row);
+
+
+        const originalRow =
+            importedMaterialRows[
+                rowNumber - 2
+            ] || {};
+
+
+        const reason =
+            item.error ||
+            "Validation failed";
+
+
+        if(
+            validationFailureMap.has(
+                rowNumber
+            )
+        ){
+
+            const existing =
+                validationFailureMap.get(
+                    rowNumber
+                );
+
+
+            existing.error +=
+                " | " +
+                reason;
+
+        }
+        else{
+
+            validationFailureMap.set(
+                rowNumber,
+                {
 
                     row:
-                        item.row,
+                        rowNumber,
 
                     material_code:
                         originalRow.Material_Code ||
@@ -4264,6 +4371,18 @@ if(validationErrors.length > 0){
                         originalRow.Brand ||
                         "",
 
+                    Item_Type:
+                        originalRow.Item_Type ||
+                        "",
+
+                    Item_Size:
+                        originalRow.Item_Size ||
+                        "",
+
+                    Specification:
+                        originalRow.Specification ||
+                        "",
+
                     Unit:
                         originalRow.Unit ||
                         "",
@@ -4272,84 +4391,76 @@ if(validationErrors.length > 0){
                         originalRow.Opening_Stock ??
                         "",
 
+                    Minimum_Stock:
+                        originalRow.Minimum_Stock ??
+                        "",
+
+                    Rack_Location:
+                        originalRow.Rack_Location ||
+                        "",
+
+                    Unit_Cost:
+                        originalRow.Unit_Cost ??
+                        "",
+
+                    GST_Type:
+                        originalRow.GST_Type ||
+                        "",
+
+                    GST_Percentage:
+                        originalRow.GST_Percentage ??
+                        "",
+
+                    Description:
+                        originalRow.Description ||
+                        "",
+
+                    Status:
+                        originalRow.Status ||
+                        "",
+
                     error:
-                        item.error ||
-                        "Validation failed",
+                        reason,
 
                     originalRow:
                         originalRow
 
-                };
-
-            }
-        );
-
-
-    // --------------------------------------------
-    // AUTOMATICALLY DOWNLOAD FAILED ROWS
-    // --------------------------------------------
-
-    downloadFailedImportRows(
-        validationFailures
-    );
-
-
-    // --------------------------------------------
-    // BUILD USER MESSAGE
-    // --------------------------------------------
-
-    let message =
-        "IMPORT REJECTED.\n\n" +
-
-        importedMaterialRows.length +
-        " row(s) found in Excel.\n" +
-
-        validationFailures.length +
-        " row(s) failed validation.\n\n";
-
-
-    validationFailures.forEach(
-        item => {
-
-            message +=
-
-                "Excel Row " +
-                item.row +
-
-                " — " +
-
-                (
-                    item.material ||
-                    "(blank)"
-                ) +
-
-                "\n" +
-
-                item.error +
-
-                "\n\n";
+                }
+            );
 
         }
+
+    }
+);
+
+
+const validationFailures =
+    Array.from(
+        validationFailureMap.values()
     );
 
+
+const validationFailureRows =
+    new Set(
+        validationFailures.map(
+            item =>
+                Number(item.row)
+        )
+    );
+
+
+if(
+    validationFailures.length
+){
+
+    console.warn(
+        "Rows skipped during validation:",
+        validationFailures
+    );
 
     console.table(
         validationFailures
     );
-
-
-    showAlert(
-
-        message +
-
-        "The failed rows have been downloaded to Excel.",
-
-        "danger"
-
-    );
-
-
-    return;
 
 }
         let successCount = 0;
@@ -4368,7 +4479,29 @@ if(validationErrors.length > 0){
             const row =
                 importedMaterialRows[i];
 
+// --------------------------------------------
+// SKIP PRE-VALIDATION FAILED ROW
+// --------------------------------------------
 
+const excelRowNumber =
+    i + 2;
+
+
+if(
+    validationFailureRows.has(
+        excelRowNumber
+    )
+){
+
+    console.warn(
+        "Skipping failed Excel row:",
+        excelRowNumber
+    );
+
+    continue;
+
+}
+            
             try{
 
                 // --------------------------------------------
@@ -5253,201 +5386,107 @@ successCount++;
 
 
 // ====================================================
-// RESULT
-// ====================================================
-// ====================================================
-// FINAL IMPORT COUNT CHECK
+// FINAL IMPORT RESULT
 // ====================================================
 
+// Combine:
+// 1. Validation-failed rows
+// 2. Rows that failed during actual processing
+
+const allFailedRows = [
+    ...validationFailures,
+    ...failedRows
+];
+
+
+const totalFailedRows =
+    allFailedRows.length;
+
+
+const totalRows =
+    importedMaterialRows.length;
+
+
 // ====================================================
-// FINAL IMPORT VALIDATION
+// DOWNLOAD FAILED ROWS
 // ====================================================
 
 if(
-    successCount !==
-    importedMaterialRows.length
+    totalFailedRows > 0
 ){
 
-    // --------------------------------------------
-    // Build complete failure list
-    // --------------------------------------------
-
-    const exportFailures =
-        failedRows.map(item => {
-
-            const originalRow =
-                importedMaterialRows[
-                    Number(item.row) - 2
-                ] || {};
-
-            return {
-
-                row:
-                    item.row,
-
-                material_code:
-                    originalRow.Material_Code ||
-                    originalRow.material_code ||
-                    "",
-
-                material:
-                    item.material ||
-                    originalRow.Material_Name ||
-                    "",
-
-                Material_Name:
-                    originalRow.Material_Name ||
-                    "",
-
-                Department:
-                    originalRow.Department ||
-                    "",
-
-                Category:
-                    originalRow.Category ||
-                    "",
-
-                Brand:
-                    originalRow.Brand ||
-                    "",
-
-                Unit:
-                    originalRow.Unit ||
-                    "",
-
-                Opening_Stock:
-                    originalRow.Opening_Stock ||
-                    "",
-
-                error:
-                    item.error ||
-                    "Import failed"
-            };
-
-        });
-
-
-    // --------------------------------------------
-    // Download failed rows
-    // --------------------------------------------
-
     downloadFailedImportRows(
-        exportFailures
+        allFailedRows
     );
 
-
-    // --------------------------------------------
-    // Build user message
-    // --------------------------------------------
-
-    let message =
-        "IMPORT REJECTED.\n\n" +
-
-        "Excel rows: " +
-        importedMaterialRows.length +
-
-        "\nSuccessfully processed: " +
-        successCount +
-
-        "\nFailed rows: " +
-        exportFailures.length +
-
-        "\n\n";
+}
 
 
-    exportFailures.forEach(
+// ====================================================
+// BUILD RESULT MESSAGE
+// ====================================================
+
+let message =
+    successCount +
+    " material(s) imported successfully.";
+
+
+if(
+    totalFailedRows > 0
+){
+
+    message +=
+        "\n\n" +
+        totalFailedRows +
+        " row(s) skipped / failed:\n";
+
+
+    allFailedRows.forEach(
         item => {
 
             message +=
-                "Row " +
+                "\nExcel Row " +
                 item.row +
                 " — " +
-                item.material +
+                (
+                    item.material ||
+                    item.Material_Name ||
+                    "(blank)"
+                ) +
                 "\n" +
-                item.error +
-                "\n\n";
+                (
+                    item.error ||
+                    "Import failed"
+                ) +
+                "\n";
 
         }
     );
 
 
-    console.error(
-        "Material Import Rejected:",
-        exportFailures
+    console.warn(
+        "Failed / skipped import rows:",
+        allFailedRows
     );
 
 
     console.table(
-        exportFailures
+        allFailedRows
     );
 
-
-    showAlert(
-        message +
-        "Failed rows have been downloaded to Excel.",
-        "danger"
-    );
-
-
-    // IMPORTANT:
-    // Do NOT close the import modal.
-    // Do NOT clear the selected Excel.
-    // User can inspect and correct it.
-
-    return;
 }
-        let message =
-
-            successCount +
-            " material(s) imported successfully.";
 
 
-        if(failedRows.length){
+// ====================================================
+// SHOW FINAL RESULT
+// ====================================================
 
-            message +=
-
-                "\n\n" +
-                failedRows.length +
-                " row(s) failed:\n";
-
-
-            failedRows.forEach(
-                item => {
-
-                    message +=
-
-                        "\nRow " +
-                        item.row +
-                        " — " +
-                        item.material +
-                        "\n" +
-                        item.error +
-                        "\n";
-
-                }
-            );
-
-
-            console.error(
-                "Failed Import Rows:",
-                failedRows
-            );
-
-
-            console.table(
-                failedRows
-            );
-
-        }
-
-
-        showAlert(
-            message,
-            failedRows.length
-                ? "warning"
-                : "success"
-        );
-
+showAlert(
+    message,
+    totalFailedRows > 0
+        ? "warning"
+        : "success"
+);
 
         // ====================================================
         // CLOSE MODAL

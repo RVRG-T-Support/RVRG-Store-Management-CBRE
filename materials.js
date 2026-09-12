@@ -3817,7 +3817,12 @@ return {
                         source.Description || "",
 
                     Status:
-                        source.Status || ""
+                        
+                   source.Status || "",
+                    
+                        Failure_Reason:
+                        item.error ||
+                        "Import failed"
 
                 };
 
@@ -3899,9 +3904,10 @@ return {
         { wch: 15 }, // GST Type
         { wch: 15 }, // GST Percentage
         { wch: 40 }, // Description
-        { wch: 12 }  // Status
+        { wch: 12 }, // Status
+        { wch: 60 }  // Failure Reason
 
-    ];
+        ];
 
 
     XLSX.utils.book_append_sheet(

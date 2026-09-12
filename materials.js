@@ -3757,13 +3757,16 @@ function downloadFailedImportRows(
                     item;
 
 
-                return {
+return {
 
-                    Material_Code:
-                        source.Material_Code || "",
+    "Original Excel Row":
+        item.row || "",
 
-                    Department:
-                        source.Department || "",
+    Material_Code:
+        source.Material_Code || "",
+
+    Department:
+        source.Department || "",
 
                     Category:
                         source.Category || "",
@@ -3879,7 +3882,11 @@ function downloadFailedImportRows(
 
     uploadWorksheet["!cols"] = [
 
+       uploadWorksheet["!cols"] = [
+
+        { wch: 18 }, // Original Excel Row
         { wch: 18 }, // Material Code
+        { wch: 20 }, // Department
         { wch: 20 }, // Department
         { wch: 20 }, // Category
         { wch: 35 }, // Material Name

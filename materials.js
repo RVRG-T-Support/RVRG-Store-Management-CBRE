@@ -5,7 +5,12 @@
 
 var supabase = window.supabaseClient;
 const currentUser = getCurrentUser();
+let materialMasterEventsRegistered = false;
 
+document.addEventListener(
+    "DOMContentLoaded",
+    initializePage
+);
 document.addEventListener("DOMContentLoaded", initializePage);
 
 async function initializePage() {
@@ -527,12 +532,148 @@ async function addNewCategory(){
     }
 
 }
+//====================================================
+// ADD NEW ITEM TYPE
+//====================================================
 
+async function addNewItemType(){
+
+    const select =
+        document.getElementById("itemType");
+
+    const value =
+        prompt("Enter New Item Type:");
+
+    if(
+        value === null ||
+        value.trim() === ""
+    ){
+
+        select.selectedIndex = 0;
+        return;
+
+    }
+
+    const itemType =
+        value.trim();
+
+    const existing =
+        Array.from(select.options)
+            .find(
+                option =>
+                    option.value.trim().toUpperCase() ===
+                    itemType.toUpperCase()
+            );
+
+    if(existing){
+
+        select.value = existing.value;
+
+        showAlert(
+            "Item Type already exists",
+            "info"
+        );
+
+        return;
+
+    }
+
+    const option =
+        document.createElement("option");
+
+    option.value = itemType;
+    option.textContent = itemType;
+
+    select.insertBefore(
+        option,
+        select.lastElementChild
+    );
+
+    select.value = itemType;
+
+    showAlert(
+        "New Item Type Added",
+        "success"
+    );
+
+}
+
+
+//====================================================
+// ADD NEW UNIT
+//====================================================
+
+async function addNewUnit(){
+
+    const select =
+        document.getElementById("unit");
+
+    const value =
+        prompt("Enter New Unit:");
+
+    if(
+        value === null ||
+        value.trim() === ""
+    ){
+
+        select.selectedIndex = 0;
+        return;
+
+    }
+
+    const unitValue =
+        value.trim();
+
+    const existing =
+        Array.from(select.options)
+            .find(
+                option =>
+                    option.value.trim().toUpperCase() ===
+                    unitValue.toUpperCase()
+            );
+
+    if(existing){
+
+        select.value = existing.value;
+
+        showAlert(
+            "Unit already exists",
+            "info"
+        );
+
+        return;
+
+    }
+
+    const option =
+        document.createElement("option");
+
+    option.value = unitValue;
+    option.textContent = unitValue;
+
+    select.insertBefore(
+        option,
+        select.lastElementChild
+    );
+
+    select.value = unitValue;
+
+    showAlert(
+        "New Unit Added",
+        "success"
+    );
+
+}
 //====================================================
 // EVENTS
 //====================================================
 
 function registerEvents(){
+
+    if(materialMasterEventsRegistered)
+        return;
+
+    materialMasterEventsRegistered = true;
 
     // Generate Material Code
     document
@@ -569,7 +710,50 @@ document
 
         }
     );
+//======================================
+// ITEM TYPE - ADD NEW
+//======================================
 
+document
+    .getElementById("itemType")
+    .addEventListener(
+        "change",
+        async function(){
+
+            if(
+                this.value ===
+                "__ADD_NEW_ITEM_TYPE__"
+            ){
+
+                await addNewItemType();
+
+            }
+
+        }
+    );
+
+
+//======================================
+// UNIT - ADD NEW
+//======================================
+
+document
+    .getElementById("unit")
+    .addEventListener(
+        "change",
+        async function(){
+
+            if(
+                this.value ===
+                "__ADD_NEW_UNIT__"
+            ){
+
+                await addNewUnit();
+
+            }
+
+        }
+    );
     // Save //
     document
         .getElementById("btnSave")
@@ -649,6 +833,19 @@ document
         "change",
         loadMaterialList
     );
+    // Material Master List Refresh
+
+const btnRefreshList =
+    document.getElementById("btnRefreshList");
+
+if(btnRefreshList){
+
+    btnRefreshList.addEventListener(
+        "click",
+        loadMaterialList
+    );
+
+}
 }
 
 //====================================================
@@ -1307,10 +1504,15 @@ async function editMaterial(id){
 
         document.getElementById("materialId").value=data.id;
 
-        document.getElementById("materialCode").value=
-            data.material_code || "";
-        document.getElementById("btnGenerateCode").disabled=true;
+document.getElementById("materialCode").value=
+    data.material_code || "";
 
+// Allow manual Material Code change while editing
+document.getElementById("materialCode").readOnly = false;
+document.getElementById("materialCode").disabled = false;
+
+// Generate button is not used in Edit mode
+document.getElementById("btnGenerateCode").disabled = true;
         document.getElementById("materialName").value=
             data.material_name || "";
 
@@ -1748,7 +1950,14 @@ function clearMaterialForm(){
     document
         .getElementById("btnGenerateCode")
         .disabled=false;
+// Material Code is read-only for New Material
+document
+    .getElementById("materialCode")
+    .readOnly = true;
 
+document
+    .getElementById("materialCode")
+    .disabled = false;
     // New Material button state
     document
         .getElementById("btnSave")

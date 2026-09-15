@@ -265,24 +265,27 @@ async function loadCategories(){
     if(error)
         throw error;
 
-    data.forEach(item=>{
+   data.forEach(item=>{
 
-        category.innerHTML+=`
+    category.innerHTML+=`
 
-        <option
-
+    <option
         value="${item.id}"
-
-        data-short="${item.short_code}">
+        data-short="${item.short_code || ""}">
 
         ${item.category_name}
 
-        </option>
+    </option>
 
-        `;
+    `;
 
-    });
+});
 
+category.innerHTML += `
+    <option value="__ADD_NEW_CATEGORY__">
+        ➕ Add New Category...
+    </option>
+`;
 }
 
 //====================================================
@@ -317,6 +320,215 @@ function categoryChanged(){
 }
 
 //====================================================
+// ADD NEW CATEGORY
+//====================================================
+
+async function addNewCategory(){
+
+    try{
+
+        const departmentSelect =
+            document.getElementById("department");
+
+        const categorySelect =
+            document.getElementById("category");
+
+        const departmentId =
+            departmentSelect.value;
+
+        if(!departmentId){
+
+            showAlert(
+                "Select Department first",
+                "warning"
+            );
+
+            return;
+
+        }
+
+        const categoryName =
+            prompt("Enter New Category Name:");
+
+        if(
+            categoryName === null ||
+            categoryName.trim() === ""
+        ){
+
+            categorySelect.value = "";
+
+            return;
+
+        }
+
+        const categoryValue =
+            categoryName.trim();
+
+        // Check existing category
+        const {
+            data: existingCategory,
+            error: checkError
+        } = await supabase
+
+            .from("material_categories")
+
+            .select("id, category_name, short_code")
+
+            .eq(
+                "department_id",
+                Number(departmentId)
+            )
+
+            .ilike(
+                "category_name",
+                categoryValue
+            )
+
+            .maybeSingle();
+
+        if(checkError)
+            throw checkError;
+
+        if(existingCategory){
+
+            await loadCategories();
+
+            categorySelect.value =
+                existingCategory.id;
+
+            categoryChanged();
+
+            showAlert(
+                "Category already exists",
+                "info"
+            );
+
+            return;
+        }
+
+        // Generate short code
+        let shortCode =
+            cleanCode(categoryValue)
+                .replace(/-/g,"")
+                .substring(0,6);
+
+        if(!shortCode)
+            shortCode = "CAT";
+
+        let finalShortCode =
+            shortCode;
+
+        let counter = 2;
+
+        while(true){
+
+            const {
+                data: codeCheck,
+                error: codeError
+            } = await supabase
+
+                .from("material_categories")
+
+                .select("id")
+
+                .eq(
+                    "department_id",
+                    Number(departmentId)
+                )
+
+                .eq(
+                    "short_code",
+                    finalShortCode
+                );
+
+            if(codeError)
+                throw codeError;
+
+            if(!codeCheck || codeCheck.length === 0)
+                break;
+
+            finalShortCode =
+                shortCode.substring(
+                    0,
+                    Math.max(
+                        1,
+                        6 - String(counter).length
+                    )
+                ) + counter;
+
+            counter++;
+        }
+
+        // Create category
+        const {
+            data: newCategory,
+            error: createError
+        } = await supabase
+
+            .from("material_categories")
+
+            .insert({
+
+                department_id:
+                    Number(departmentId),
+
+                category_name:
+                    categoryValue,
+
+                short_code:
+                    finalShortCode,
+
+                is_active:
+                    true
+
+            })
+
+            .select(
+                "id, category_name, short_code"
+            )
+
+            .single();
+
+        if(createError)
+            throw createError;
+
+        // Reload dropdown
+        await loadCategories();
+
+        // Select newly created category
+        categorySelect.value =
+            newCategory.id;
+
+        categoryChanged();
+
+        showAlert(
+            "New Category Added Successfully",
+            "success"
+        );
+
+    }
+
+    catch(error){
+
+        console.error(
+            "Add Category Error:",
+            error
+        );
+
+        document
+            .getElementById("category")
+            .value = "";
+
+        showAlert(
+            error.message,
+            "danger"
+        );
+
+    }
+
+}
+
+//====================================================
 // EVENTS
 //====================================================
 
@@ -332,10 +544,31 @@ function registerEvents(){
         .getElementById("department")
         .addEventListener("change", loadCategories);
 
-    // Category Changed
-    document
-        .getElementById("category")
-        .addEventListener("change", categoryChanged);
+   // Category Changed
+document
+    .getElementById("category")
+    .addEventListener(
+        "change",
+        async function(){
+
+            const category =
+                document.getElementById("category");
+
+            if(
+                category.value ===
+                "__ADD_NEW_CATEGORY__"
+            ){
+
+                await addNewCategory();
+
+                return;
+
+            }
+
+            categoryChanged();
+
+        }
+    );
 
     // Save //
     document
@@ -928,23 +1161,78 @@ async function updateMaterial(){
                 categoryElement.selectedIndex
             ].text;
 
-        // Searchable text
+        // Material Code
+const materialCode =
+    document
+        .getElementById("materialCode")
+        .value
+        .trim()
+        .toUpperCase();
 
-        const searchableText = (
+if(materialCode === ""){
 
-            document.getElementById("materialCode").value + " " +
+    showAlert(
+        "Enter Material Code",
+        "warning"
+    );
 
-            document.getElementById("materialName").value + " " +
+    return;
 
-            categoryName + " " +
+}
 
-            document.getElementById("brand").value + " " +
+// Check duplicate material code
+const {
+    data: duplicateCode,
+    error: duplicateCodeError
+} = await supabase
 
-            document.getElementById("specification").value + " " +
+    .from("materials")
 
-            document.getElementById("itemSize").value
+    .select("id")
 
-        ).toUpperCase();
+    .eq(
+        "material_code",
+        materialCode
+    )
+
+    .neq(
+        "id",
+        materialId
+    );
+
+if(duplicateCodeError)
+    throw duplicateCodeError;
+
+if(
+    duplicateCode &&
+    duplicateCode.length > 0
+){
+
+    showAlert(
+        "Material Code already exists",
+        "danger"
+    );
+
+    return;
+
+}
+
+// Searchable text
+const searchableText = (
+
+    materialCode + " " +
+
+    document.getElementById("materialName").value + " " +
+
+    categoryName + " " +
+
+    document.getElementById("brand").value + " " +
+
+    document.getElementById("specification").value + " " +
+
+    document.getElementById("itemSize").value
+
+).toUpperCase();
 
         // Update Supabase
 
@@ -954,8 +1242,11 @@ async function updateMaterial(){
 
             .update({
 
-                material_name:
-                    document.getElementById("materialName").value.trim(),
+    material_code:
+        materialCode,
+
+    material_name:
+        document.getElementById("materialName").value.trim(),
 
                 department_id:
                     Number(

@@ -625,7 +625,30 @@ document
 document
 .getElementById("manageStatus")
 .addEventListener("change", loadManageMaterials);
+//======================================
+// MAIN MATERIAL MASTER SEARCH
+//======================================
 
+document
+    .getElementById("searchMaterial")
+    .addEventListener(
+        "input",
+        loadMaterialList
+    );
+
+document
+    .getElementById("filterDepartment")
+    .addEventListener(
+        "change",
+        loadMaterialList
+    );
+
+document
+    .getElementById("filterStatus")
+    .addEventListener(
+        "change",
+        loadMaterialList
+    );
 }
 
 //====================================================
@@ -1089,276 +1112,7 @@ Inactive
 
 }
 
-//====================================================
-// UPDATE MATERIAL
-//====================================================
 
-async function updateMaterial(){
-
-    try{
-
-        const materialId =
-            document.getElementById("materialId").value;
-
-        if(!materialId){
-
-            showAlert(
-                "No material selected for update",
-                "danger"
-            );
-
-            return;
-        }
-
-        // Required fields
-
-        if(
-            document.getElementById("department").value === ""
-        ){
-
-            showAlert(
-                "Select Department",
-                "warning"
-            );
-
-            return;
-        }
-
-        if(
-            document.getElementById("category").value === ""
-        ){
-
-            showAlert(
-                "Select Category",
-                "warning"
-            );
-
-            return;
-        }
-
-        if(
-            document.getElementById("materialName").value.trim() === ""
-        ){
-
-            showAlert(
-                "Enter Material Name",
-                "warning"
-            );
-
-            return;
-        }
-
-        // Category
-
-        const categoryElement =
-            document.getElementById("category");
-
-        const categoryId =
-            Number(categoryElement.value);
-
-        const categoryName =
-            categoryElement.options[
-                categoryElement.selectedIndex
-            ].text;
-
-        // Material Code
-const materialCode =
-    document
-        .getElementById("materialCode")
-        .value
-        .trim()
-        .toUpperCase();
-
-if(materialCode === ""){
-
-    showAlert(
-        "Enter Material Code",
-        "warning"
-    );
-
-    return;
-
-}
-
-// Check duplicate material code
-const {
-    data: duplicateCode,
-    error: duplicateCodeError
-} = await supabase
-
-    .from("materials")
-
-    .select("id")
-
-    .eq(
-        "material_code",
-        materialCode
-    )
-
-    .neq(
-        "id",
-        materialId
-    );
-
-if(duplicateCodeError)
-    throw duplicateCodeError;
-
-if(
-    duplicateCode &&
-    duplicateCode.length > 0
-){
-
-    showAlert(
-        "Material Code already exists",
-        "danger"
-    );
-
-    return;
-
-}
-
-// Searchable text
-const searchableText = (
-
-    materialCode + " " +
-
-    document.getElementById("materialName").value + " " +
-
-    categoryName + " " +
-
-    document.getElementById("brand").value + " " +
-
-    document.getElementById("specification").value + " " +
-
-    document.getElementById("itemSize").value
-
-).toUpperCase();
-
-        // Update Supabase
-
-        const {error} = await supabase
-
-            .from("materials")
-
-            .update({
-
-    material_code:
-        materialCode,
-
-    material_name:
-        document.getElementById("materialName").value.trim(),
-
-                department_id:
-                    Number(
-                        document.getElementById("department").value
-                    ),
-
-                category_id:
-                    categoryId,
-
-                category:
-                    categoryName,
-
-                material_short_name:
-                    document
-                        .getElementById("materialShortName")
-                        .value
-                        .trim(),
-
-                brand:
-                    document.getElementById("brand").value.trim(),
-
-                item_type:
-                    document.getElementById("itemType").value,
-
-                specification:
-                    document
-                        .getElementById("specification")
-                        .value
-                        .trim(),
-
-                item_size:
-                    document
-                        .getElementById("itemSize")
-                        .value
-                        .trim(),
-
-                unit:
-                    document.getElementById("unit").value,
-
-                minimum_stock:
-                    Number(
-                        document.getElementById("minimumStock").value || 0
-                    ),
-
-                rack_location:
-                    document
-                        .getElementById("rackLocation")
-                        .value
-                        .trim(),
-
-                status:
-                    document.getElementById("status").value,
-
-                unit_cost:
-                    Number(
-                        document.getElementById("unitCost").value || 0
-                    ),
-
-                gst_type:
-                    document.getElementById("gstType").value,
-
-                gst_percentage:
-                    Number(
-                        document.getElementById("gstPercentage").value || 0
-                    ),
-
-                description:
-                    document
-                        .getElementById("description")
-                        .value
-                        .trim(),
-
-                searchable_text:
-                    searchableText
-
-            })
-
-            .eq("id", materialId);
-
-        if(error)
-            throw error;
-
-        showAlert(
-            "Material Updated Successfully",
-            "success"
-        );
-
-        // Return to New Material mode
-
-        clearMaterialForm();
-
-        // Refresh material list
-
-        await loadManageMaterials();
-
-    }
-
-    catch(error){
-
-        console.error(
-            "Update Material Error:",
-            error
-        );
-
-        showAlert(
-            error.message,
-            "danger"
-        );
-
-    }
-
-}
 //====================================================
 // GENERATE MATERIAL CODE
 //====================================================
@@ -1714,32 +1468,100 @@ async function updateMaterial(){
                 categoryElement.selectedIndex
             ].text;
 
-        // Searchable text
-        const searchableText = (
+ // --------------------------------------------
+// MATERIAL CODE
+// --------------------------------------------
 
-            document.getElementById("materialCode").value + " " +
+const materialCode =
+    document
+        .getElementById("materialCode")
+        .value
+        .trim()
+        .toUpperCase();
 
-            document.getElementById("materialName").value + " " +
+if(materialCode === ""){
 
-            categoryName + " " +
+    showAlert(
+        "Enter Material Code",
+        "warning"
+    );
 
-            document.getElementById("brand").value + " " +
+    return;
 
-            document.getElementById("specification").value + " " +
+}
 
-            document.getElementById("itemSize").value
+// --------------------------------------------
+// CHECK DUPLICATE MATERIAL CODE
+// EXCLUDE CURRENT MATERIAL
+// --------------------------------------------
 
-        ).toUpperCase();
+const {
+    data: duplicateCode,
+    error: duplicateCodeError
+} = await supabase
 
+    .from("materials")
+
+    .select("id")
+
+    .eq(
+        "material_code",
+        materialCode
+    )
+
+    .neq(
+        "id",
+        materialId
+    );
+
+if(duplicateCodeError)
+    throw duplicateCodeError;
+
+if(
+    duplicateCode &&
+    duplicateCode.length > 0
+){
+
+    showAlert(
+        "Material Code already exists",
+        "danger"
+    );
+
+    return;
+
+}
+
+// --------------------------------------------
+// SEARCHABLE TEXT
+// --------------------------------------------
+
+const searchableText = (
+
+    materialCode + " " +
+
+    document.getElementById("materialName").value + " " +
+
+    categoryName + " " +
+
+    document.getElementById("brand").value + " " +
+
+    document.getElementById("specification").value + " " +
+
+    document.getElementById("itemSize").value
+
+).toUpperCase();
         // Update database
         const {error} = await supabase
 
             .from("materials")
 
-            .update({
+.update({
 
-                material_name:
-                    document.getElementById("materialName").value.trim(),
+    material_code:
+        materialCode,
+
+    material_name:
+        document.getElementById("materialName").value.trim(),
 
                 department_id:
                     Number(
@@ -5891,6 +5713,24 @@ showAlert(
 async function saveMaterial(){
 
     try{
+
+        // --------------------------------------------
+        // NEVER CREATE NEW MATERIAL WHILE EDITING
+        // --------------------------------------------
+
+        const editingMaterialId =
+            document
+                .getElementById("materialId")
+                .value
+                .trim();
+
+        if(editingMaterialId){
+
+            await updateMaterial();
+
+            return;
+
+        }
 
         // --------------------------------------------
         // VALIDATION

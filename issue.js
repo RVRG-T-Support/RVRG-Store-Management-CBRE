@@ -28,6 +28,30 @@ document.getElementById('btnRefreshIssueList').addEventListener('click', () => {
 });
 
 //====================================================
+// DATE & TIME FORMAT
+//====================================================
+
+function formatDateTime(dateValue){
+
+    if(!dateValue)
+        return "N/A";
+
+    return new Date(dateValue).toLocaleString(
+        "en-IN",
+        {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: true
+        }
+    );
+
+}
+
+//====================================================
 // ISSUE MATERIAL - SUPABASE CLIENT
 //====================================================
 
@@ -107,7 +131,7 @@ const tr = document.createElement('tr');
 
 tr.innerHTML = `
     <td>
-        ${formatDate(req.created_at)}
+        ${formatDateTime(req.created_at)}
     </td>
 
     <td>

@@ -7,6 +7,29 @@ if (!currentUser)
 
 // Global variable to hold the ID of the request being rejected
 let currentRejectId = null; 
+//====================================================
+// DATE & TIME FORMAT
+//====================================================
+
+function formatDateTime(dateValue){
+
+    if(!dateValue)
+        return "N/A";
+
+    return new Date(dateValue).toLocaleString(
+        "en-IN",
+        {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: true
+        }
+    );
+
+}
 // Initialize the Bootstrap modal
 let rejectModalInstance = null;
 
@@ -123,8 +146,8 @@ const techName =
     </div>
 
     <small class="text-muted">
-        ${formatDate(req.created_at)}
-    </small>
+    ${formatDateTime(req.created_at)}
+</small>
 
 </td>
                 <td>
@@ -509,11 +532,10 @@ async function loadApprovedHistory() {
                         </span>
                     `;
 
-            const approvalDate =
-                req.approval_date
-                    ? formatDate(req.approval_date)
-                    : "N/A";
-
+const approvalDate =
+    req.approval_date
+        ? formatDateTime(req.approval_date)
+        : "N/A";
             const tr =
                 document.createElement('tr');
 

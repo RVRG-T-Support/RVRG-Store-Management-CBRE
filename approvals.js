@@ -94,162 +94,338 @@ async function loadPendingApprovals() {
 
         tableBody.innerHTML = ''; // Clear table
         
-        data.forEach(req => {
-            const material =
-    req.materials || {};
+// ====================================================
+// GROUP PENDING REQUESTS BY TICKET
+// ====================================================
 
-const materialCode =
-    material.material_code || "-";
+const ticketGroups = {};
 
-const materialName =
-    material.material_name || "-";
+data.forEach(req => {
 
-const brand =
-    material.brand || "-";
+    const ticketNo =
+        req.ticket_no || "NO-TICKET";
 
-const itemType =
-    material.item_type || "-";
+    if(!ticketGroups[ticketNo]){
 
-const itemSize =
-    material.item_size || "-";
+        ticketGroups[ticketNo] = {
+            ticketNo: ticketNo,
+            complaintNo:
+                req.anacity_complaint_no || "N/A",
+            department:
+                req.materials?.departments?.department_name || "-",
+            technician:
+                req.technician_name || "-",
+            locationType:
+                req.location_type || "N/A",
+            locationName:
+                req.location_name || "N/A",
+            createdAt:
+                req.created_at,
+            items: []
+        };
 
-const specification =
-    material.specification || "-";
+    }
 
-const unit =
-    material.unit || "-";
+    ticketGroups[ticketNo].items.push(req);
 
-const unitCost =
-    Number(
-        material.unit_cost || 0
-    );
+});
 
-const deptName =
-    material.departments?.department_name ||
-    "-";
 
-const techName =
-    req.technician_name || "-";
-            
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>
+// ====================================================
+// RENDER ONE ROW PER TICKET
+// ====================================================
 
-   <div class="fw-bold text-success">
-    Complaint Number:
-    ${req.anacity_complaint_no || "N/A"}
-</div>
+Object.values(ticketGroups).forEach(
+    ticket => {
 
-    <div class="fw-bold text-primary">
-        MR:
-        ${req.ticket_no || "N/A"}
-    </div>
+        const tr =
+            document.createElement("tr");
 
-    <small class="text-muted">
-    ${formatDateTime(req.created_at)}
-</small>
+        // --------------------------------------------
+        // COMPLAINT / TICKET
+        // --------------------------------------------
 
-</td>
-                <td>
-                    <strong>${deptName}</strong><br>
-                    <small class="text-muted"><i class="fa-solid fa-user-wrench me-1"></i>${techName}</small>
-                </td>
-                <td>
+        let ticketHtml = `
 
-    <div class="fw-bold text-primary">
-        ${materialCode}
-    </div>
+            <div class="fw-bold text-success">
+                Complaint Number:
+                ${ticket.complaintNo}
+            </div>
 
-    <div class="fw-semibold">
-        ${materialName}
-    </div>
+            <div class="fw-bold text-primary">
+                MR:
+                ${ticket.ticketNo}
+            </div>
 
-    <div class="small text-muted mt-1">
+            <small class="text-muted">
+                ${formatDateTime(ticket.createdAt)}
+            </small>
 
-        <div>
-            <strong>Brand:</strong>
-            ${brand}
-        </div>
+        `;
 
-        <div>
-            <strong>Type:</strong>
-            ${itemType}
-        </div>
 
-        <div>
-            <strong>Size:</strong>
-            ${itemSize}
-        </div>
+        // --------------------------------------------
+        // MATERIAL DETAILS
+        // --------------------------------------------
 
-        <div>
-            <strong>Specification:</strong>
-            ${specification}
-        </div>
+        let materialHtml = "";
 
-        <div>
-            <strong>Unit:</strong>
-            ${unit}
-        </div>
+        ticket.items.forEach(
+            (req, index) => {
 
-        <div>
-            <strong>Unit Cost:</strong>
-            ₹${unitCost.toFixed(2)}
-        </div>
+                const material =
+                    req.materials || {};
 
-    </div>
+                const materialCode =
+                    material.material_code || "-";
 
-</td>
-                <td>
-    <div class="fw-bold mb-1">
-        Requested:
-        <span class="badge bg-secondary">
-            ${req.requested_qty}
-        </span>
-    </div>
+                const materialName =
+                    material.material_name || "-";
 
-    <div class="mt-2">
-        <label
-            for="approvedQty_${req.id}"
-            class="form-label small mb-1"
-        >
-            Approve Qty
-        </label>
+                const brand =
+                    material.brand || "-";
 
-        <input
-            type="number"
-            class="form-control form-control-sm text-center"
-            id="approvedQty_${req.id}"
-            value="${req.requested_qty}"
-            min="1"
-            max="${req.requested_qty}"
-            step="1"
-        >
-    </div>
-</td>
-                <td>
-                    ${req.location_type}<br>
-                    <small class="text-muted">${req.location_name || 'N/A'}</small>
-                </td>
-<td class="text-center">
-    <button
-        class="btn btn-success btn-sm me-1 mb-1"
-        onclick="approveRequest(${req.id}, '${req.ticket_no}')"
-        title="Approve"
-    >
-        <i class="fa-solid fa-check"></i> Approve
-    </button>
+                const itemType =
+                    material.item_type || "-";
 
-    <button
-        class="btn btn-outline-danger btn-sm mb-1"
-        onclick="openRejectModal(${req.id}, '${req.ticket_no}')"
-        title="Reject"
-    >
-        <i class="fa-solid fa-xmark"></i> Reject
-    </button>
-</td>
-            `;
-            tableBody.appendChild(tr);
-        });
+                const itemSize =
+                    material.item_size || "-";
+
+                const specification =
+                    material.specification || "-";
+
+                const unit =
+                    material.unit || "-";
+
+                const unitCost =
+                    Number(
+                        material.unit_cost || 0
+                    );
+
+
+                materialHtml += `
+
+                    <div
+                        class="border-bottom pb-2 mb-2"
+                    >
+
+                        <div class="fw-bold text-primary">
+                            ${materialCode}
+                        </div>
+
+                        <div class="fw-semibold">
+                            ${materialName}
+                        </div>
+
+                        <div class="small text-muted">
+
+                            <div>
+                                <strong>Brand:</strong>
+                                ${brand}
+                            </div>
+
+                            <div>
+                                <strong>Type:</strong>
+                                ${itemType}
+                            </div>
+
+                            <div>
+                                <strong>Size:</strong>
+                                ${itemSize}
+                            </div>
+
+                            <div>
+                                <strong>Specification:</strong>
+                                ${specification}
+                            </div>
+
+                            <div>
+                                <strong>Unit:</strong>
+                                ${unit}
+                            </div>
+
+                            <div>
+                                <strong>Unit Cost:</strong>
+                                ₹${unitCost.toFixed(2)}
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                `;
+
+            }
+        );
+
+
+        // --------------------------------------------
+        // QUANTITY / APPROVAL QUANTITY
+        // --------------------------------------------
+
+        let quantityHtml = "";
+
+        ticket.items.forEach(
+            req => {
+
+                const requestedQty =
+                    Number(
+                        req.requested_qty || 0
+                    );
+
+                quantityHtml += `
+
+                    <div
+                        class="border-bottom pb-2 mb-2"
+                    >
+
+                        <div class="fw-bold mb-1">
+
+                            Requested:
+                            <span
+                                class="badge bg-secondary"
+                            >
+                                ${requestedQty}
+                            </span>
+
+                        </div>
+
+                        <label
+                            class="form-label small mb-1"
+                            for="approvedQty_${req.id}"
+                        >
+                            Approve Qty
+                        </label>
+
+                        <input
+                            type="number"
+                            class="form-control form-control-sm text-center"
+                            id="approvedQty_${req.id}"
+                            value="${requestedQty}"
+                            min="1"
+                            max="${requestedQty}"
+                            step="1"
+                        >
+
+                    </div>
+
+                `;
+
+            }
+        );
+
+
+        // --------------------------------------------
+        // BUILD TICKET ROW
+        // --------------------------------------------
+
+        tr.innerHTML = `
+
+            <td>
+
+                ${ticketHtml}
+
+                <div class="mt-2">
+
+                    <span
+                        class="badge bg-info text-dark"
+                    >
+                        ${ticket.items.length}
+                        Material(s)
+                    </span>
+
+                </div>
+
+            </td>
+
+
+            <td>
+
+                <strong>
+                    ${ticket.department}
+                </strong>
+
+                <br>
+
+                <small class="text-muted">
+
+                    <i
+                        class="fa-solid fa-user-wrench me-1"
+                    ></i>
+
+                    ${ticket.technician}
+
+                </small>
+
+            </td>
+
+
+            <td>
+
+                ${materialHtml}
+
+            </td>
+
+
+            <td>
+
+                ${quantityHtml}
+
+            </td>
+
+
+            <td>
+
+                ${ticket.locationType}
+
+                <br>
+
+                <small class="text-muted">
+                    ${ticket.locationName}
+                </small>
+
+            </td>
+
+
+            <td class="text-center">
+
+                <button
+                    class="btn btn-success btn-sm fw-bold mb-2"
+                    onclick="approveTicket('${ticket.ticketNo}')"
+                    title="Approve complete ticket"
+                >
+
+                    <i class="fa-solid fa-check"></i>
+
+                    Approve Ticket
+
+                </button>
+
+
+                <br>
+
+
+                <button
+                    class="btn btn-outline-danger btn-sm"
+                    onclick="openRejectModal('${ticket.ticketNo}')"
+                    title="Reject complete ticket"
+                >
+
+                    <i class="fa-solid fa-xmark"></i>
+
+                    Reject Ticket
+
+                </button>
+
+            </td>
+
+        `;
+
+
+        tableBody.appendChild(tr);
+
+    }
+);
 
     } catch (error) {
         console.error("Error loading approvals:", error.message);
@@ -257,154 +433,413 @@ const techName =
     }
 }
 
-// --- APPROVAL LOGIC ---
+// ====================================================
+// APPROVE COMPLETE TICKET
+// ====================================================
 
-async function approveRequest(requestId, ticketNo) {
+window.approveTicket = async function(ticketNo){
 
-    const approvedQtyInput =
-        document.getElementById(`approvedQty_${requestId}`);
+    try{
 
-    if (!approvedQtyInput) {
-        showAlert("Approved quantity field was not found.", "danger");
-        return;
-    }
+        // --------------------------------------------
+        // LOAD ALL PENDING ITEMS FOR THIS TICKET
+        // --------------------------------------------
 
-    const approvedQty =
-        Number(approvedQtyInput.value);
+        const {
+            data: requests,
+            error: requestError
+        } = await supabase
 
-    if (!Number.isFinite(approvedQty) || approvedQty <= 0) {
-        showAlert("Please enter a valid approved quantity.", "warning");
-        approvedQtyInput.focus();
-        return;
-    }
+            .from("material_requests")
 
-    // Get the originally requested quantity
-    const requestedQty =
-        Number(
-            approvedQtyInput.getAttribute("max")
-        );
+            .select(
+                "id, ticket_no, requested_qty, request_status"
+            )
 
-    if (!Number.isFinite(requestedQty) || requestedQty <= 0) {
-        showAlert("Original requested quantity is invalid.", "danger");
-        return;
-    }
+            .eq(
+                "ticket_no",
+                ticketNo
+            )
 
-    if (approvedQty > requestedQty) {
-        showAlert(
-            `Approved quantity cannot be greater than requested quantity (${requestedQty}).`,
-            "warning"
-        );
+            .eq(
+                "request_status",
+                "PENDING"
+            )
 
-        approvedQtyInput.focus();
-        return;
-    }
+            .order(
+                "id",
+                {
+                    ascending: true
+                }
+            );
 
-    const approvalType =
-        approvedQty < requestedQty
-            ? "PARTIALLY_APPROVED"
-            : "APPROVED";
 
-    const confirmationMessage =
-        approvalType === "PARTIALLY_APPROVED"
-            ? `Ticket ${ticketNo}\n\nRequested Quantity: ${requestedQty}\nApproved Quantity: ${approvedQty}\n\nThis request will be marked as PARTIALLY APPROVED.\n\nContinue?`
-            : `Ticket ${ticketNo}\n\nRequested Quantity: ${requestedQty}\nApproved Quantity: ${approvedQty}\n\nThis request will be fully APPROVED.\n\nContinue?`;
+        if(requestError)
+            throw requestError;
 
-    if (!confirm(confirmationMessage)) {
-        return;
-    }
 
-    try {
-
-        const user = getCurrentUser();
-
-        const { error } = await supabase
-            .from('material_requests')
-            .update({
-                request_status: approvalType,
-                approved_qty: approvedQty,
-                approved_by: user.id,
-                approval_date: new Date().toISOString()
-            })
-            .eq('id', requestId);
-
-        if (error) throw error;
-
-        if (approvalType === "PARTIALLY_APPROVED") {
+        if(
+            !requests ||
+            !requests.length
+        ){
 
             showAlert(
-                `Ticket ${ticketNo} partially approved: ${approvedQty} of ${requestedQty}.`,
+                "No pending materials found for this ticket.",
                 "warning"
             );
 
-        } else {
+            return;
 
-            showAlert(
-                `Ticket ${ticketNo} successfully approved!`,
-                "success"
-            );
         }
 
-        // Refresh both sections
-        loadPendingApprovals();
-        loadApprovedHistory();
 
-    } catch (error) {
+        // --------------------------------------------
+        // READ + VALIDATE EVERY APPROVED QUANTITY
+        // --------------------------------------------
+
+        const approvals = [];
+
+        for(
+            const req of requests
+        ){
+
+            const input =
+                document.getElementById(
+                    `approvedQty_${req.id}`
+                );
+
+
+            if(!input){
+
+                showAlert(
+                    `Approved quantity field not found for request ${req.id}.`,
+                    "danger"
+                );
+
+                return;
+
+            }
+
+
+            const requestedQty =
+                Number(
+                    req.requested_qty || 0
+                );
+
+
+            const approvedQty =
+                Number(
+                    input.value
+                );
+
+
+            if(
+                !Number.isFinite(
+                    approvedQty
+                ) ||
+                approvedQty <= 0
+            ){
+
+                showAlert(
+                    `Invalid approval quantity for one of the materials.`,
+                    "warning"
+                );
+
+                input.focus();
+
+                return;
+
+            }
+
+
+            if(
+                approvedQty >
+                requestedQty
+            ){
+
+                showAlert(
+                    `Approved quantity cannot be greater than requested quantity (${requestedQty}).`,
+                    "warning"
+                );
+
+                input.focus();
+
+                return;
+
+            }
+
+
+            approvals.push({
+
+                id:
+                    req.id,
+
+                requestedQty:
+                    requestedQty,
+
+                approvedQty:
+                    approvedQty
+
+            });
+
+        }
+
+
+        // --------------------------------------------
+        // CONFIRM COMPLETE TICKET
+        // --------------------------------------------
+
+        let summary = "";
+
+        approvals.forEach(
+            item => {
+
+                summary +=
+                    `Requested: ${item.requestedQty} | ` +
+                    `Approved: ${item.approvedQty}\n`;
+
+            }
+        );
+
+
+        const confirmed =
+            confirm(
+
+                `Approve complete ticket ${ticketNo}?\n\n` +
+
+                `${requests.length} material(s)\n\n` +
+
+                summary
+
+            );
+
+
+        if(!confirmed)
+            return;
+
+
+        const user =
+            getCurrentUser();
+
+
+        const approvalDate =
+            new Date().toISOString();
+
+
+        // --------------------------------------------
+        // UPDATE EACH MATERIAL ROW
+        // --------------------------------------------
+
+        for(
+            const item of approvals
+        ){
+
+            const approvalStatus =
+                item.approvedQty <
+                item.requestedQty
+                    ? "PARTIALLY_APPROVED"
+                    : "APPROVED";
+
+
+            const {
+                error: updateError
+            } = await supabase
+
+                .from(
+                    "material_requests"
+                )
+
+                .update({
+
+                    request_status:
+                        approvalStatus,
+
+                    approved_qty:
+                        item.approvedQty,
+
+                    approved_by:
+                        user.id,
+
+                    approval_date:
+                        approvalDate
+
+                })
+
+                .eq(
+                    "id",
+                    item.id
+                );
+
+
+            if(updateError)
+                throw updateError;
+
+        }
+
+
+        // --------------------------------------------
+        // SUCCESS
+        // --------------------------------------------
+
+        showAlert(
+            `Ticket ${ticketNo} approved successfully.\n${approvals.length} material(s) processed.`,
+            "success"
+        );
+
+
+        // Refresh
+        await loadPendingApprovals();
+
+        await loadApprovedHistory();
+
+    }
+
+    catch(error){
 
         console.error(
-            "Error approving request:",
+            "Ticket Approval Error:",
+            error
+        );
+
+        showAlert(
+            error.message,
+            "danger"
+        );
+
+    }
+
+};
+
+// --- REJECTION LOGIC ---
+
+function openRejectModal(ticketNo){
+
+    currentRejectId =
+        ticketNo;
+
+    document
+        .getElementById(
+            "rejectTicketNoDisplay"
+        )
+        .innerText =
+            ticketNo;
+
+    document
+        .getElementById(
+            "rejectReason"
+        )
+        .value = "";
+
+    rejectModalInstance.show();
+
+}
+async function processRejection(){
+
+    if(!currentRejectId)
+        return;
+
+
+    const ticketNo =
+        currentRejectId;
+
+
+    const reason =
+        document
+            .getElementById(
+                "rejectReason"
+            )
+            .value
+            .trim();
+
+
+    const user =
+        getCurrentUser();
+
+
+    try{
+
+        // --------------------------------------------
+        // REJECT ALL PENDING MATERIALS IN TICKET
+        // --------------------------------------------
+
+        const {
+            error
+        } = await supabase
+
+            .from(
+                "material_requests"
+            )
+
+            .update({
+
+                request_status:
+                    "REJECTED",
+
+                remarks:
+                    reason
+                        ? `Rejected: ${reason}`
+                        : "Rejected without remarks",
+
+                approved_by:
+                    user.id,
+
+                approval_date:
+                    new Date().toISOString()
+
+            })
+
+            .eq(
+                "ticket_no",
+                ticketNo
+            )
+
+            .eq(
+                "request_status",
+                "PENDING"
+            );
+
+
+        if(error)
+            throw error;
+
+
+        rejectModalInstance.hide();
+
+
+        showAlert(
+            `Ticket ${ticketNo} rejected successfully.`,
+            "info"
+        );
+
+
+        await loadPendingApprovals();
+
+
+        await loadApprovedHistory();
+
+    }
+
+    catch(error){
+
+        console.error(
+            "Error rejecting ticket:",
             error.message
         );
 
         showAlert(
-            "Failed to approve request.",
+            "Failed to reject ticket.",
             "danger"
         );
+
     }
-}
-// --- REJECTION LOGIC ---
 
-function openRejectModal(requestId, ticketNo) {
-    // Store the ID globally so the confirm button knows which ticket to reject
-    currentRejectId = requestId;
-    document.getElementById('rejectTicketNoDisplay').innerText = ticketNo;
-    document.getElementById('rejectReason').value = ''; // Clear previous reasons
-    
-    rejectModalInstance.show();
-}
+    finally{
 
-async function processRejection() {
-    if (!currentRejectId) return;
+        currentRejectId =
+            null;
 
-    const reason = document.getElementById('rejectReason').value.trim();
-    const user = getCurrentUser();
-
-    try {
-        // Update status to REJECTED in database
-        const { error } = await supabase
-            .from('material_requests')
-            .update({ 
-                request_status: 'REJECTED',
-                remarks: reason ? `Rejected: ${reason}` : 'Rejected without remarks',
-                approved_by: user.id,
-                approval_date: new Date().toISOString()
-            })
-            .eq('id', currentRejectId);
-
-        if (error) throw error;
-
-        // Hide modal and show success
-        rejectModalInstance.hide();
-        showAlert(`Ticket successfully rejected.`, 'info');
-        
-        // Refresh the table
-        loadPendingApprovals();
-
-    } catch (error) {
-        console.error("Error rejecting request:", error.message);
-        showAlert("Failed to reject request.", "danger");
-    } finally {
-        currentRejectId = null; // Reset
     }
+
 }
 
 // --- APPROVED HISTORY LOGIC ---

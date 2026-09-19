@@ -87,54 +87,31 @@ const { count: lowCount } = await supabase
 document.getElementById('dashLowStock').innerText = lowCount || 0;
 
 // Inventory Value
-// Get current stock quantity from current_stock
+// current_stock view already contains both
+// current_stock quantity and unit_cost.
+
 const {
     data: stockData,
     error: stockError
 } = await supabase
-    .from('current_stock')
+
+    .from("current_stock")
+
     .select(`
         material_id,
-        current_stock
-    `);
-
-if (stockError) {
-    throw stockError;
-}
-
-
-// Get Unit Cost from Material Master
-const {
-    data: materialsData,
-    error: materialError
-} = await supabase
-    .from('materials')
-    .select(`
-        id,
+        current_stock,
         unit_cost
     `);
 
-if (materialError) {
-    throw materialError;
-}
 
-
-// Create material cost lookup
-const materialCostMap = {};
-
-(materialsData || []).forEach(material => {
-
-    materialCostMap[
-        String(material.id)
-    ] = Number(
-        material.unit_cost || 0
-    );
-
-});
+if(stockError)
+    throw stockError;
 
 
 // Calculate Total Inventory Value
+
 let totalValue = 0;
+
 
 (stockData || []).forEach(stock => {
 
@@ -143,10 +120,12 @@ let totalValue = 0;
             stock.current_stock || 0
         );
 
+
     const unitCost =
-        materialCostMap[
-            String(stock.material_id)
-        ] || 0;
+        Number(
+            stock.unit_cost || 0
+        );
+
 
     totalValue +=
         quantity *
@@ -156,8 +135,9 @@ let totalValue = 0;
 
 
 // Display Dashboard Value
+
 document.getElementById(
-    'dashTotalValue'
+    "dashTotalValue"
 ).innerText =
     formatCurrency(totalValue);
 

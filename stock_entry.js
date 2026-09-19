@@ -24,6 +24,7 @@ await loadMaterials();
     // Event Listeners
     document.getElementById('btnAddRow').addEventListener('click', () => addRow());
     document.getElementById('transportationCost').addEventListener('input', calculateGrandTotal);
+    document.getElementById('roundOff').addEventListener('input',calculateGrandTotal);
     document.getElementById('stockEntryForm').addEventListener('submit', openConfirmationModal);
     document.getElementById('btnConfirmSave').addEventListener('click', saveStockEntry);
     
@@ -261,9 +262,7 @@ function addRow(prefillData = null) {
         step="0.01"
         class="form-control form-control-sm gst-input mt-1 mx-auto"
         id="gst-${currentRow}"
-        value="${
-            document.getElementById("gstType").value || 18
-        }"
+value="18"
         min="0"
         max="100"
         style="max-width:75px; font-size:11px;"
@@ -699,9 +698,7 @@ function addRow(prefillData = null) {
         step="0.01"
         class="form-control form-control-sm gst-input mt-1 mx-auto"
         id="gst-${currentRow}"
-        value="${
-            document.getElementById("gstType").value || 18
-        }"
+        value="18"
         min="0"
         max="100"
         style="max-width:75px; font-size:11px;"
@@ -1462,13 +1459,17 @@ function calculateRowTotal(id) {
 
 }
 
-function calculateGrandTotal() {
+function calculateGrandTotal(){
+
+    // --------------------------------------------
+    // ITEM TOTAL
+    // ITEMS + INDIVIDUAL GST
+    // --------------------------------------------
 
     let itemTotal = 0;
 
-
     document
-        .querySelectorAll('.row-total')
+        .querySelectorAll(".row-total")
         .forEach(td => {
 
             itemTotal +=
@@ -1479,33 +1480,81 @@ function calculateGrandTotal() {
         });
 
 
+    // --------------------------------------------
+    // TRANSPORTATION FEES
+    // --------------------------------------------
+
     const transport =
         parseFloat(
             document.getElementById(
-                'transportationCost'
+                "transportationCost"
             ).value
         ) || 0;
 
 
+    // --------------------------------------------
+    // ROUND OFF
+    // CAN BE POSITIVE OR NEGATIVE
+    // --------------------------------------------
+
+    const roundOff =
+        parseFloat(
+            document.getElementById(
+                "roundOff"
+            ).value
+        ) || 0;
+
+
+    // --------------------------------------------
+    // FINAL TOTAL
+    // --------------------------------------------
+
     const grandTotal =
         itemTotal +
-        transport;
+        transport +
+        roundOff;
 
+
+    // --------------------------------------------
+    // DISPLAY ITEM SUBTOTAL
+    // --------------------------------------------
+
+    const itemSubtotalDisplay =
+        document.getElementById(
+            "itemSubtotalDisplay"
+        );
+
+    if(itemSubtotalDisplay){
+
+        itemSubtotalDisplay.innerText =
+            formatCurrency(
+                itemTotal
+            );
+
+    }
+
+
+    // --------------------------------------------
+    // DISPLAY FINAL TOTAL
+    // --------------------------------------------
 
     const totalDisplay =
         document.getElementById(
-            'calculatedTotalDisplay'
+            "calculatedTotalDisplay"
         );
 
 
-    totalDisplay.dataset.value =
-        grandTotal;
+    if(totalDisplay){
 
+        totalDisplay.dataset.value =
+            grandTotal;
 
-    totalDisplay.innerText =
-        formatCurrency(
-            grandTotal
-        );
+        totalDisplay.innerText =
+            formatCurrency(
+                grandTotal
+            );
+
+    }
 
 }
 
@@ -1918,7 +1967,12 @@ function openConfirmationModal(e) {
     document.getElementById('modalCalculatedTotal').innerText = formatCurrency(calculatedTotal);
     
     const warningMsg = document.getElementById('mismatchWarning');
-    if (Math.abs(billedAmount - calculatedTotal) > 1) {
+   const differenceInPaise =
+    Math.round(
+        (billedAmount - calculatedTotal) * 100
+    );
+
+if (differenceInPaise !== 0) {
         warningMsg.classList.remove('d-none');
         document.getElementById('modalCalculatedTotal').classList.replace('text-primary', 'text-danger');
     } else {
@@ -1937,8 +1991,13 @@ async function saveStockEntry() {
     const user = getCurrentUser();
     const invoiceNo = document.getElementById('invoiceNo').value.trim();
     const invoiceDate = document.getElementById('invoiceDate').value;
-    const gstType = document.getElementById('gstType').value;
     const transportCost = parseFloat(document.getElementById('transportationCost').value) || 0;
+    const roundOff =
+    parseFloat(
+        document.getElementById(
+            'roundOff'
+        ).value
+    ) || 0;
     const totalAmount = parseFloat(document.getElementById('billedAmount').value) || 0;
 
     try {
@@ -1959,9 +2018,13 @@ const currentYear = new Date().getFullYear();
 
     supplier_name: "N/A",
 
-    transport_cost: transportCost,
+transport_cost:
+    transportCost,
 
-    remarks: "",
+round_off:
+    roundOff,
+
+remarks: "",
 
     created_by: user.id
 

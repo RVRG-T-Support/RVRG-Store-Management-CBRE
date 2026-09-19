@@ -40,6 +40,62 @@ loadDashboardData();
 
 // Event Listener for refresh button
 document.getElementById('btnRefreshStock').addEventListener('click', loadLowStockAlerts);
+    // Department Consumption Date Filter
+
+const applyDepartmentConsumption =
+    document.getElementById(
+        "btnApplyDepartmentConsumption"
+    );
+
+
+if(applyDepartmentConsumption){
+
+    applyDepartmentConsumption.addEventListener(
+        "click",
+        loadDepartmentConsumption
+    );
+
+}
+
+
+const resetDepartmentConsumption =
+    document.getElementById(
+        "btnResetDepartmentConsumption"
+    );
+
+
+if(resetDepartmentConsumption){
+
+    resetDepartmentConsumption.addEventListener(
+        "click",
+        () => {
+
+            const fromInput =
+                document.getElementById(
+                    "departmentConsumptionFrom"
+                );
+
+
+            const toInput =
+                document.getElementById(
+                    "departmentConsumptionTo"
+                );
+
+
+            if(fromInput)
+                fromInput.value = "";
+
+
+            if(toInput)
+                toInput.value = "";
+
+
+            loadDepartmentConsumption();
+
+        }
+    );
+
+}
 });
 
 // --- MAIN DATA CONTROLLER ---
@@ -87,8 +143,7 @@ const { count: lowCount } = await supabase
 document.getElementById('dashLowStock').innerText = lowCount || 0;
 
 // Inventory Value
-// current_stock view already contains both
-// current_stock quantity and unit_cost.
+// Load Current Stock
 
 const {
     data: stockData,
@@ -99,6 +154,7 @@ const {
 
     .select(`
         material_id,
+        material_code,
         current_stock,
         unit_cost
     `);
@@ -108,33 +164,129 @@ if(stockError)
     throw stockError;
 
 
-// Calculate Total Inventory Value
+// Load Material Master Unit Cost
+// Used as fallback when current_stock.unit_cost is empty.
+
+const {
+    data: materialsData,
+    error: materialError
+} = await supabase
+
+    .from("materials")
+
+    .select(`
+        id,
+        material_code,
+        unit_cost
+    `);
+
+
+if(materialError)
+    throw materialError;
+
+
+// ---------------------------------------------
+// CREATE COST LOOKUPS
+// ---------------------------------------------
+
+const costById = {};
+const costByCode = {};
+
+
+(materialsData || []).forEach(
+    material => {
+
+        const cost =
+            Number(
+                material.unit_cost || 0
+            );
+
+
+        costById[
+            String(material.id)
+        ] = cost;
+
+
+        if(material.material_code){
+
+            costByCode[
+                String(
+                    material.material_code
+                )
+                .trim()
+                .toUpperCase()
+            ] = cost;
+
+        }
+
+    }
+);
+
+
+// ---------------------------------------------
+// CALCULATE INVENTORY VALUE
+// ---------------------------------------------
 
 let totalValue = 0;
 
 
-(stockData || []).forEach(stock => {
+(stockData || []).forEach(
+    stock => {
 
-    const quantity =
-        Number(
-            stock.current_stock || 0
-        );
-
-
-    const unitCost =
-        Number(
-            stock.unit_cost || 0
-        );
+        const quantity =
+            Number(
+                stock.current_stock || 0
+            );
 
 
-    totalValue +=
-        quantity *
-        unitCost;
+        let unitCost =
+            Number(
+                stock.unit_cost || 0
+            );
 
-});
+
+        // Fallback 1: Material ID
+        if(unitCost <= 0){
+
+            unitCost =
+                costById[
+                    String(
+                        stock.material_id
+                    )
+                ] || 0;
+
+        }
 
 
-// Display Dashboard Value
+        // Fallback 2: Material Code
+        if(
+            unitCost <= 0 &&
+            stock.material_code
+        ){
+
+            unitCost =
+                costByCode[
+                    String(
+                        stock.material_code
+                    )
+                    .trim()
+                    .toUpperCase()
+                ] || 0;
+
+        }
+
+
+        totalValue +=
+            quantity *
+            unitCost;
+
+    }
+);
+
+
+// ---------------------------------------------
+// DISPLAY
+// ---------------------------------------------
 
 document.getElementById(
     "dashTotalValue"
@@ -232,7 +384,7 @@ tbody.innerHTML =
 }
 
 // ====================================================
-// DEPARTMENT CONSUMPTION - CURRENT MONTH
+// DEPARTMENT CONSUMPTION
 // ====================================================
 
 async function loadDepartmentConsumption(){
@@ -241,6 +393,7 @@ async function loadDepartmentConsumption(){
         document.getElementById(
             "departmentConsumptionTiles"
         );
+
 
     const periodDisplay =
         document.getElementById(
@@ -252,97 +405,233 @@ async function loadDepartmentConsumption(){
         return;
 
 
-    // ------------------------------------------------
-    // CURRENT MONTH PERIOD
-    // ------------------------------------------------
+    // =================================================
+    // DEFAULT DATES
+    // =================================================
 
     const now =
         new Date();
 
 
-    const monthStart =
+    const firstDayOfMonth =
         new Date(
             now.getFullYear(),
             now.getMonth(),
-            1,
-            0,
-            0,
-            0,
-            0
+            1
         );
 
 
-    const monthEnd =
-        new Date(
-            now.getFullYear(),
-            now.getMonth(),
-            now.getDate(),
-            23,
-            59,
-            59,
-            999
+    function localDateValue(date){
+
+        const year =
+            date.getFullYear();
+
+        const month =
+            String(
+                date.getMonth() + 1
+            ).padStart(2,"0");
+
+        const day =
+            String(
+                date.getDate()
+            ).padStart(2,"0");
+
+        return `${year}-${month}-${day}`;
+
+    }
+
+
+    const fromInput =
+        document.getElementById(
+            "departmentConsumptionFrom"
         );
 
 
-    const formatDate =
-        date =>
-            date.toLocaleDateString(
-                "en-IN",
-                {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric"
-                }
+    const toInput =
+        document.getElementById(
+            "departmentConsumptionTo"
+        );
+
+
+    // Set default dates only when empty
+
+    if(
+        fromInput &&
+        !fromInput.value
+    ){
+
+        fromInput.value =
+            localDateValue(
+                firstDayOfMonth
             );
+
+    }
+
+
+    if(
+        toInput &&
+        !toInput.value
+    ){
+
+        toInput.value =
+            localDateValue(
+                now
+            );
+
+    }
+
+
+    const fromDate =
+        fromInput?.value ||
+        localDateValue(
+            firstDayOfMonth
+        );
+
+
+    const toDate =
+        toInput?.value ||
+        localDateValue(
+            now
+        );
+
+
+    // =================================================
+    // VALIDATE DATE RANGE
+    // =================================================
+
+    const periodStart =
+        new Date(
+            `${fromDate}T00:00:00`
+        );
+
+
+    const periodEnd =
+        new Date(
+            `${toDate}T23:59:59.999`
+        );
+
+
+    if(
+        isNaN(periodStart.getTime()) ||
+        isNaN(periodEnd.getTime())
+    ){
+
+        periodDisplay.innerText =
+            "Invalid date range.";
+
+        container.innerHTML = `
+
+            <div class="col-12">
+
+                <div class="alert alert-warning mb-0">
+
+                    Please select valid From and To dates.
+
+                </div>
+
+            </div>
+
+        `;
+
+        return;
+
+    }
+
+
+    if(
+        periodStart >
+        periodEnd
+    ){
+
+        periodDisplay.innerText =
+            "Invalid date range.";
+
+        container.innerHTML = `
+
+            <div class="col-12">
+
+                <div class="alert alert-warning mb-0">
+
+                    From Date cannot be later than To Date.
+
+                </div>
+
+            </div>
+
+        `;
+
+        return;
+
+    }
+
+
+    // =================================================
+    // DISPLAY PERIOD
+    // =================================================
+
+    function formatDisplayDate(date){
+
+        return date.toLocaleDateString(
+            "en-IN",
+            {
+                day: "2-digit",
+                month: "short",
+                year: "numeric"
+            }
+        );
+
+    }
 
 
     if(periodDisplay){
 
         periodDisplay.innerText =
-            `Period: ${formatDate(monthStart)} – ` +
-            `${formatDate(monthEnd)} ` +
-            `(Month-to-Date)`;
+            `Period: ${
+                formatDisplayDate(periodStart)
+            } – ${
+                formatDisplayDate(periodEnd)
+            }`;
 
     }
 
 
     try{
 
-        // ------------------------------------------------
-        // LOAD DEPARTMENTS
-        // ------------------------------------------------
+        // =================================================
+        // LOAD ACTIVE DEPARTMENTS
+        // =================================================
 
-const {
-    data: departments,
-    error: departmentError
-} = await supabase
+        const {
+            data: departments,
+            error: departmentError
+        } = await supabase
 
-    .from("departments")
+            .from("departments")
 
-    .select(
-        "id, department_name, is_active"
-    )
+            .select(
+                "id, department_name, is_active"
+            )
 
-    .eq(
-        "is_active",
-        true
-    )
+            .eq(
+                "is_active",
+                true
+            )
 
-    .order(
-        "department_name",
-        {
-            ascending: true
-        }
-    );
+            .order(
+                "department_name",
+                {
+                    ascending: true
+                }
+            );
 
 
         if(departmentError)
             throw departmentError;
 
 
-        // ------------------------------------------------
-        // LOAD MATERIAL MASTER
-        // ------------------------------------------------
+        // =================================================
+        // LOAD MATERIALS
+        // =================================================
 
         const {
             data: materials,
@@ -360,9 +649,9 @@ const {
             throw materialError;
 
 
-        // ------------------------------------------------
+        // =================================================
         // CREATE MATERIAL LOOKUP
-        // ------------------------------------------------
+        // =================================================
 
         const materialMap = {};
 
@@ -378,9 +667,9 @@ const {
         );
 
 
-        // ------------------------------------------------
-        // LOAD CURRENT MONTH ISSUE TRANSACTIONS
-        // ------------------------------------------------
+        // =================================================
+        // LOAD ISSUES FOR SELECTED PERIOD
+        // =================================================
 
         const {
             data: issues,
@@ -397,12 +686,12 @@ const {
 
             .gte(
                 "issued_date",
-                monthStart.toISOString()
+                periodStart.toISOString()
             )
 
             .lte(
                 "issued_date",
-                monthEnd.toISOString()
+                periodEnd.toISOString()
             );
 
 
@@ -410,9 +699,9 @@ const {
             throw issueError;
 
 
-        // ------------------------------------------------
+        // =================================================
         // BUILD DEPARTMENT TOTALS
-        // ------------------------------------------------
+        // =================================================
 
         const consumptionMap = {};
 
@@ -421,7 +710,9 @@ const {
             department => {
 
                 consumptionMap[
-                    String(department.id)
+                    String(
+                        department.id
+                    )
                 ] = {
 
                     name:
@@ -438,6 +729,10 @@ const {
             }
         );
 
+
+        // =================================================
+        // CALCULATE
+        // =================================================
 
         (issues || []).forEach(
             issue => {
@@ -497,9 +792,9 @@ const {
         );
 
 
-        // ------------------------------------------------
-        // RENDER TILES
-        // ------------------------------------------------
+        // =================================================
+        // RENDER
+        // =================================================
 
         container.innerHTML = "";
 
@@ -513,13 +808,12 @@ const {
 
                 <div class="col-12">
 
-                    <div
-                        class="alert alert-light
-                               text-center
-                               text-muted
-                               mb-0">
+                    <div class="alert alert-light
+                                text-center
+                                text-muted
+                                mb-0">
 
-                        No departments found.
+                        No active departments found.
 
                     </div>
 
@@ -533,7 +827,7 @@ const {
 
 
         departments.forEach(
-            (department, index) => {
+            department => {
 
                 const departmentId =
                     String(
@@ -637,7 +931,6 @@ const {
                                         class="fa-solid
                                                fa-box-open
                                                text-primary">
-
                                     </i>
 
                                 </div>

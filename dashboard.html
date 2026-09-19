@@ -243,13 +243,68 @@ text-success"></i>
 
                 </h5>
 
-                <small
-                    id="departmentConsumptionPeriod"
-                    class="text-muted">
+<div class="d-flex flex-wrap align-items-end gap-2 mt-2">
 
-                    Loading period...
+    <div>
+        <label
+            for="departmentConsumptionFrom"
+            class="form-label mb-1 small text-muted">
+            From
+        </label>
 
-                </small>
+        <input
+            type="date"
+            id="departmentConsumptionFrom"
+            class="form-control form-control-sm"
+            style="width:145px;">
+    </div>
+
+
+    <div>
+        <label
+            for="departmentConsumptionTo"
+            class="form-label mb-1 small text-muted">
+            To
+        </label>
+
+        <input
+            type="date"
+            id="departmentConsumptionTo"
+            class="form-control form-control-sm"
+            style="width:145px;">
+    </div>
+
+
+    <button
+        type="button"
+        id="btnApplyDepartmentConsumption"
+        class="btn btn-sm btn-primary">
+
+        <i class="fa-solid fa-filter me-1"></i>
+        Apply
+
+    </button>
+
+
+    <button
+        type="button"
+        id="btnResetDepartmentConsumption"
+        class="btn btn-sm btn-outline-secondary">
+
+        Reset
+
+    </button>
+
+</div>
+
+
+<div
+    id="departmentConsumptionPeriod"
+    class="small text-muted mt-2">
+
+    Loading period...
+
+</div>
 
             </div>
 

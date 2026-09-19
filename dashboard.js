@@ -161,8 +161,6 @@ document.getElementById(
 ).innerText =
     formatCurrency(totalValue);
 
-document.getElementById('dashTotalValue').innerText = formatCurrency(total);
-
 } catch (error) {
 console.error(error);
 alert(error.message);
@@ -334,23 +332,28 @@ async function loadDepartmentConsumption(){
         // LOAD DEPARTMENTS
         // ------------------------------------------------
 
-        const {
-            data: departments,
-            error: departmentError
-        } = await supabase
+const {
+    data: departments,
+    error: departmentError
+} = await supabase
 
-            .from("departments")
+    .from("departments")
 
-            .select(
-                "id, department_name"
-            )
+    .select(
+        "id, department_name, is_active"
+    )
 
-            .order(
-                "department_name",
-                {
-                    ascending: true
-                }
-            );
+    .eq(
+        "is_active",
+        true
+    )
+
+    .order(
+        "department_name",
+        {
+            ascending: true
+        }
+    );
 
 
         if(departmentError)

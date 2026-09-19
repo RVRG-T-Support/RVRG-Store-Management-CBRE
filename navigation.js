@@ -207,9 +207,9 @@ async function renderSidebar() {
 
     let html = `
         <div class="sidebar">
-
+            // Sidebar Title add here
             <div class="sidebar-title">
-                // RVRG
+    
             </div>
 
             <ul class="nav flex-column">

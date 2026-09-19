@@ -87,23 +87,79 @@ const { count: lowCount } = await supabase
 document.getElementById('dashLowStock').innerText = lowCount || 0;
 
 // Inventory Value
-const { data: stock } = await supabase
-.from('current_stock')
-.select(`
-           material_id,
-           unit_cost,
-           current_stock
-       `);
+// Get current stock quantity from current_stock
+const {
+    data: stockData,
+    error: stockError
+} = await supabase
+    .from('current_stock')
+    .select(`
+        material_id,
+        current_stock
+    `);
 
-let total = 0;
-
-if (stock) {
-stock.forEach(item => {
-total +=
-(Number(item.unit_cost) || 0) *
-(Number(item.current_stock) || 0);
-});
+if (stockError) {
+    throw stockError;
 }
+
+
+// Get Unit Cost from Material Master
+const {
+    data: materialsData,
+    error: materialError
+} = await supabase
+    .from('materials')
+    .select(`
+        id,
+        unit_cost
+    `);
+
+if (materialError) {
+    throw materialError;
+}
+
+
+// Create material cost lookup
+const materialCostMap = {};
+
+(materialsData || []).forEach(material => {
+
+    materialCostMap[
+        String(material.id)
+    ] = Number(
+        material.unit_cost || 0
+    );
+
+});
+
+
+// Calculate Total Inventory Value
+let totalValue = 0;
+
+(stockData || []).forEach(stock => {
+
+    const quantity =
+        Number(
+            stock.current_stock || 0
+        );
+
+    const unitCost =
+        materialCostMap[
+            String(stock.material_id)
+        ] || 0;
+
+    totalValue +=
+        quantity *
+        unitCost;
+
+});
+
+
+// Display Dashboard Value
+document.getElementById(
+    'dashTotalValue'
+).innerText =
+    formatCurrency(totalValue);
 
 document.getElementById('dashTotalValue').innerText = formatCurrency(total);
 

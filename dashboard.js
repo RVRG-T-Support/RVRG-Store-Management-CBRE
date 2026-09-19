@@ -51,7 +51,11 @@ await loadMetrics().catch(console.error);
 
 await loadRecentRequests().catch(console.error);
 
-await loadLowStockAlerts().catch(console.error);
+await loadDepartmentConsumption()
+    .catch(console.error);
+
+await loadLowStockAlerts()
+    .catch(console.error);
 
 }
 
@@ -191,6 +195,465 @@ alert(error.message);
 tbody.innerHTML =
 `<tr><td colspan="4" class="text-danger text-center">${error.message}</td></tr>`;
 }
+}
+
+// ====================================================
+// DEPARTMENT CONSUMPTION - CURRENT MONTH
+// ====================================================
+
+async function loadDepartmentConsumption(){
+
+    const container =
+        document.getElementById(
+            "departmentConsumptionTiles"
+        );
+
+    const periodDisplay =
+        document.getElementById(
+            "departmentConsumptionPeriod"
+        );
+
+
+    if(!container)
+        return;
+
+
+    // ------------------------------------------------
+    // CURRENT MONTH PERIOD
+    // ------------------------------------------------
+
+    const now =
+        new Date();
+
+
+    const monthStart =
+        new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            1,
+            0,
+            0,
+            0,
+            0
+        );
+
+
+    const monthEnd =
+        new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate(),
+            23,
+            59,
+            59,
+            999
+        );
+
+
+    const formatDate =
+        date =>
+            date.toLocaleDateString(
+                "en-IN",
+                {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric"
+                }
+            );
+
+
+    if(periodDisplay){
+
+        periodDisplay.innerText =
+            `Period: ${formatDate(monthStart)} – ` +
+            `${formatDate(monthEnd)} ` +
+            `(Month-to-Date)`;
+
+    }
+
+
+    try{
+
+        // ------------------------------------------------
+        // LOAD DEPARTMENTS
+        // ------------------------------------------------
+
+        const {
+            data: departments,
+            error: departmentError
+        } = await supabase
+
+            .from("departments")
+
+            .select(
+                "id, department_name"
+            )
+
+            .order(
+                "department_name",
+                {
+                    ascending: true
+                }
+            );
+
+
+        if(departmentError)
+            throw departmentError;
+
+
+        // ------------------------------------------------
+        // LOAD MATERIAL MASTER
+        // ------------------------------------------------
+
+        const {
+            data: materials,
+            error: materialError
+        } = await supabase
+
+            .from("materials")
+
+            .select(
+                "id, department_id, unit_cost"
+            );
+
+
+        if(materialError)
+            throw materialError;
+
+
+        // ------------------------------------------------
+        // CREATE MATERIAL LOOKUP
+        // ------------------------------------------------
+
+        const materialMap = {};
+
+
+        (materials || []).forEach(
+            material => {
+
+                materialMap[
+                    String(material.id)
+                ] = material;
+
+            }
+        );
+
+
+        // ------------------------------------------------
+        // LOAD CURRENT MONTH ISSUE TRANSACTIONS
+        // ------------------------------------------------
+
+        const {
+            data: issues,
+            error: issueError
+        } = await supabase
+
+            .from(
+                "material_issue_register"
+            )
+
+            .select(
+                "material_id, issued_qty, unit_cost, issued_date"
+            )
+
+            .gte(
+                "issued_date",
+                monthStart.toISOString()
+            )
+
+            .lte(
+                "issued_date",
+                monthEnd.toISOString()
+            );
+
+
+        if(issueError)
+            throw issueError;
+
+
+        // ------------------------------------------------
+        // BUILD DEPARTMENT TOTALS
+        // ------------------------------------------------
+
+        const consumptionMap = {};
+
+
+        (departments || []).forEach(
+            department => {
+
+                consumptionMap[
+                    String(department.id)
+                ] = {
+
+                    name:
+                        department.department_name,
+
+                    value:
+                        0,
+
+                    issueRecords:
+                        0
+
+                };
+
+            }
+        );
+
+
+        (issues || []).forEach(
+            issue => {
+
+                const material =
+                    materialMap[
+                        String(
+                            issue.material_id
+                        )
+                    ];
+
+
+                if(!material)
+                    return;
+
+
+                const departmentId =
+                    String(
+                        material.department_id
+                    );
+
+
+                if(
+                    !consumptionMap[
+                        departmentId
+                    ]
+                )
+                    return;
+
+
+                const quantity =
+                    Number(
+                        issue.issued_qty || 0
+                    );
+
+
+                const unitCost =
+                    Number(
+                        issue.unit_cost ??
+                        material.unit_cost ??
+                        0
+                    );
+
+
+                consumptionMap[
+                    departmentId
+                ].value +=
+                    quantity *
+                    unitCost;
+
+
+                consumptionMap[
+                    departmentId
+                ].issueRecords++;
+
+            }
+        );
+
+
+        // ------------------------------------------------
+        // RENDER TILES
+        // ------------------------------------------------
+
+        container.innerHTML = "";
+
+
+        if(
+            !departments ||
+            departments.length === 0
+        ){
+
+            container.innerHTML = `
+
+                <div class="col-12">
+
+                    <div
+                        class="alert alert-light
+                               text-center
+                               text-muted
+                               mb-0">
+
+                        No departments found.
+
+                    </div>
+
+                </div>
+
+            `;
+
+            return;
+
+        }
+
+
+        departments.forEach(
+            (department, index) => {
+
+                const departmentId =
+                    String(
+                        department.id
+                    );
+
+
+                const summary =
+                    consumptionMap[
+                        departmentId
+                    ] || {
+
+                        name:
+                            department.department_name,
+
+                        value:
+                            0,
+
+                        issueRecords:
+                            0
+
+                    };
+
+
+                const tile =
+                    document.createElement(
+                        "div"
+                    );
+
+
+                tile.className =
+                    "col-12 col-sm-6 col-lg-4";
+
+
+                tile.innerHTML = `
+
+                    <div
+                        class="card
+                               border-0
+                               shadow-sm
+                               h-100">
+
+                        <div
+                            class="card-body">
+
+                            <div
+                                class="d-flex
+                                       justify-content-between
+                                       align-items-start">
+
+                                <div>
+
+                                    <h6
+                                        class="text-muted
+                                               fw-bold
+                                               mb-2">
+
+                                        ${summary.name}
+
+                                    </h6>
+
+                                    <div
+                                        class="small
+                                               text-muted
+                                               mb-1">
+
+                                        Consumption
+
+                                    </div>
+
+                                    <h4
+                                        class="fw-bold
+                                               mb-2
+                                               text-dark">
+
+                                        ${formatCurrency(
+                                            summary.value
+                                        )}
+
+                                    </h4>
+
+                                    <small
+                                        class="text-muted">
+
+                                        ${
+                                            summary.issueRecords
+                                        }
+                                        issue record(s)
+
+                                    </small>
+
+                                </div>
+
+
+                                <div
+                                    class="rounded-circle
+                                           bg-light
+                                           p-3">
+
+                                    <i
+                                        class="fa-solid
+                                               fa-box-open
+                                               text-primary">
+
+                                    </i>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                `;
+
+
+                container.appendChild(
+                    tile
+                );
+
+            }
+        );
+
+    }
+
+    catch(error){
+
+        console.error(
+            "Department Consumption Error:",
+            error
+        );
+
+
+        container.innerHTML = `
+
+            <div class="col-12">
+
+                <div
+                    class="alert alert-danger
+                           mb-0">
+
+                    Unable to load
+                    department consumption.
+
+                    <br>
+
+                    <small>
+                        ${error.message}
+                    </small>
+
+                </div>
+
+            </div>
+
+        `;
+
+    }
+
 }
 
 // --- LOW STOCK ALERTS TABLE LOGIC ---

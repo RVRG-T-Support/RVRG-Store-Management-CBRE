@@ -18,8 +18,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('invoiceDate').value = new Date().toISOString().split('T')[0];
 
 
-   // Load materials first
+// Load materials first
 await loadMaterials();
+
+// Create first material row automatically
+addRow();
 
     // Event Listeners
     document.getElementById('btnAddRow').addEventListener('click', () => addRow());
@@ -1989,8 +1992,29 @@ async function saveStockEntry() {
     btnConfirm.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
 
     const user = getCurrentUser();
-    const invoiceNo = document.getElementById('invoiceNo').value.trim();
-    const invoiceDate = document.getElementById('invoiceDate').value;
+
+const vendorName =
+    document
+        .getElementById("vendorName")
+        .value
+        .trim();
+
+const vendorNumber =
+    document
+        .getElementById("vendorNumber")
+        .value
+        .trim();
+
+const invoiceNo =
+    document
+        .getElementById("invoiceNo")
+        .value
+        .trim();
+
+const invoiceDate =
+    document
+        .getElementById("invoiceDate")
+        .value;
     const transportCost = parseFloat(document.getElementById('transportationCost').value) || 0;
     const roundOff =
     parseFloat(
@@ -2016,7 +2040,11 @@ const currentYear = new Date().getFullYear();
 
     invoice_date: invoiceDate,
 
-    supplier_name: "N/A",
+supplier_name:
+    vendorName,
+
+supplier_number:
+    vendorNumber,
 
 transport_cost:
     transportCost,

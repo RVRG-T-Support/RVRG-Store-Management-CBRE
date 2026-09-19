@@ -209,7 +209,7 @@ async function renderSidebar() {
         <div class="sidebar">
 
             <div class="sidebar-title">
-                RVRG
+                // RVRG
             </div>
 
             <ul class="nav flex-column">

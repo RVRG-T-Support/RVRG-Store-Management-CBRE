@@ -162,7 +162,35 @@ const {
 
 if(stockError)
     throw stockError;
+console.log(
+    "========== DASHBOARD INVENTORY DEBUG =========="
+);
 
+console.log(
+    "Current Stock Records:",
+    stockData?.length || 0
+);
+
+console.log(
+    "First 10 Current Stock Rows:",
+    (stockData || []).slice(0, 10)
+);
+
+console.log(
+    "Sample Unit Costs:",
+    (stockData || [])
+        .slice(0, 10)
+        .map(item => ({
+            material_id: item.material_id,
+            material_code: item.material_code,
+            current_stock: item.current_stock,
+            unit_cost: item.unit_cost
+        }))
+);
+
+console.log(
+    "==============================================="
+);
 
 // Load Material Master Unit Cost
 // Used as fallback when current_stock.unit_cost is empty.

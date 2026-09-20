@@ -285,6 +285,56 @@ function createRequestItem(){
 window.requestItems = [
     createRequestItem()
 ];
+// ====================================================
+// QUANTITY RULES BY UNIT
+// ====================================================
+
+function getQuantitySettings(unit){
+
+    const normalizedUnit =
+        String(unit || "")
+            .trim()
+            .toLowerCase();
+
+
+    const decimalUnits = [
+        "l",
+        "ltr",
+        "litre",
+        "litres",
+        "kg",
+        "g",
+        "gram",
+        "grams",
+        "m",
+        "meter",
+        "meters",
+        "metre",
+        "metres",
+        "mtr"
+    ];
+
+
+    if(
+        decimalUnits.includes(
+            normalizedUnit
+        )
+    ){
+
+        return {
+            min: "0.01",
+            step: "0.01"
+        };
+
+    }
+
+
+    return {
+        min: "1",
+        step: "1"
+    };
+
+}
 
 // ====================================================
 // RENDER REQUEST ITEMS
@@ -495,17 +545,31 @@ function renderRequestItems(){
                     </label>
 
 
-                    <input
-                        type="number"
-                        class="form-control"
-                        min="1"
-                        step="any"
-                        value="${item.quantity || ""}"
-                        data-item-id="${item.id}"
-                        onchange="handleRequestItemQuantityChange(this)"
-                        oninput="handleRequestItemQuantityChange(this)"
-                        placeholder="Enter quantity"
-                        required>
+${(() => {
+
+    const quantitySettings =
+        getQuantitySettings(
+            selectedMaterial?.unit
+        );
+
+
+    return `
+
+        <input
+            type="number"
+            class="form-control"
+            min="${quantitySettings.min}"
+            step="${quantitySettings.step}"
+            value="${item.quantity || ""}"
+            data-item-id="${item.id}"
+            onchange="handleRequestItemQuantityChange(this)"
+            oninput="handleRequestItemQuantityChange(this)"
+            placeholder="Enter quantity"
+            required>
+
+    `;
+
+})()}
 
                 </div>
 
@@ -1307,6 +1371,92 @@ async function submitMaterialRequest(e){
 
 
     if(!validItems.length){
+        // ------------------------------------------------
+// VALIDATE QUANTITY BY UNIT
+// ------------------------------------------------
+
+for(
+    const item of validItems
+){
+
+    const material =
+        (window.currentMaterials || [])
+            .find(
+                m =>
+                    String(m.id) ===
+                    String(item.materialId)
+            );
+
+
+    if(!material)
+        continue;
+
+
+    const quantity =
+        Number(item.quantity);
+
+
+    const settings =
+        getQuantitySettings(
+            material.unit
+        );
+
+
+    const minimum =
+        Number(
+            settings.min
+        );
+
+
+    const step =
+        Number(
+            settings.step
+        );
+
+
+    if(
+        !Number.isFinite(quantity) ||
+        quantity < minimum
+    ){
+
+        showAlert(
+
+            `${material.material_name} requires a quantity of at least ${settings.min} ${material.unit}.`,
+
+            "warning"
+
+        );
+
+        return;
+
+    }
+
+
+    // Whole-number units
+
+    if(step === 1){
+
+        if(
+            !Number.isInteger(
+                quantity
+            )
+        ){
+
+            showAlert(
+
+                `${material.material_name} (${material.unit}) must be entered as a whole number.`,
+
+                "warning"
+
+            );
+
+            return;
+
+        }
+
+    }
+
+}
 
         showAlert(
             "Please add at least one material and quantity.",
@@ -1625,9 +1775,12 @@ catch(err){
 }
 }
 
-// --- RECENT REQUESTS TABLE LOGIC ---
+// ====================================================
+// RECENT MATERIAL REQUESTS
+// SMART TICKET GROUPING
+// ====================================================
 
-async function loadRecentRequests() {
+async function loadRecentRequests(){
 
     const table =
         document.getElementById(
@@ -1636,18 +1789,23 @@ async function loadRecentRequests() {
 
 
     table.innerHTML = `
+
         <tr>
-            <td colspan="7"
+
+            <td
+                colspan="7"
                 class="text-center text-muted py-4">
 
                 Loading...
 
             </td>
+
         </tr>
+
     `;
 
 
-    try {
+    try{
 
         const {
             data,
@@ -1669,6 +1827,8 @@ async function loadRecentRequests() {
 
                 materials!material_requests_material_id_fkey (
                     material_name,
+                    material_code,
+                    unit,
                     department_id
                 )
             `)
@@ -1678,32 +1838,32 @@ async function loadRecentRequests() {
                 {
                     ascending: false
                 }
-            )
-
-            .limit(20);
+            );
 
 
         if(error)
             throw error;
 
 
-        table.innerHTML = "";
-
-
         if(
             !data ||
-            data.length === 0
+            !data.length
         ){
 
             table.innerHTML = `
+
                 <tr>
-                    <td colspan="6"
+
+                    <td
+                        colspan="7"
                         class="text-center text-muted py-4">
 
                         No material requests found.
 
                     </td>
+
                 </tr>
+
             `;
 
             return;
@@ -1711,172 +1871,375 @@ async function loadRecentRequests() {
         }
 
 
-        data.forEach(req => {
+        // =================================================
+        // GROUP BY TICKET
+        // =================================================
 
-            const isPending =
-                req.request_status ===
-                "PENDING";
-            
-            const requestDateTime =
-    req.created_at
-        ? new Date(
-            req.created_at
-        ).toLocaleString(
-            "en-IN",
-            {
-                day: "2-digit",
-                month: "2-digit",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-                second: "2-digit",
-                hour12: true
+        const ticketGroups = {};
+
+
+        data.forEach(
+            req => {
+
+                const ticketNo =
+                    req.ticket_no ||
+                    "NO-TICKET";
+
+
+                if(
+                    !ticketGroups[
+                        ticketNo
+                    ]
+                ){
+
+                    ticketGroups[
+                        ticketNo
+                    ] = {
+
+                        ticketNo:
+                            ticketNo,
+
+                        complaintNo:
+                            req.anacity_complaint_no ||
+                            "-",
+
+                        locationName:
+                            req.location_name ||
+                            "-",
+
+                        locationType:
+                            req.location_type ||
+                            "-",
+
+                        createdAt:
+                            req.created_at,
+
+                        items: []
+
+                    };
+
+                }
+
+
+                ticketGroups[
+                    ticketNo
+                ].items.push(req);
+
             }
+        );
+
+
+        // =================================================
+        // RENDER
+        // =================================================
+
+        table.innerHTML = "";
+
+
+        Object.values(
+            ticketGroups
         )
-        : "-";
 
-            const actionButtons =
-                isPending
+        .slice(0, 20)
 
-                ? `
+        .forEach(
+            ticket => {
 
-                    <button
-                        type="button"
-                        class="btn btn-outline-primary btn-sm me-1"
-                        onclick="editMaterialRequest('${req.ticket_no}')"
-                        title="Edit Request">
-
-                        <i class="fa-solid fa-pen-to-square"></i>
-                        Edit
-
-                    </button>
-
-                    <button
-                        type="button"
-                        class="btn btn-outline-danger btn-sm"
-                        onclick="deleteMaterialRequest('${req.ticket_no}')"
-                        title="Delete Request">
-
-                        <i class="fa-solid fa-trash"></i>
-                        Delete
-
-                    </button>
-
-                  `
-
-                : `
-
-                    <span class="text-muted">
-                        -
-                    </span>
-
-                  `;
+                const isPending =
+                    ticket.items.some(
+                        item =>
+                            item.request_status ===
+                            "PENDING"
+                    );
 
 
-            table.innerHTML += `
+                const materialHtml =
+                    ticket.items
+                        .map(
+                            item => `
 
-                <tr>
+                                <div class="mb-1">
 
-                    <td>
+                                    <strong>
 
-                        <strong>
-                            ${req.ticket_no}
-                        </strong>
+                                        ${escapeHtml(
+                                            item.materials
+                                                ?.material_name ||
+                                            "-"
+                                        )}
 
-                    </td>
+                                    </strong>
+
+                                    <small class="text-muted">
+
+                                        ${
+                                            item.materials
+                                                ?.material_code
+                                                ? `(${escapeHtml(
+                                                    item.materials.material_code
+                                                )})`
+                                                : ""
+                                        }
+
+                                    </small>
+
+                                </div>
+
+                            `
+                        )
+                        .join("");
 
 
-                    <td>
+                const quantityHtml =
+                    ticket.items
+                        .map(
+                            item => {
 
-                        <strong>
-                            ${escapeHtml(
-                                req.location_name || "-"
-                            )}
-                        </strong>
+                                const unit =
+                                    item.materials
+                                        ?.unit ||
+                                    "";
 
-                        <br>
 
-                        <small class="text-muted">
+                                return `
 
-                            Complaint Number:
-                            ${
-                                escapeHtml(
-                                    req.anacity_complaint_no || "-"
-                                )
+                                    <div class="mb-1">
+
+                                        <strong>
+                                            ${item.requested_qty}
+                                        </strong>
+
+                                        <small class="text-muted">
+                                            ${escapeHtml(unit)}
+                                        </small>
+
+                                    </div>
+
+                                `;
+
                             }
-
-                        </small>
-
-                    </td>
+                        )
+                        .join("");
 
 
-                    <td>
-
-                        ${
-                            escapeHtml(
-                                req.materials?.material_name || "-"
-                            )
-                        }
-
-                    </td>
-
-
-<td>
-
-    ${req.requested_qty}
-
-</td>
+                const statusHtml =
+                    ticket.items
+                        .map(
+                            item =>
+                                `<div class="mb-1">
+                                    ${getStatusBadge(
+                                        item.request_status
+                                    )}
+                                </div>`
+                        )
+                        .join("");
 
 
-<td>
+                const actionButtons =
+                    isPending
 
-    ${getStatusBadge(
-        req.request_status
-    )}
+                        ? `
 
-</td>
+                            <button
+                                type="button"
+                                class="btn btn-outline-primary btn-sm me-1"
+                                onclick="editMaterialRequest('${ticket.ticketNo}')"
+                                title="Edit Request">
+
+                                <i class="fa-solid fa-pen-to-square"></i>
+
+                                Edit
+
+                            </button>
 
 
-<td>
+                            <button
+                                type="button"
+                                class="btn btn-outline-danger btn-sm"
+                                onclick="deleteMaterialRequest('${ticket.ticketNo}')"
+                                title="Delete Request">
 
-    <small>
-        ${requestDateTime}
-    </small>
+                                <i class="fa-solid fa-trash"></i>
 
-</td>
+                                Delete
+
+                            </button>
+
+                          `
+
+                        : `
+
+                            <span class="text-muted">
+                                -
+                            </span>
+
+                          `;
 
 
-<td class="text-center text-nowrap">
+                const requestDateTime =
+                    ticket.createdAt
 
-    ${actionButtons}
+                        ? new Date(
+                            ticket.createdAt
+                        ).toLocaleString(
+                            "en-IN",
+                            {
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                second: "2-digit",
+                                hour12: true
+                            }
+                        )
 
-</td>
+                        : "-";
 
-                </tr>
 
-            `;
+                table.innerHTML += `
 
-        });
+                    <tr>
+
+                        <!-- Ticket -->
+
+                        <td>
+
+                            <strong>
+                                ${escapeHtml(
+                                    ticket.ticketNo
+                                )}
+                            </strong>
+
+                            <br>
+
+                            <span
+                                class="badge bg-info text-dark mt-1">
+
+                                ${ticket.items.length}
+                                item${ticket.items.length > 1 ? "s" : ""}
+
+                            </span>
+
+                        </td>
+
+
+                        <!-- Details -->
+
+                        <td>
+
+                            <strong>
+
+                                ${escapeHtml(
+                                    ticket.locationName
+                                )}
+
+                            </strong>
+
+                            <br>
+
+                            <small class="text-muted">
+
+                                Complaint Number:
+                                ${escapeHtml(
+                                    ticket.complaintNo
+                                )}
+
+                            </small>
+
+                            <br>
+
+                            <small class="text-muted">
+
+                                ${escapeHtml(
+                                    ticket.locationType
+                                )}
+
+                            </small>
+
+                        </td>
+
+
+                        <!-- Materials -->
+
+                        <td>
+
+                            ${materialHtml}
+
+                        </td>
+
+
+                        <!-- Quantity -->
+
+                        <td>
+
+                            ${quantityHtml}
+
+                        </td>
+
+
+                        <!-- Status -->
+
+                        <td>
+
+                            ${statusHtml}
+
+                        </td>
+
+
+                        <!-- Date -->
+
+                        <td>
+
+                            <small>
+
+                                ${requestDateTime}
+
+                            </small>
+
+                        </td>
+
+
+                        <!-- Actions -->
+
+                        <td
+                            class="text-center text-nowrap">
+
+                            ${actionButtons}
+
+                        </td>
+
+                    </tr>
+
+                `;
+
+            }
+        );
 
     }
 
-    catch(err){
+    catch(error){
 
         console.error(
             "Load Recent Requests:",
-            err
+            error
         );
 
 
         table.innerHTML = `
+
             <tr>
-                <td colspan="6"
+
+                <td
+                    colspan="7"
                     class="text-center text-danger py-4">
 
                     Failed to load requests.
 
                 </td>
+
             </tr>
+
         `;
 
     }

@@ -1953,86 +1953,145 @@ async function loadRecentRequests(){
                     );
 
 
-                const materialHtml =
-                    ticket.items
-                        .map(
-                            item => `
+// =================================================
+// ALIGNED MATERIAL / QTY / STATUS ROWS
+// =================================================
 
-                                <div class="mb-1">
-
-                                    <strong>
-
-                                        ${escapeHtml(
-                                            item.materials
-                                                ?.material_name ||
-                                            "-"
-                                        )}
-
-                                    </strong>
-
-                                    <small class="text-muted">
-
-                                        ${
-                                            item.materials
-                                                ?.material_code
-                                                ? `(${escapeHtml(
-                                                    item.materials.material_code
-                                                )})`
-                                                : ""
-                                        }
-
-                                    </small>
-
-                                </div>
-
-                            `
-                        )
-                        .join("");
+const recentItemRowStyle =
+    "height:48px;" +
+    "display:flex;" +
+    "align-items:center;" +
+    "overflow:hidden;" +
+    "border-bottom:1px solid #eeeeee;";
 
 
-                const quantityHtml =
-                    ticket.items
-                        .map(
-                            item => {
+const materialHtml =
+    ticket.items
+        .map(
+            item => `
 
-                                const unit =
-                                    item.materials
-                                        ?.unit ||
-                                    "";
+                <div
+                    style="${recentItemRowStyle}">
+
+                    <div
+                        style="
+                            width:100%;
+                            overflow:hidden;
+                            line-height:20px;
+                        ">
+
+                        <strong
+                            style="
+                                display:block;
+                                white-space:nowrap;
+                                overflow:hidden;
+                                text-overflow:ellipsis;
+                            ">
+
+                            ${escapeHtml(
+                                item.materials
+                                    ?.material_name ||
+                                "-"
+                            )}
+
+                        </strong>
 
 
-                                return `
+                        <small
+                            class="text-muted"
+                            style="
+                                display:block;
+                                white-space:nowrap;
+                                overflow:hidden;
+                                text-overflow:ellipsis;
+                            ">
 
-                                    <div class="mb-1">
-
-                                        <strong>
-                                            ${item.requested_qty}
-                                        </strong>
-
-                                        <small class="text-muted">
-                                            ${escapeHtml(unit)}
-                                        </small>
-
-                                    </div>
-
-                                `;
-
+                            ${
+                                item.materials
+                                    ?.material_code
+                                    ? `(${escapeHtml(
+                                        item.materials.material_code
+                                    )})`
+                                    : ""
                             }
-                        )
-                        .join("");
+
+                        </small>
+
+                    </div>
+
+                </div>
+
+            `
+        )
+        .join("");
 
 
-                const statusHtml =
-                    ticket.items
-                        .map(
-                            item =>
-                                `<div class="mb-1">
-                                    ${getStatusBadge(
-                                        item.request_status
-                                    )}
-                                </div>`
-                        )
-                        .join("");
+const quantityHtml =
+    ticket.items
+        .map(
+            item => {
+
+                const unit =
+                    item.materials
+                        ?.unit ||
+                    "";
+
+
+                return `
+
+                    <div
+                        style="
+                            ${recentItemRowStyle}
+                            justify-content:center;
+                            text-align:center;
+                        ">
+
+                        <div>
+
+                            <strong>
+                                ${item.requested_qty}
+                            </strong>
+
+                            <small
+                                class="text-muted d-block">
+
+                                ${escapeHtml(
+                                    unit
+                                )}
+
+                            </small>
+
+                        </div>
+
+                    </div>
+
+                `;
+
+            }
+        )
+        .join("");
+
+
+const statusHtml =
+    ticket.items
+        .map(
+            item => `
+
+                <div
+                    style="
+                        ${recentItemRowStyle}
+                        justify-content:center;
+                    ">
+
+                    ${getStatusBadge(
+                        item.request_status
+                    )}
+
+                </div>
+
+            `
+        )
+        .join("");
 
 
                 const actionButtons =

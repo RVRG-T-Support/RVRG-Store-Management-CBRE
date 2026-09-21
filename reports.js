@@ -40,14 +40,20 @@ document.addEventListener("DOMContentLoaded", () => {
             .classList
             .remove("d-none");
 
-        document
-    .getElementById(
+ const pdfButton =
+    document.getElementById(
         "btnExportPdfReport"
-    )
-    .addEventListener(
+    );
+
+
+if(pdfButton){
+
+    pdfButton.addEventListener(
         "click",
         exportToPDF
     );
+
+}
 
     }
 
@@ -1067,27 +1073,37 @@ async function fetchReturnData(
                 return_date,
                 remarks,
 
-                material_issue_register!material_returns_issue_id_fkey(
-                    ticket_no,
-                    location_name,
-                    location_type,
-                    technician_name,
-                    issued_qty,
+.select(`
+    id,
+    issue_id,
+    material_id,
+    returned_qty,
+    return_condition,
+    received_by,
+    return_date,
+    remarks,
 
-    `materials!material_issue_register_material_id_fkey(
-    material_code,
-    material_name,
-    category,
-    unit,
-    department_id,
-    unit_cost,
+    material_issue_register!material_returns_issue_id_fkey(
+        ticket_no,
+        location_name,
+        location_type,
+        technician_name,
+        issued_qty,
 
-                        departments(
-                            department_name
-                        )
-                    )
-                )
-            `)
+        materials!material_issue_register_material_id_fkey(
+            material_code,
+            material_name,
+            category,
+            unit,
+            department_id,
+            unit_cost,
+
+            departments(
+                department_name
+            )
+        )
+    )
+`)
 
             .gte(
                 "return_date",

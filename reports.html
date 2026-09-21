@@ -25,27 +25,44 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h3 class="fw-bold text-dark"><i class="fa-solid fa-chart-line me-2 text-success"></i>System Reports</h3>
 <!-- Report Actions -->
+
 <div class="d-flex gap-2">
 
-    <!-- Download Button -->
     <button
         class="btn btn-success fw-bold d-none"
         id="btnExportReport"
-    >
+        type="button">
+
         <i class="fa-solid fa-file-excel me-2"></i>
-        Download Report
+
+        Excel
+
     </button>
 
-    <!-- Download History Button -->
+
+    <button
+        class="btn btn-danger fw-bold d-none"
+        id="btnExportPdfReport"
+        type="button">
+
+        <i class="fa-solid fa-file-pdf me-2"></i>
+
+        PDF
+
+    </button>
+
+
     <button
         class="btn btn-secondary fw-bold"
         id="btnReportHistory"
         type="button"
         data-bs-toggle="modal"
-        data-bs-target="#reportHistoryModal"
-    >
+        data-bs-target="#reportHistoryModal">
+
         <i class="fa-solid fa-clock-rotate-left me-2"></i>
+
         History
+
     </button>
 
 </div>
@@ -149,32 +166,72 @@
                 <div class="table-responsive">
                     <table class="table table-bordered table-hover align-middle mb-0 text-center">
 <thead class="table-dark" id="reportTableHeader">
+
     <tr>
+
         <th>Date</th>
-        <th>Complaint Number / Ticket / Invoice</th>
-        <th>Material</th>
+
+        <th>Complaint No.</th>
+
+        <th>Ticket / Invoice</th>
+
+        <th>Item Code</th>
+
+        <th>Material Name</th>
+
+        <th>Category</th>
+
         <th>Department</th>
+
         <th>Area Type</th>
-        <th>Quantity</th>
+
+        <th>Qty / Unit</th>
+
         <th>Value</th>
-        <th>User / Action</th>
+
+        <th>Processed By</th>
+
     </tr>
+
 </thead>
 <tbody id="reportTableBody">
 <tr>
-<td colspan="8" class="text-center text-muted py-5">
+<td colspan="11" class="text-center text-muted py-5">
     <i class="fa-solid fa-chart-bar fs-1 text-light mb-3 d-block"></i>
     Select filters and click Generate to view data.
 </td>
 </tr>
 </tbody>
-                        <tfoot class="table-secondary fw-bold" id="reportTableFooter" style="display: none;">
-                            <tr>
-                                <td colspan="5" class="text-end">Total Amount:</td>
-                                <td id="totalQuantity">-</td>
-                                <td id="totalValue" class="text-success">₹ 0.00</td>
-                            </tr>
-                        </tfoot>
+<tr>
+
+    <td
+        colspan="8"
+        class="text-end">
+
+        Total:
+
+    </td>
+
+
+    <td id="totalQuantity">
+        -
+    </td>
+
+
+    <td
+        id="totalValue"
+        class="text-success">
+
+        ₹ 0.00
+
+    </td>
+
+
+    <td>
+        -
+    </td>
+
+</tr>
                     </table>
                 </div>
             </div>
@@ -187,7 +244,10 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Optional: SheetJS for Excel Export -->
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
 <script src="config.js"></script>
 <script src="common.js"></script>
 <script src="navigation.js"></script>

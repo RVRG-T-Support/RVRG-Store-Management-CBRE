@@ -40,6 +40,15 @@ document.addEventListener("DOMContentLoaded", () => {
             .classList
             .remove("d-none");
 
+        document
+    .getElementById(
+        "btnExportPdfReport"
+    )
+    .addEventListener(
+        "click",
+        exportToPDF
+    );
+
     }
 
 
@@ -1847,6 +1856,11 @@ function renderReportTable(
             "reportTableFooter"
         );
 
+lastReportData =
+    data || [];
+
+lastReportType =
+    recordType || "";
 
     // Save for Excel / PDF
 

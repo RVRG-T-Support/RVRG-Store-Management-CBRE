@@ -375,13 +375,16 @@ async function fetchRequestData(
     requested_by,
     approved_by,
 
-    materials!material_requests_material_id_fkey(
-        material_name,
-        department_id,
-        departments(
-            department_name
-        )
+materials!material_requests_material_id_fkey(
+    material_code,
+    material_name,
+    category,
+    unit,
+    department_id,
+    departments(
+        department_name
     )
+)
 `)       
 
             .gte(
@@ -459,10 +462,25 @@ return filtered.map(
             row.anacity_complaint_no
             || "N/A",
 
-        material:
-            row.materials
-                ?.material_name
-            || "-",
+       materialCode:
+    row.materials
+        ?.material_code
+    || "-",
+
+material:
+    row.materials
+        ?.material_name
+    || "-",
+
+category:
+    row.materials
+        ?.category
+    || "-",
+
+unit:
+    row.materials
+        ?.unit
+    || "-",
 
         department:
             row.materials
@@ -626,10 +644,25 @@ return filtered.map(
             row.anacity_complaint_no
             || "N/A",
 
-        material:
-            row.materials
-                ?.material_name
-            || "-",
+materialCode:
+    row.materials
+        ?.material_code
+    || "-",
+
+material:
+    row.materials
+        ?.material_name
+    || "-",
+
+category:
+    row.materials
+        ?.category
+    || "-",
+
+unit:
+    row.materials
+        ?.unit
+    || "-",
 
         department:
             row.materials
@@ -678,6 +711,89 @@ return filtered.map(
 
 }
 
+// ====================================================
+// LOAD COMPLAINT NUMBERS BY TICKET
+// ====================================================
+
+async function loadComplaintNumberMap(
+    ticketNumbers
+){
+
+    const complaintMap = {};
+
+
+    const uniqueTickets =
+        [
+            ...new Set(
+                (ticketNumbers || [])
+                    .filter(
+                        ticket =>
+                            ticket &&
+                            String(ticket).trim() !== ""
+                    )
+                    .map(
+                        ticket =>
+                            String(ticket).trim()
+                    )
+            )
+        ];
+
+
+    if(!uniqueTickets.length){
+
+        return complaintMap;
+
+    }
+
+
+    const {
+        data,
+        error
+    } = await supabase
+
+        .from("material_requests")
+
+        .select(
+            "ticket_no, anacity_complaint_no"
+        )
+
+        .in(
+            "ticket_no",
+            uniqueTickets
+        );
+
+
+    if(error)
+        throw error;
+
+
+    (data || []).forEach(
+        row => {
+
+            const ticket =
+                String(
+                    row.ticket_no || ""
+                ).trim();
+
+
+            if(
+                ticket &&
+                !complaintMap[ticket]
+            ){
+
+                complaintMap[ticket] =
+                    row.anacity_complaint_no ||
+                    "-";
+
+            }
+
+        }
+    );
+
+
+    return complaintMap;
+
+}
 
 // ====================================================
 // MATERIAL CONSUMPTION / ISSUE REPORT
@@ -689,6 +805,221 @@ async function fetchConsumptionData(
     departmentName,
     areaType
 ) {
+
+    let query =
+        supabase
+
+            .from(
+                "material_issue_register"
+            )
+
+            .select(`
+                ticket_no,
+                location_type,
+                location_name,
+                issued_date,
+                issued_qty,
+                unit_cost,
+                issued_by,
+
+                materials!material_issue_register_material_id_fkey(
+                    material_code,
+                    material_name,
+                    category,
+                    unit,
+                    department_id,
+
+                    departments(
+                        department_name
+                    )
+                )
+            `)
+
+            .gte(
+                "issued_date",
+                fromDate
+            )
+
+            .lte(
+                "issued_date",
+                toDate
+            )
+
+            .order(
+                "issued_date",
+                {
+                    ascending: false
+                }
+            );
+
+
+    const {
+        data,
+        error
+    } = await query;
+
+
+    if(error)
+        throw error;
+
+
+    let filtered =
+        data || [];
+
+
+    // ==================================================
+    // DEPARTMENT FILTER
+    // ==================================================
+
+    if(
+        departmentName !==
+        "ALL"
+    ){
+
+        filtered =
+            filtered.filter(
+                row =>
+                    row.materials
+                        ?.departments
+                        ?.department_name
+                    === departmentName
+            );
+
+    }
+
+
+    // ==================================================
+    // AREA FILTER
+    // ==================================================
+
+    if(
+        areaType !==
+        "ALL"
+    ){
+
+        filtered =
+            filtered.filter(
+                row =>
+                    row.location_type
+                    === areaType
+            );
+
+    }
+
+
+    // ==================================================
+    // LOAD COMPLAINT NUMBERS
+    // ==================================================
+
+    const complaintMap =
+        await loadComplaintNumberMap(
+
+            filtered.map(
+                row =>
+                    row.ticket_no
+            )
+
+        );
+
+
+    // ==================================================
+    // BUILD REPORT
+    // ==================================================
+
+    return filtered.map(
+        row => {
+
+            const material =
+                row.materials || {};
+
+
+            const ticketNo =
+                row.ticket_no
+                || "-";
+
+
+            return {
+
+                date:
+                    row.issued_date,
+
+
+                complaintNumber:
+                    complaintMap[
+                        String(ticketNo)
+                    ]
+                    || "-",
+
+
+                reference:
+                    ticketNo,
+
+
+                materialCode:
+                    material.material_code
+                    || "-",
+
+
+                material:
+                    material.material_name
+                    || "-",
+
+
+                category:
+                    material.category
+                    || "-",
+
+
+                department:
+                    material.departments
+                        ?.department_name
+                    || "-",
+
+
+                area:
+                    row.location_type
+                    || "-",
+
+
+                unit:
+                    material.unit
+                    || "-",
+
+
+                quantity:
+                    Number(
+                        row.issued_qty || 0
+                    ),
+
+
+                value:
+                    Number(
+                        row.issued_qty || 0
+                    )
+                    *
+                    Number(
+                        row.unit_cost || 0
+                    ),
+
+
+                requestedBy:
+                    "-",
+
+
+                approvedBy:
+                    "-",
+
+
+                issuedBy:
+                    row.issued_by
+                    || "-"
+
+            };
+
+        }
+    );
+
+}{
 
     let query =
         supabase
@@ -929,10 +1260,13 @@ async function fetchReturnData(
                     technician_name,
                     issued_qty,
 
-                    materials!material_issue_register_material_id_fkey(
-                        material_name,
-                        department_id,
-                        unit_cost,
+    `materials!material_issue_register_material_id_fkey(
+    material_code,
+    material_name,
+    category,
+    unit,
+    department_id,
+    unit_cost,
 
                         departments(
                             department_name
@@ -1014,7 +1348,10 @@ async function fetchReturnData(
         const material =
             issue.materials
             || {};
-
+const complaintMap =
+    await loadComplaintNumberMap([
+        issue.ticket_no
+    ]);
 
         return {
 
@@ -1447,6 +1784,14 @@ async function fetchAllTransactions(
 
 }
 
+// ====================================================
+// LAST GENERATED REPORT
+// Used by Excel and PDF exports
+// ====================================================
+
+let lastReportData = [];
+
+let lastReportType = "";
 
 // ====================================================
 // RENDER REPORT TABLE

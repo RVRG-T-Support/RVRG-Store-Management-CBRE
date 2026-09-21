@@ -552,13 +552,23 @@ async function fetchApprovalData(
     requested_by,
     approved_by,
 
-    materials!material_requests_material_id_fkey(
-        material_name,
-        department_id,
-        departments(
-            department_name
-        )
+ materials!material_requests_material_id_fkey(
+
+    material_code,
+
+    material_name,
+
+    category,
+
+    unit,
+
+    department_id,
+
+    departments(
+        department_name
     )
+
+)
 `)
 
             .in(
@@ -1437,14 +1447,23 @@ async function fetchPurchaseData(
                     created_by
                 ),
 
-                materials!stock_entry_details_material_id_fkey(
-                    material_name,
-                    department_id,
+materials!stock_entry_details_material_id_fkey(
 
-                    departments(
-                        department_name
-                    )
-                )
+    material_code,
+
+    material_name,
+
+    category,
+
+    unit,
+
+    department_id,
+
+    departments(
+        department_name
+    )
+
+)
             `)
 
             .gte(
@@ -1636,10 +1655,25 @@ async function fetchPurchaseData(
                     header.invoice_no
                     || "-",
 
-                material:
-                    row.materials
-                        ?.material_name
-                    || "-",
+materialCode:
+    row.materials
+        ?.material_code
+    || "-",
+
+material:
+    row.materials
+        ?.material_name
+    || "-",
+
+category:
+    row.materials
+        ?.category
+    || "-",
+
+unit:
+    row.materials
+        ?.unit
+    || "-",
 
                 department:
                     row.materials

@@ -1794,13 +1794,13 @@ let lastReportData = [];
 let lastReportType = "";
 
 // ====================================================
-// RENDER REPORT TABLE
+// RENDER STANDARD REPORT TABLE
 // ====================================================
 
 function renderReportTable(
     data,
     recordType
-) {
+){
 
     const tableBody =
         document.getElementById(
@@ -1813,96 +1813,48 @@ function renderReportTable(
             "reportTableFooter"
         );
 
-    const userActionHeader =
-    document.querySelector(
-        "#reportTableHeader th:last-child"
-    );
+
+    // Save for Excel / PDF
+
+    lastReportData =
+        data || [];
+
+    lastReportType =
+        recordType || "";
 
 
-if (userActionHeader) {
+    // =================================================
+    // EMPTY REPORT
+    // =================================================
 
-    if (
-        recordType === "REQUESTS"
-    ) {
-
-        userActionHeader.innerText =
-            "Requested By";
-
-    }
-
-    else if (
-        recordType === "APPROVALS"
-    ) {
-
-        userActionHeader.innerText =
-            "Requested By / Approved By";
-
-    }
-
-    else if (
-        recordType === "CONSUMPTION"
-    ) {
-
-        userActionHeader.innerText =
-            "Issued By";
-
-    }
-
-    else if (
-        recordType === "RETURNS"
-    ) {
-
-        userActionHeader.innerText =
-            "Received By";
-
-    }
-
-    else if (
-        recordType === "PURCHASE"
-    ) {
-
-        userActionHeader.innerText =
-            "Entered By";
-
-    }
-
-    else if (
-        recordType === "ALL"
-    ) {
-
-        userActionHeader.innerText =
-            "Processed By";
-
-    }
-
-    else {
-
-        userActionHeader.innerText =
-            "User / Action";
-
-    }
-
-}
-
-    if (
+    if(
         !data ||
         data.length === 0
-    ) {
+    ){
 
         tableBody.innerHTML = `
+
             <tr>
-                <td colspan="7"
-                    class="text-center text-muted py-5">
+
+                <td
+                    colspan="11"
+                    class="text-center
+                           text-muted
+                           py-5">
 
                     No records found
                     for the selected filters.
 
                 </td>
+
             </tr>
+
         `;
+
 
         tableFooter.style.display =
             "none";
+
 
         return;
 
@@ -1920,6 +1872,154 @@ if (userActionHeader) {
     let totalVal =
         0;
 
+
+    // =================================================
+    // PROCESSED BY
+    // =================================================
+
+    function getProcessedBy(row){
+
+        if(
+            recordType ===
+            "REQUESTS"
+        ){
+
+            return row.requestedBy ||
+                "-";
+
+        }
+
+
+        if(
+            recordType ===
+            "APPROVALS"
+        ){
+
+            return `
+                <div>
+                    Requested:
+                    ${row.requestedBy || "-"}
+                </div>
+
+                <div>
+                    Approved:
+                    ${row.approvedBy || "-"}
+                </div>
+            `;
+
+        }
+
+
+        if(
+            recordType ===
+            "CONSUMPTION"
+        ){
+
+            return row.issuedBy ||
+                "-";
+
+        }
+
+
+        if(
+            recordType ===
+            "RETURNS"
+        ){
+
+            return row.issuedBy ||
+                "-";
+
+        }
+
+
+        if(
+            recordType ===
+            "PURCHASE"
+        ){
+
+            return row.requestedBy ||
+                "-";
+
+        }
+
+
+        if(
+            recordType ===
+            "ALL"
+        ){
+
+            if(
+                row.transactionType ===
+                "REQUEST"
+            ){
+
+                return row.requestedBy ||
+                    "-";
+
+            }
+
+
+            if(
+                row.transactionType ===
+                "APPROVAL"
+            ){
+
+                return `
+                    Requested:
+                    ${row.requestedBy || "-"}
+
+                    <br>
+
+                    Approved:
+                    ${row.approvedBy || "-"}
+                `;
+
+            }
+
+
+            if(
+                row.transactionType ===
+                "ISSUE"
+            ){
+
+                return row.issuedBy ||
+                    "-";
+
+            }
+
+
+            if(
+                row.transactionType ===
+                "RETURN"
+            ){
+
+                return row.issuedBy ||
+                    "-";
+
+            }
+
+
+            if(
+                row.transactionType ===
+                "PURCHASE"
+            ){
+
+                return row.requestedBy ||
+                    "-";
+
+            }
+
+        }
+
+
+        return "-";
+
+    }
+
+
+    // =================================================
+    // RENDER ROWS
+    // =================================================
 
     data.forEach(
         row => {
@@ -1942,66 +2042,24 @@ if (userActionHeader) {
                 );
 
 
-let reference =
-    row.reference || "-";
+            const reference =
+                row.reference ||
+                "-";
 
 
-let complaintNumber =
-    row.complaintNumber || "";
-
-
-let material =
-    row.material || "-";
-
-
-let department =
-    row.department || "-";
-
-
-let area =
-    row.area || "-";
-
-
-let quantity =
-    row.quantity ?? 0;
-
-
-let value =
-    row.value ?? 0;
-
-
-            if (
-                recordType === "ALL"
-                &&
-                row.transactionType
-            ) {
-
-                reference =
-                    `<span class="badge bg-secondary me-1">
-                        ${row.transactionType}
-                    </span>
-                    ${reference}`;
-
-            }
-
-
-            if (row.extra) {
-
-                material =
-                    `${material}
-                    <br>
-                    <small class="text-muted">
-                        ${row.extra}
-                    </small>`;
-
-            }
+            const complaintNumber =
+                row.complaintNumber ||
+                "-";
 
 
             const rowClass =
-                recordType === "ALL"
+                recordType === "ALL" &&
+                row.transactionType
+
                     ? getTransactionRowClass(
                         row.transactionType
                     )
+
                     : "";
 
 
@@ -2009,199 +2067,179 @@ let value =
                 rowClass;
 
 
-   let userActionLabel =
-    "User / Action";
+            const displayReference =
+                recordType === "PURCHASE"
 
-let userActionValue =
-    "-";
+                    ? `
 
+                        <div
+                            class="fw-semibold
+                                   text-primary">
 
-if (recordType === "REQUESTS") {
+                            Invoice:
+                            ${reference}
 
-    userActionLabel =
-        "Requested By";
+                        </div>
 
-    userActionValue =
-        row.requestedBy || "-";
+                      `
 
-}
+                    : `
 
+                        <div
+                            class="fw-semibold
+                                   text-success">
 
-else if (recordType === "APPROVALS") {
+                            Complaint:
+                            ${complaintNumber}
 
-    userActionLabel =
-        "Requested By / Approved By";
-
-    userActionValue = `
-        <div>
-            <strong>Requested:</strong>
-            ${row.requestedBy || "-"}
-        </div>
-
-        <div>
-            <strong>Approved:</strong>
-            ${row.approvedBy || "-"}
-        </div>
-    `;
-
-}
+                        </div>
 
 
-else if (recordType === "CONSUMPTION") {
+                        <div
+                            class="fw-semibold
+                                   text-primary">
 
-    userActionLabel =
-        "Issued By";
+                            MR:
+                            ${reference}
 
-    userActionValue =
-        row.issuedBy || "-";
+                        </div>
 
-}
-
-
-else if (recordType === "RETURNS") {
-
-    userActionLabel =
-        "Received By";
-
-    userActionValue =
-        row.issuedBy || "-";
-
-}
+                      `;
 
 
-else if (recordType === "PURCHASE") {
-
-    userActionLabel =
-        "Entered By";
-
-    userActionValue =
-        row.requestedBy || "-";
-
-}
+            const processedBy =
+                getProcessedBy(row);
 
 
-else if (recordType === "ALL") {
+            tr.innerHTML = `
 
-    userActionLabel =
-        "Processed By";
+                <!-- DATE -->
 
-    if (
-        row.transactionType ===
-        "REQUEST"
-    ) {
+                <td class="text-nowrap">
 
-        userActionValue =
-            row.requestedBy || "-";
+                    ${formatDate(
+                        row.date
+                    )}
 
-    }
-
-    else if (
-        row.transactionType ===
-        "APPROVAL"
-    ) {
-
-        userActionValue = `
-            Requested:
-            ${row.requestedBy || "-"}
-            <br>
-            Approved:
-            ${row.approvedBy || "-"}
-        `;
-
-    }
-
-    else if (
-        row.transactionType ===
-        "ISSUE"
-    ) {
-
-        userActionValue =
-            row.issuedBy || "-";
-
-    }
-
-    else if (
-        row.transactionType ===
-        "RETURN"
-    ) {
-
-        userActionValue =
-            row.issuedBy || "-";
-
-    }
-
-}
+                </td>
 
 
-tr.innerHTML = `
+                <!-- COMPLAINT / TICKET -->
 
-    <td>
-        ${formatDate(
-            row.date
-        )}
-    </td>
+                <td
+                    class="text-start">
 
-<td class="fw-bold">
+                    ${displayReference}
 
-    ${
-        complaintNumber
-        ? `
-            <div class="text-success">
-                Complaint Number:
-                ${complaintNumber}
-            </div>
-        `
-        : ""
-    }
+                </td>
 
-    <div class="text-primary">
-        ${
-            recordType === "PURCHASE"
-                ? "Invoice: "
-                : "MR: "
-        }
-        ${reference}
-    </div>
 
-</td>
+                <!-- ITEM CODE -->
 
-    <td>
-        ${material}
-    </td>
+                <td
+                    class="fw-semibold
+                           text-primary
+                           text-nowrap">
 
-    <td>
-        ${department}
-    </td>
+                    ${row.materialCode || "-"}
 
-    <td>
-        <small>
-            ${area}
-        </small>
-    </td>
+                </td>
 
-    <td class="fw-bold">
-        ${quantity}
-    </td>
 
-    <td>
-        ${formatCurrency(
-            value
-        )}
-    </td>
+                <!-- MATERIAL NAME -->
 
-    <td>
-        <small>
-            <strong>
-                ${userActionLabel}:
-            </strong>
+                <td
+                    class="text-start">
 
-            <br>
+                    <div
+                        class="fw-semibold">
 
-            ${userActionValue}
-        </small>
-    </td>
+                        ${row.material || "-"}
 
-`;
+                    </div>
+
+                </td>
+
+
+                <!-- CATEGORY -->
+
+                <td
+                    class="text-start">
+
+                    ${row.category || "-"}
+
+                </td>
+
+
+                <!-- DEPARTMENT -->
+
+                <td>
+
+                    ${row.department || "-"}
+
+                </td>
+
+
+                <!-- AREA -->
+
+                <td>
+
+                    <small>
+
+                        ${row.area || "-"}
+
+                    </small>
+
+                </td>
+
+
+                <!-- QUANTITY -->
+
+                <td
+                    class="fw-bold
+                           text-end
+                           text-nowrap">
+
+                    ${row.quantity ?? 0}
+
+                    <small
+                        class="text-muted">
+
+                        ${row.unit || ""}
+
+                    </small>
+
+                </td>
+
+
+                <!-- VALUE -->
+
+                <td
+                    class="text-end
+                           text-nowrap">
+
+                    ${formatCurrency(
+                        row.value || 0
+                    )}
+
+                </td>
+
+
+                <!-- PROCESSED BY -->
+
+                <td
+                    class="text-start">
+
+                    <small>
+
+                        ${processedBy}
+
+                    </small>
+
+                </td>
+
+            `;
+
 
             tableBody.appendChild(
                 tr
@@ -2211,19 +2249,19 @@ tr.innerHTML = `
     );
 
 
-    document
-        .getElementById(
-            "totalQuantity"
-        )
-        .innerText =
+    // =================================================
+    // TOTALS
+    // =================================================
+
+    document.getElementById(
+        "totalQuantity"
+    ).innerText =
         totalQty;
 
 
-    document
-        .getElementById(
-            "totalValue"
-        )
-        .innerText =
+    document.getElementById(
+        "totalValue"
+    ).innerText =
         formatCurrency(
             totalVal
         );
@@ -2274,47 +2312,12 @@ function getTransactionRowClass(
 // EXCEL EXPORT
 // ====================================================
 
-function exportToExcel() {
+function exportToExcel(){
 
-    const table =
-        document.querySelector(
-            ".card table"
-        );
-
-
-    if (!table) {
-
-        showAlert(
-            "Report table not found.",
-            "warning"
-        );
-
-        return;
-
-    }
-
-
-    const rows =
-        table.querySelectorAll(
-            "tbody tr"
-        );
-
-
-    if (
-        rows.length === 0
-        ||
-        rows[0]
-            .innerText
-            .includes(
-                "Select filters"
-            )
-        ||
-        rows[0]
-            .innerText
-            .includes(
-                "No records found"
-            )
-    ) {
+    if(
+        !lastReportData ||
+        !lastReportData.length
+    ){
 
         showAlert(
             "No data available to export. Please generate a report first.",
@@ -2326,15 +2329,149 @@ function exportToExcel() {
     }
 
 
-    try {
+    try{
 
-        const wb =
-            XLSX.utils.table_to_book(
-                table,
-                {
-                    sheet: "Report"
-                }
+        const fromDate =
+            document.getElementById(
+                "filterFromDate"
+            )?.value || "";
+
+
+        const toDate =
+            document.getElementById(
+                "filterToDate"
+            )?.value || "";
+
+
+        const department =
+            document.getElementById(
+                "filterDepartment"
+            )?.selectedOptions[0]
+                ?.text || "All Departments";
+
+
+        const recordType =
+            document.getElementById(
+                "filterRecordType"
+            )?.selectedOptions[0]
+                ?.text || lastReportType;
+
+
+        const areaType =
+            document.getElementById(
+                "filterAreaType"
+            )?.selectedOptions[0]
+                ?.text || "All Areas";
+
+
+        // =============================================
+        // REPORT ROWS
+        // =============================================
+
+        const rows =
+            lastReportData.map(
+                row => ({
+
+                    "Date":
+                        formatDate(
+                            row.date
+                        ),
+
+                    "Complaint Number":
+                        row.complaintNumber
+                        || "-",
+
+                    "Ticket / Invoice":
+                        row.reference
+                        || "-",
+
+                    "Item Code":
+                        row.materialCode
+                        || "-",
+
+                    "Material Name":
+                        row.material
+                        || "-",
+
+                    "Category":
+                        row.category
+                        || "-",
+
+                    "Department":
+                        row.department
+                        || "-",
+
+                    "Area Type":
+                        row.area
+                        || "-",
+
+                    "Quantity":
+                        Number(
+                            row.quantity || 0
+                        ),
+
+                    "Unit":
+                        row.unit || "-",
+
+                    "Value":
+                        Number(
+                            row.value || 0
+                        ),
+
+                    "Processed By":
+                        getExcelProcessedBy(
+                            row
+                        )
+
+                })
             );
+
+
+        const worksheet =
+            XLSX.utils.json_to_sheet(
+                rows
+            );
+
+
+        worksheet["!cols"] = [
+
+            { wch: 14 },
+            { wch: 20 },
+            { wch: 18 },
+            { wch: 15 },
+            { wch: 30 },
+            { wch: 22 },
+            { wch: 20 },
+            { wch: 24 },
+            { wch: 12 },
+            { wch: 10 },
+            { wch: 15 },
+            { wch: 28 }
+
+        ];
+
+
+        worksheet["!autofilter"] = {
+
+            ref:
+                `A1:L${rows.length + 1}`
+
+        };
+
+
+        // =============================================
+        // WORKBOOK
+        // =============================================
+
+        const workbook =
+            XLSX.utils.book_new();
+
+
+        XLSX.utils.book_append_sheet(
+            workbook,
+            worksheet,
+            "Report"
+        );
 
 
         const dateStr =
@@ -2344,61 +2481,543 @@ function exportToExcel() {
 
 
         const fileName =
-            `RVRG_Report_${dateStr}.xlsx`;
+            `RVRG_${lastReportType}_Report_${dateStr}.xlsx`;
 
 
         XLSX.writeFile(
-            wb,
+            workbook,
             fileName
         );
 
 
-        // -----------------------------------------------
-        // SAVE DOWNLOAD HISTORY
-        // -----------------------------------------------
+        // =============================================
+        // HISTORY
+        // =============================================
 
         const user =
             getCurrentUser();
 
 
-        const departmentSelect =
-            document.getElementById(
-                "filterDepartment"
-            );
-
-
-        const department =
-            departmentSelect
-                ?.options[
-                    departmentSelect.selectedIndex
-                ]
-                ?.text
-            || "All Departments";
-
-
         saveReportDownloadHistory(
-            user?.name || "Unknown User",
+
+            user?.name ||
+            "Unknown User",
+
             department
+
         );
 
 
         showAlert(
-            "Report downloaded successfully!",
+            "Excel report downloaded successfully.",
             "success"
         );
 
     }
-    catch (error) {
+
+    catch(error){
 
         console.error(
-            "Export error:",
+            "Excel Export Error:",
             error
         );
 
 
         showAlert(
-            "Failed to export report.",
-            "error"
+            "Failed to export Excel report.",
+            "danger"
+        );
+
+    }
+
+}
+
+function getExcelProcessedBy(
+    row
+){
+
+    if(
+        lastReportType ===
+        "REQUESTS"
+    ){
+
+        return row.requestedBy || "-";
+
+    }
+
+
+    if(
+        lastReportType ===
+        "APPROVALS"
+    ){
+
+        return `Requested: ${
+            row.requestedBy || "-"
+        } | Approved: ${
+            row.approvedBy || "-"
+        }`;
+
+    }
+
+
+    if(
+        lastReportType ===
+        "CONSUMPTION"
+    ){
+
+        return row.issuedBy || "-";
+
+    }
+
+
+    if(
+        lastReportType ===
+        "RETURNS"
+    ){
+
+        return row.issuedBy || "-";
+
+    }
+
+
+    if(
+        lastReportType ===
+        "PURCHASE"
+    ){
+
+        return row.requestedBy || "-";
+
+    }
+
+
+    return "-";
+
+}
+
+// ====================================================
+// PDF EXPORT
+// ====================================================
+
+function exportToPDF(){
+
+    if(
+        !lastReportData ||
+        !lastReportData.length
+    ){
+
+        showAlert(
+            "No data available to export. Please generate a report first.",
+            "warning"
+        );
+
+        return;
+
+    }
+
+
+    if(
+        !window.jspdf ||
+        !window.jspdf.jsPDF
+    ){
+
+        showAlert(
+            "PDF library is not loaded.",
+            "danger"
+        );
+
+        return;
+
+    }
+
+
+    try{
+
+        const {
+            jsPDF
+        } = window.jspdf;
+
+
+        const doc =
+            new jsPDF({
+
+                orientation:
+                    "landscape",
+
+                unit:
+                    "mm",
+
+                format:
+                    "a4"
+
+            });
+
+
+        const fromDate =
+            document.getElementById(
+                "filterFromDate"
+            )?.value || "";
+
+
+        const toDate =
+            document.getElementById(
+                "filterToDate"
+            )?.value || "";
+
+
+        const department =
+            document.getElementById(
+                "filterDepartment"
+            )?.selectedOptions[0]
+                ?.text ||
+            "All Departments";
+
+
+        const recordType =
+            document.getElementById(
+                "filterRecordType"
+            )?.selectedOptions[0]
+                ?.text ||
+            lastReportType;
+
+
+        const areaType =
+            document.getElementById(
+                "filterAreaType"
+            )?.selectedOptions[0]
+                ?.text ||
+            "All Areas";
+
+
+        // =============================================
+        // HEADER
+        // =============================================
+
+        doc.setFontSize(16);
+
+        doc.setFont(
+            "helvetica",
+            "bold"
+        );
+
+        doc.text(
+            "RVRG STORE MANAGEMENT",
+            14,
+            14
+        );
+
+
+        doc.setFontSize(12);
+
+        doc.setFont(
+            "helvetica",
+            "normal"
+        );
+
+        doc.text(
+            "System Report",
+            14,
+            21
+        );
+
+
+        doc.setFontSize(8);
+
+        doc.text(
+            `Period: ${fromDate} to ${toDate}`,
+            14,
+            28
+        );
+
+
+        doc.text(
+            `Department: ${department}`,
+            95,
+            28
+        );
+
+
+        doc.text(
+            `Record Type: ${recordType}`,
+            190,
+            28
+        );
+
+
+        doc.text(
+            `Area: ${areaType}`,
+            14,
+            34
+        );
+
+
+        doc.text(
+            `Generated: ${
+                new Date().toLocaleString(
+                    "en-IN"
+                )
+            }`,
+            95,
+            34
+        );
+
+
+        // =============================================
+        // TABLE DATA
+        // =============================================
+
+        const body =
+            lastReportData.map(
+                row => [
+
+                    formatDate(
+                        row.date
+                    ),
+
+                    row.complaintNumber
+                    || "-",
+
+                    row.reference
+                    || "-",
+
+                    row.materialCode
+                    || "-",
+
+                    row.material
+                    || "-",
+
+                    row.category
+                    || "-",
+
+                    row.department
+                    || "-",
+
+                    row.area
+                    || "-",
+
+                    `${
+                        row.quantity ?? 0
+                    } ${
+                        row.unit || ""
+                    }`,
+
+                    `Rs. ${
+                        Number(
+                            row.value || 0
+                        ).toFixed(2)
+                    }`,
+
+                    getExcelProcessedBy(
+                        row
+                    )
+
+                ]
+            );
+
+
+        doc.autoTable({
+
+            startY:
+                40,
+
+            head: [[
+
+                "Date",
+
+                "Complaint No.",
+
+                "Ticket / Invoice",
+
+                "Item Code",
+
+                "Material Name",
+
+                "Category",
+
+                "Department",
+
+                "Area Type",
+
+                "Qty / Unit",
+
+                "Value",
+
+                "Processed By"
+
+            ]],
+
+            body:
+                body,
+
+            theme:
+                "grid",
+
+            styles: {
+
+                fontSize:
+                    6.5,
+
+                cellPadding:
+                    2,
+
+                valign:
+                    "middle"
+
+            },
+
+            headStyles: {
+
+                fontStyle:
+                    "bold",
+
+                fontSize:
+                    7
+
+            },
+
+            columnStyles: {
+
+                0: {
+                    cellWidth: 19
+                },
+
+                1: {
+                    cellWidth: 23
+                },
+
+                2: {
+                    cellWidth: 23
+                },
+
+                3: {
+                    cellWidth: 20
+                },
+
+                4: {
+                    cellWidth: 33
+                },
+
+                5: {
+                    cellWidth: 24
+                },
+
+                6: {
+                    cellWidth: 23
+                },
+
+                7: {
+                    cellWidth: 27
+                },
+
+                8: {
+                    cellWidth: 19
+                },
+
+                9: {
+                    cellWidth: 20
+                },
+
+                10: {
+                    cellWidth: 32
+                }
+
+            },
+
+            didDrawPage:
+                data => {
+
+                    doc.setFontSize(
+                        7
+                    );
+
+                    doc.text(
+                        `Page ${data.pageNumber}`,
+                        280,
+                        200
+                    );
+
+                }
+
+        });
+
+
+        // =============================================
+        // TOTAL
+        // =============================================
+
+        const finalY =
+            doc.lastAutoTable.finalY +
+            6;
+
+
+        const totalValue =
+            lastReportData.reduce(
+                (
+                    total,
+                    row
+                ) =>
+                    total +
+                    Number(
+                        row.value || 0
+                    ),
+                0
+            );
+
+
+        doc.setFontSize(9);
+
+        doc.setFont(
+            "helvetica",
+            "bold"
+        );
+
+
+        doc.text(
+            `Total Records: ${
+                lastReportData.length
+            }`,
+            14,
+            finalY
+        );
+
+
+        doc.text(
+            `Total Value: Rs. ${
+                totalValue.toFixed(2)
+            }`,
+            70,
+            finalY
+        );
+
+
+        const dateStr =
+            new Date()
+                .toISOString()
+                .split("T")[0];
+
+
+        doc.save(
+            `RVRG_${lastReportType}_Report_${dateStr}.pdf`
+        );
+
+
+        showAlert(
+            "PDF report downloaded successfully.",
+            "success"
+        );
+
+    }
+
+    catch(error){
+
+        console.error(
+            "PDF Export Error:",
+            error
+        );
+
+
+        showAlert(
+            "Failed to generate PDF report.",
+            "danger"
         );
 
     }

@@ -164,156 +164,196 @@ Object.values(ticketGroups).forEach(
         `;
 
 
-        // --------------------------------------------
-        // MATERIAL DETAILS
-        // --------------------------------------------
+  // --------------------------------------------
+// MATERIAL + QUANTITY ALIGNED ROWS
+// --------------------------------------------
 
-        let materialHtml = "";
-
-        ticket.items.forEach(
-            (req, index) => {
-
-                const material =
-                    req.materials || {};
-
-                const materialCode =
-                    material.material_code || "-";
-
-                const materialName =
-                    material.material_name || "-";
-
-                const brand =
-                    material.brand || "-";
-
-                const itemType =
-                    material.item_type || "-";
-
-                const itemSize =
-                    material.item_size || "-";
-
-                const specification =
-                    material.specification || "-";
-
-                const unit =
-                    material.unit || "-";
-
-                const unitCost =
-                    Number(
-                        material.unit_cost || 0
-                    );
+const approvalItemRowStyle =
+    "height:150px;" +
+    "box-sizing:border-box;" +
+    "display:flex;" +
+    "align-items:flex-start;" +
+    "border-bottom:1px solid #e5e5e5;" +
+    "padding:8px 0;";
 
 
-                materialHtml += `
+let materialHtml = "";
+
+
+ticket.items.forEach(
+    req => {
+
+        const material =
+            req.materials || {};
+
+
+        const materialCode =
+            material.material_code || "-";
+
+
+        const materialName =
+            material.material_name || "-";
+
+
+        const brand =
+            material.brand || "-";
+
+
+        const itemType =
+            material.item_type || "-";
+
+
+        const itemSize =
+            material.item_size || "-";
+
+
+        const specification =
+            material.specification || "-";
+
+
+        const unit =
+            material.unit || "-";
+
+
+        const unitCost =
+            Number(
+                material.unit_cost || 0
+            );
+
+
+        materialHtml += `
+
+            <div
+                style="${approvalItemRowStyle}">
+
+                <div
+                    style="
+                        width:100%;
+                        line-height:18px;
+                        overflow:hidden;
+                    ">
 
                     <div
-                        class="border-bottom pb-2 mb-2"
-                    >
+                        class="fw-bold text-primary">
 
-                        <div class="fw-bold text-primary">
-                            ${materialCode}
+                        ${materialCode}
+
+                    </div>
+
+
+                    <div
+                        class="fw-semibold">
+
+                        ${materialName}
+
+                    </div>
+
+
+                    <div class="small text-muted">
+
+                        <div>
+                            <strong>Brand:</strong>
+                            ${brand}
                         </div>
 
-                        <div class="fw-semibold">
-                            ${materialName}
+                        <div>
+                            <strong>Type:</strong>
+                            ${itemType}
                         </div>
 
-                        <div class="small text-muted">
+                        <div>
+                            <strong>Size:</strong>
+                            ${itemSize}
+                        </div>
 
-                            <div>
-                                <strong>Brand:</strong>
-                                ${brand}
-                            </div>
+                        <div>
+                            <strong>Specification:</strong>
+                            ${specification}
+                        </div>
 
-                            <div>
-                                <strong>Type:</strong>
-                                ${itemType}
-                            </div>
+                        <div>
+                            <strong>Unit:</strong>
+                            ${unit}
+                        </div>
 
-                            <div>
-                                <strong>Size:</strong>
-                                ${itemSize}
-                            </div>
-
-                            <div>
-                                <strong>Specification:</strong>
-                                ${specification}
-                            </div>
-
-                            <div>
-                                <strong>Unit:</strong>
-                                ${unit}
-                            </div>
-
-                            <div>
-                                <strong>Unit Cost:</strong>
-                                ₹${unitCost.toFixed(2)}
-                            </div>
-
+                        <div>
+                            <strong>Unit Cost:</strong>
+                            ₹${unitCost.toFixed(2)}
                         </div>
 
                     </div>
 
-                `;
+                </div>
 
-            }
-        );
+            </div>
+
+        `;
+
+    }
+);
 
 
-        // --------------------------------------------
-        // QUANTITY / APPROVAL QUANTITY
-        // --------------------------------------------
+let quantityHtml = "";
 
-        let quantityHtml = "";
 
-        ticket.items.forEach(
-            req => {
+ticket.items.forEach(
+    req => {
 
-                const requestedQty =
-                    Number(
-                        req.requested_qty || 0
-                    );
+        const requestedQty =
+            Number(
+                req.requested_qty || 0
+            );
 
-                quantityHtml += `
 
-                    <div
-                        class="border-bottom pb-2 mb-2"
-                    >
+        quantityHtml += `
 
-                        <div class="fw-bold mb-1">
+            <div
+                style="
+                    ${approvalItemRowStyle}
+                    display:flex;
+                    flex-direction:column;
+                    justify-content:center;
+                ">
 
-                            Requested:
-                            <span
-                                class="badge bg-secondary"
-                            >
-                                ${requestedQty}
-                            </span>
+                <div
+                    class="fw-bold mb-1">
 
-                        </div>
+                    Requested:
 
-                        <label
-                            class="form-label small mb-1"
-                            for="approvedQty_${req.id}"
-                        >
-                            Approve Qty
-                        </label>
+                    <span
+                        class="badge bg-secondary">
 
-                        <input
-                            type="number"
-                            class="form-control form-control-sm text-center"
-                            id="approvedQty_${req.id}"
-                            value="${requestedQty}"
-                            min="1"
-                            max="${requestedQty}"
-                            step="1"
-                        >
+                        ${requestedQty}
 
-                    </div>
+                    </span>
 
-                `;
+                </div>
 
-            }
-        );
 
+                <label
+                    class="form-label small mb-1"
+                    for="approvedQty_${req.id}">
+
+                    Approve Qty
+
+                </label>
+
+
+                <input
+                    type="number"
+                    class="form-control form-control-sm text-center"
+                    id="approvedQty_${req.id}"
+                    value="${requestedQty}"
+                    min="1"
+                    max="${requestedQty}"
+                    step="1">
+
+            </div>
+
+        `;
+
+    }
+);
 
         // --------------------------------------------
         // BUILD TICKET ROW

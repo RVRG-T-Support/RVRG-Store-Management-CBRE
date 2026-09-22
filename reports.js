@@ -1063,16 +1063,6 @@ async function fetchReturnData(
                 "material_returns"
             )
 
-            .select(`
-                id,
-                issue_id,
-                material_id,
-                returned_qty,
-                return_condition,
-                received_by,
-                return_date,
-                remarks,
-
 .select(`
     id,
     issue_id,

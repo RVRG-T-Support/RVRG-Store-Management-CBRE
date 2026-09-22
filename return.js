@@ -26,12 +26,53 @@ async function loadRecentIssues() {
 }
 
 async function searchTicket() {
-    const ticketNo = document.getElementById('searchTicketNo').value.trim();
-    if (!ticketNo) {
-        showAlert("Please enter a ticket number to search.", "warning");
+    const searchValue = document.getElementById('searchTicketNo').value.trim();
+
+    if (!searchValue) {
+        showAlert(
+            "Please enter a Complaint Number or MR Ticket Number to search.",
+            "warning"
+        );
         return;
     }
-    fetchIssues(ticketNo);
+
+    try {
+        // First check whether the entered value is an Anacity complaint number.
+        const { data: requestRows, error: requestError } = await supabase
+            .from('material_requests')
+            .select('ticket_no')
+            .eq('anacity_complaint_no', searchValue);
+
+        if (requestError) throw requestError;
+
+        // Complaint number found -> get all MR ticket numbers linked to it.
+        if (requestRows && requestRows.length > 0) {
+
+            const ticketNumbers = [
+                ...new Set(
+                    requestRows
+                        .map(row => row.ticket_no)
+                        .filter(Boolean)
+                )
+            ];
+
+            if (ticketNumbers.length > 0) {
+                fetchIssues(ticketNumbers);
+                return;
+            }
+        }
+
+        // If complaint number was not found, treat the value as the
+        // generated MR ticket number.
+        fetchIssues(searchValue);
+
+    } catch (error) {
+        console.error("Search Error:", error.message);
+        showAlert(
+            "Failed to search issued materials.",
+            "error"
+        );
+    }
 }
 
 async function fetchIssues(ticketFilter) {
@@ -40,19 +81,28 @@ async function fetchIssues(ticketFilter) {
 
     try {
         // Start building the query on material_issue_register
-        let query = supabase
-            .from('material_issue_register')
-        .select(`
-    id,
-    ticket_no,
-    material_id,
-    technician_name,
-    issued_qty,
-    issued_date,
-    materials!material_issue_register_material_id_fkey(
-        material_name
-    )
-`)
+let query = supabase
+    .from('material_issue_register')
+    .select(`
+        id,
+        ticket_no,
+        material_id,
+        technician_name,
+        issued_qty,
+        issued_date,
+
+        materials!material_issue_register_material_id_fkey(
+            material_code,
+            material_name,
+            category,
+            brand,
+            item_type,
+            item_size,
+            specification,
+            unit
+        )
+    `)
+    .order('issued_date', { ascending: false });
 .order('issued_date', { ascending: false });    
 
         // Apply ticket filter if provided
@@ -73,16 +123,61 @@ async function fetchIssues(ticketFilter) {
 
         tableBody.innerHTML = ''; // Clear table
         
-        issues.forEach(issue => {
-            const ticketNo = issue.ticket_no;
-const materialName = issue.materials?.material_name || "-";
-const techName = issue.technician_name || "-";
+issues.forEach(issue => {
+
+    const ticketNo = issue.ticket_no;
+
+    const material = issue.materials || {};
+
+    const materialName =
+        material.material_name || "-";
+
+    const techName =
+        issue.technician_name || "-";
+
+    const materialDetails = [
+        material.material_code
+            ? `Code: ${material.material_code}`
+            : null,
+
+        material.category
+            ? `Category: ${material.category}`
+            : null,
+
+        material.brand
+            ? `Brand: ${material.brand}`
+            : null,
+
+        material.item_type
+            ? `Type: ${material.item_type}`
+            : null,
+
+        material.item_size
+            ? `Size: ${material.item_size}`
+            : null,
+
+        material.specification
+            ? `Spec: ${material.specification}`
+            : null,
+
+        material.unit
+            ? `Unit: ${material.unit}`
+            : null
+
+    ].filter(Boolean);
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td class="fw-bold">${ticketNo}<br><small class="text-muted fw-normal">${formatDate(issue.issued_date)}</small></td>
-                <td>${materialName}</td>
-                <td>${techName}</td>
+<td class="text-start">
+    <div class="fw-bold">
+        ${materialName}
+    </div>
+
+    <div class="small text-muted mt-1">
+        ${materialDetails.join(' &nbsp;|&nbsp; ')}
+    </div>
+</td>                <td>${techName}</td>
                 <td class="table-info fw-bold" id="issued-${issue.id}">${issue.issued_qty}</td>
                 <td class="bg-warning-subtle">
                     <input type="number" class="form-control form-control-sm return-input mx-auto" 

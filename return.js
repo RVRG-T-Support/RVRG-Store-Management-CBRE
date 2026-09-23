@@ -103,11 +103,18 @@ let query = supabase
         )
     `)
     .order('issued_date', { ascending: false });
-.order('issued_date', { ascending: false });    
 
         // Apply ticket filter if provided
         if (ticketFilter) {
-            query = query.eq('ticket_no', ticketFilter);
+
+            if (Array.isArray(ticketFilter)) {
+                // Anacity complaint number may be linked to multiple MR tickets
+                query = query.in('ticket_no', ticketFilter);
+            } else {
+                // Direct MR ticket search
+                query = query.eq('ticket_no', ticketFilter);
+            }
+
         } else {
             query = query.limit(20); // Just load last 20 issues if no filter
         }
@@ -320,14 +327,16 @@ async function loadReturnHistory() {
         <tr>
             <td colspan="8"
                 class="text-center text-muted py-4">
-
                 Loading return history...
-
             </td>
         </tr>
     `;
 
     try {
+
+        // --------------------------------------------------
+        // 1. Load return records + issued material details
+        // --------------------------------------------------
 
         const {
             data: returns,
@@ -350,12 +359,14 @@ async function loadReturnHistory() {
                     technician_name,
 
                     materials!material_issue_register_material_id_fkey (
-                        material_name
-                    ),
-
-                    material_requests!material_issue_register_request_id_fkey (
-                        anacity_complaint_no,
-                        ticket_no
+                        material_code,
+                        material_name,
+                        category,
+                        brand,
+                        item_type,
+                        item_size,
+                        specification,
+                        unit
                     )
                 )
             `)
@@ -374,26 +385,83 @@ async function loadReturnHistory() {
             throw error;
 
 
-        if (
-            !returns ||
-            returns.length === 0
-        ) {
+        if (!returns || returns.length === 0) {
 
             tableBody.innerHTML = `
                 <tr>
                     <td colspan="8"
                         class="text-center text-muted py-4">
-
                         No return history yet.
-
                     </td>
                 </tr>
             `;
 
             return;
-
         }
 
+
+        // --------------------------------------------------
+        // 2. Collect MR ticket numbers
+        // --------------------------------------------------
+
+        const ticketNumbers = [
+            ...new Set(
+                returns
+                    .map(returnRecord =>
+                        returnRecord
+                            .material_issue_register
+                            ?.ticket_no
+                    )
+                    .filter(Boolean)
+            )
+        ];
+
+
+        // --------------------------------------------------
+        // 3. Load Anacity complaint numbers separately
+        // --------------------------------------------------
+
+        let complaintMap = {};
+
+        if (ticketNumbers.length > 0) {
+
+            const {
+                data: requestRows,
+                error: requestError
+            } = await supabase
+
+                .from("material_requests")
+
+                .select(`
+                    ticket_no,
+                    anacity_complaint_no
+                `)
+
+                .in("ticket_no", ticketNumbers);
+
+
+            if (requestError)
+                throw requestError;
+
+
+            (requestRows || []).forEach(row => {
+
+                const ticketNo =
+                    String(row.ticket_no || "");
+
+                if (ticketNo) {
+
+                    complaintMap[ticketNo] =
+                        row.anacity_complaint_no || "N/A";
+                }
+
+            });
+        }
+
+
+        // --------------------------------------------------
+        // 4. Render history
+        // --------------------------------------------------
 
         tableBody.innerHTML = "";
 
@@ -403,25 +471,56 @@ async function loadReturnHistory() {
             const issue =
                 returnRecord.material_issue_register || {};
 
-            const request =
-                issue.material_requests || {};
-
             const material =
                 issue.materials || {};
 
 
+            const ticketNo =
+                issue.ticket_no || "N/A";
+
+
             const complaintNumber =
-                request.anacity_complaint_no || "N/A";
+                complaintMap[String(ticketNo)] || "N/A";
 
 
             const requestNumber =
-                request.ticket_no ||
-                issue.ticket_no ||
-                "N/A";
+                ticketNo;
 
 
             const materialName =
                 material.material_name || "-";
+
+
+            const materialDetails = [
+                material.material_code
+                    ? `Code: ${material.material_code}`
+                    : null,
+
+                material.category
+                    ? `Category: ${material.category}`
+                    : null,
+
+                material.brand
+                    ? `Brand: ${material.brand}`
+                    : null,
+
+                material.item_type
+                    ? `Type: ${material.item_type}`
+                    : null,
+
+                material.item_size
+                    ? `Size: ${material.item_size}`
+                    : null,
+
+                material.specification
+                    ? `Spec: ${material.specification}`
+                    : null,
+
+                material.unit
+                    ? `Unit: ${material.unit}`
+                    : null
+
+            ].filter(Boolean);
 
 
             const technician =
@@ -429,15 +528,11 @@ async function loadReturnHistory() {
 
 
             const issuedQty =
-                Number(
-                    issue.issued_qty || 0
-                );
+                Number(issue.issued_qty || 0);
 
 
             const returnedQty =
-                Number(
-                    returnRecord.returned_qty || 0
-                );
+                Number(returnRecord.returned_qty || 0);
 
 
             const condition =
@@ -450,9 +545,7 @@ async function loadReturnHistory() {
 
             const returnDate =
                 returnRecord.return_date
-                    ? formatDate(
-                        returnRecord.return_date
-                    )
+                    ? formatDate(returnRecord.return_date)
                     : "N/A";
 
 
@@ -467,17 +560,13 @@ async function loadReturnHistory() {
                 <td>
 
                     <div class="fw-bold text-success">
-
                         Complaint Number:
                         ${complaintNumber}
-
                     </div>
 
                     <div class="fw-bold text-primary">
-
                         MR:
                         ${requestNumber}
-
                     </div>
 
                 </td>
@@ -485,9 +574,17 @@ async function loadReturnHistory() {
 
                 <!-- MATERIAL -->
 
-                <td>
+                <td class="text-start">
 
-                    ${materialName}
+                    <div class="fw-bold">
+                        ${materialName}
+                    </div>
+
+                    <div class="small text-muted mt-1">
+                        ${materialDetails.join(
+                            ' &nbsp;|&nbsp; '
+                        )}
+                    </div>
 
                 </td>
 
@@ -495,9 +592,7 @@ async function loadReturnHistory() {
                 <!-- TECHNICIAN -->
 
                 <td>
-
                     ${technician}
-
                 </td>
 
 
@@ -506,9 +601,7 @@ async function loadReturnHistory() {
                 <td>
 
                     <span class="badge bg-secondary">
-
                         ${issuedQty}
-
                     </span>
 
                 </td>
@@ -519,9 +612,7 @@ async function loadReturnHistory() {
                 <td>
 
                     <span class="badge bg-success">
-
                         ${returnedQty}
-
                     </span>
 
                 </td>
@@ -532,9 +623,7 @@ async function loadReturnHistory() {
                 <td>
 
                     <span class="badge bg-success">
-
                         ${condition}
-
                     </span>
 
                 </td>
@@ -543,9 +632,7 @@ async function loadReturnHistory() {
                 <!-- REMARKS -->
 
                 <td>
-
                     ${remarks}
-
                 </td>
 
 
@@ -554,9 +641,7 @@ async function loadReturnHistory() {
                 <td>
 
                     <small class="text-muted">
-
                         ${returnDate}
-
                     </small>
 
                 </td>
@@ -570,11 +655,12 @@ async function loadReturnHistory() {
 
 
     }
+
     catch(error) {
 
         console.error(
             "Error loading return history:",
-            error.message
+            error
         );
 
 
@@ -585,10 +671,17 @@ async function loadReturnHistory() {
 
                     Failed to load return history.
 
+                    <br>
+
+                    <small>
+                        ${error.message || ""}
+                    </small>
+
                 </td>
             </tr>
         `;
 
     }
 
+}
 }

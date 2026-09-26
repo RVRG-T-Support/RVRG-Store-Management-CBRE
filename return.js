@@ -684,4 +684,3 @@ async function loadReturnHistory() {
     }
 
 }
-}

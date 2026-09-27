@@ -438,13 +438,16 @@ async function fetchRequestData(
                 requested_by,
                 approved_by,
 
-                materials!material_requests_material_id_fkey(
-                    material_code,
-                    material_name,
-                    category,
-                    unit,
-                    department_id
-                )
+          materials!material_requests_material_id_fkey(
+    material_code,
+    material_name,
+    category,
+    unit,
+    department_id,
+    departments(
+        department_name
+    )
+)
             `)
             .gte(
                 "created_at",

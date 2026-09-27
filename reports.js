@@ -1,404 +1,583 @@
 // reports.js
-// Protect page
+// ============================================================
+// RVRG STORE MANAGEMENT - SYSTEM REPORTS
+// Clean replacement version
+// ============================================================
+
 const currentUser = getCurrentUser();
 
-if (!currentUser)
+if (!currentUser) {
     window.location.replace("index.html");
+}
 
+// ------------------------------------------------------------
+// GLOBAL REPORT STATE
+// ------------------------------------------------------------
+
+let lastReportData = [];
+let lastReportType = "";
+
+// ------------------------------------------------------------
+// PAGE INITIALIZATION
+// ------------------------------------------------------------
 
 document.addEventListener("DOMContentLoaded", () => {
 
-    // ====================================================
-    // ACCESS CONTROL
-    // ====================================================
+    const user = getCurrentUser();
 
-    const hasAccess =
-        checkUserAccess([
-            "ADMIN",
-            "FM",
-            "AFM",
-            "STORE",
-            "TECH_SUPERVISOR"
-        ]);
-
-    if (!hasAccess)
+    if (!user) {
+        window.location.replace("index.html");
         return;
+    }
 
+    const hasAccess = checkUserAccess([
+        "ADMIN",
+        "FM",
+        "AFM",
+        "STORE",
+        "TECH_SUPERVISOR"
+    ]);
 
-    const user =
-        getCurrentUser();
+    if (!hasAccess) {
+        return;
+    }
 
+    // Default date range: current month -> today
+    const today = new Date();
 
-    // ====================================================
-    // EXCEL EXPORT
-    // ====================================================
-
-    if (user.role === "ADMIN") {
-
-        document
-            .getElementById("btnExportReport")
-            .classList
-            .remove("d-none");
-
- const pdfButton =
-    document.getElementById(
-        "btnExportPdfReport"
+    const firstDay = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        1
     );
 
+    const fromInput = document.getElementById("filterFromDate");
+    const toInput = document.getElementById("filterToDate");
 
-if(pdfButton){
-
-    pdfButton.addEventListener(
-        "click",
-        exportToPDF
-    );
-
-}
-
+    if (fromInput) {
+        fromInput.value = toLocalDateString(firstDay);
     }
 
-
-    // ====================================================
-    // DEFAULT DATE RANGE
-    // ====================================================
-
-    const today =
-        new Date();
-
-    const firstDay =
-        new Date(
-            today.getFullYear(),
-            today.getMonth(),
-            1
-        );
-
-
-    document
-        .getElementById("filterFromDate")
-        .value =
-        firstDay
-            .toISOString()
-            .split("T")[0];
-
-
-    document
-        .getElementById("filterToDate")
-        .value =
-        today
-            .toISOString()
-            .split("T")[0];
-
-
-    // ====================================================
-    // EVENT LISTENERS
-    // ====================================================
-
-    document
-        .getElementById("reportFilterForm")
-        .addEventListener(
-            "submit",
-            generateReport
-        );
-
-
-    // ====================================================
-    // OPTIONAL EXPORT BUTTONS
-    // ====================================================
-
-    const excelButton =
-        document.getElementById("btnExportReport");
-
-    const pdfButton =
-        document.getElementById("btnExportPdfReport");
-
-
-    // Show Excel export only when the button actually exists
-    if (
-        user.role === "ADMIN" &&
-        excelButton
-    ) {
-
-        excelButton
-            .classList
-            .remove("d-none");
-
+    if (toInput) {
+        toInput.value = toLocalDateString(today);
     }
 
+    // Report form
+    const reportForm = document.getElementById("reportFilterForm");
 
-    // PDF button is optional
-    if (pdfButton) {
-
-        pdfButton.addEventListener(
-            "click",
-            exportToPDF
-        );
-
+    if (reportForm) {
+        reportForm.addEventListener("submit", generateReport);
     }
 
+    // Excel
+    const excelButton = document.getElementById("btnExportReport");
 
-    // Excel button is optional
     if (excelButton) {
-
-        excelButton.addEventListener(
-            "click",
-            exportToExcel
-        );
-
+        if (user.role === "ADMIN") {
+            excelButton.classList.remove("d-none");
+            excelButton.addEventListener("click", exportToExcel);
+        } else {
+            excelButton.classList.add("d-none");
+        }
     }
 
-document
-    .getElementById("btnReportHistory")
-    .addEventListener(
-        "click",
-        loadReportDownloadHistory
-    );
+    // PDF
+    const pdfButton = document.getElementById("btnExportPdfReport");
 
+    if (pdfButton) {
+        pdfButton.addEventListener("click", exportToPDF);
+    }
+
+    // History
+    const historyButton = document.getElementById("btnReportHistory");
+
+    if (historyButton) {
+        historyButton.addEventListener(
+            "click",
+            loadReportDownloadHistory
+        );
+    }
 });
 
 
-// ====================================================
+// ============================================================
+// BASIC HELPERS
+// ============================================================
+
+function toLocalDateString(date) {
+
+    const year = date.getFullYear();
+
+    const month = String(
+        date.getMonth() + 1
+    ).padStart(2, "0");
+
+    const day = String(
+        date.getDate()
+    ).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+}
+
+
+function getReportDateRange(fromDate, toDate) {
+
+    return {
+        start: `${fromDate}T00:00:00`,
+        end: `${toDate}T23:59:59.999`
+    };
+}
+
+
+function withReportTimeout(
+    promise,
+    label,
+    timeoutMs = 20000
+) {
+
+    return Promise.race([
+
+        promise,
+
+        new Promise((_, reject) => {
+
+            setTimeout(() => {
+
+                reject(
+                    new Error(
+                        `${label} timed out after ${timeoutMs / 1000} seconds.`
+                    )
+                );
+
+            }, timeoutMs);
+
+        })
+
+    ]);
+}
+
+
+function uniqueIds(values) {
+
+    return [
+        ...new Set(
+            (values || [])
+                .filter(
+                    value =>
+                        value !== null &&
+                        value !== undefined &&
+                        String(value).trim() !== ""
+                )
+                .map(value => String(value).trim())
+        )
+    ];
+}
+
+
+// ============================================================
+// MASTER DATA HELPERS
+// ============================================================
+// IMPORTANT:
+// This version deliberately does NOT use nested Supabase
+// material -> departments joins for report generation.
+//
+// We load material records first and department records
+// separately. This removes the dependency on nested relationship
+// resolution from the report query.
+// ============================================================
+
+async function loadMaterialsMap(materialIds) {
+
+    const ids = uniqueIds(materialIds);
+
+    if (!ids.length) {
+        return {};
+    }
+
+    const {
+        data,
+        error
+    } = await withReportTimeout(
+
+        supabase
+            .from("materials")
+            .select(`
+                id,
+                material_code,
+                material_name,
+                category,
+                unit,
+                department_id,
+                unit_cost
+            `)
+            .in("id", ids),
+
+        "Materials"
+    );
+
+    if (error) {
+        throw error;
+    }
+
+    const map = {};
+
+    (data || []).forEach(material => {
+
+        map[String(material.id)] = material;
+
+    });
+
+    return map;
+}
+
+
+async function loadDepartmentMap(departmentIds) {
+
+    const ids = uniqueIds(departmentIds);
+
+    if (!ids.length) {
+        return {};
+    }
+
+    const {
+        data,
+        error
+    } = await withReportTimeout(
+
+        supabase
+            .from("departments")
+            .select(`
+                id,
+                department_name
+            `)
+            .in("id", ids),
+
+        "Departments"
+    );
+
+    if (error) {
+        throw error;
+    }
+
+    const map = {};
+
+    (data || []).forEach(department => {
+
+        map[String(department.id)] =
+            department.department_name || "-";
+
+    });
+
+    return map;
+}
+
+
+async function enrichRowsWithMaterials(
+    rows,
+    materialIdField = "material_id"
+) {
+
+    const materialIds = uniqueIds(
+        rows.map(
+            row => row[materialIdField]
+        )
+    );
+
+    const materialsMap =
+        await loadMaterialsMap(materialIds);
+
+    const departmentIds = uniqueIds(
+        Object.values(materialsMap)
+            .map(
+                material =>
+                    material.department_id
+            )
+    );
+
+    const departmentMap =
+        await loadDepartmentMap(departmentIds);
+
+    return {
+        materialsMap,
+        departmentMap
+    };
+}
+
+
+function getMaterialForRow(
+    row,
+    materialsMap,
+    materialIdField = "material_id"
+) {
+
+    return (
+        materialsMap[
+            String(
+                row[materialIdField] || ""
+            )
+        ] || {}
+    );
+}
+
+
+function getDepartmentName(
+    material,
+    departmentMap
+) {
+
+    if (!material) {
+        return "-";
+    }
+
+    return (
+        departmentMap[
+            String(
+                material.department_id || ""
+            )
+        ] || "-"
+    );
+}
+
+
+// ============================================================
 // REPORT GENERATION
-// ====================================================
+// ============================================================
 
 async function generateReport(e) {
 
     e.preventDefault();
 
-
     const fromDate =
-        document
-            .getElementById("filterFromDate")
-            .value;
-
+        document.getElementById(
+            "filterFromDate"
+        )?.value || "";
 
     const toDate =
-        document
-            .getElementById("filterToDate")
-            .value;
-
+        document.getElementById(
+            "filterToDate"
+        )?.value || "";
 
     const departmentName =
-        document
-            .getElementById("filterDepartment")
-            .value;
-
+        document.getElementById(
+            "filterDepartment"
+        )?.value || "ALL";
 
     const recordType =
-        document
-            .getElementById("filterRecordType")
-            .value;
-
+        document.getElementById(
+            "filterRecordType"
+        )?.value || "REQUESTS";
 
     const areaType =
-        document
-            .getElementById("filterAreaType")
-            .value;
+        document.getElementById(
+            "filterAreaType"
+        )?.value || "ALL";
 
+    if (!fromDate || !toDate) {
 
-    // Include the full selected To Date
-    const toDateEndOfDay =
-        new Date(
-            `${toDate}T23:59:59.999`
+        showAlert(
+            "Please select From Date and To Date.",
+            "warning"
         );
 
+        return;
+    }
+
+    if (new Date(fromDate) > new Date(toDate)) {
+
+        showAlert(
+            "From Date cannot be after To Date.",
+            "warning"
+        );
+
+        return;
+    }
 
     const tableBody =
         document.getElementById(
             "reportTableBody"
         );
 
+    if (tableBody) {
 
-    tableBody.innerHTML = `
-        <tr>
-            <td colspan="7"
-                class="text-center text-muted py-4">
+        tableBody.innerHTML = `
+            <tr>
+                <td
+                    colspan="11"
+                    class="text-center text-muted py-4"
+                >
+                    <div
+                        class="spinner-border text-primary"
+                        role="status"
+                    ></div>
 
-                <div
-                    class="spinner-border text-primary"
-                    role="status">
-                </div>
+                    <br>
 
-                <br>
+                    Fetching data...
+                </td>
+            </tr>
+        `;
+    }
 
-                Fetching data...
-
-            </td>
-        </tr>
-    `;
-
-
-    document
-        .getElementById(
+    const tableFooter =
+        document.getElementById(
             "reportTableFooter"
-        )
-        .style.display =
-        "none";
+        );
 
+    if (tableFooter) {
+        tableFooter.style.display = "none";
+    }
 
     try {
 
+        const {
+            start,
+            end
+        } = getReportDateRange(
+            fromDate,
+            toDate
+        );
+
         let reportData = [];
 
+        switch (recordType) {
 
-        // ====================================================
-        // MATERIAL REQUESTS
-        // ====================================================
+            case "REQUESTS":
 
-        if (
-            recordType === "REQUESTS"
-        ) {
+                reportData =
+                    await fetchRequestData(
+                        start,
+                        end,
+                        departmentName,
+                        areaType
+                    );
 
-            reportData =
-                await fetchRequestData(
-                    fromDate,
-                    toDateEndOfDay.toISOString(),
-                    departmentName,
-                    areaType
+                break;
+
+
+            case "APPROVALS":
+
+                reportData =
+                    await fetchApprovalData(
+                        start,
+                        end,
+                        departmentName,
+                        areaType
+                    );
+
+                break;
+
+
+            case "CONSUMPTION":
+
+                reportData =
+                    await fetchConsumptionData(
+                        start,
+                        end,
+                        departmentName,
+                        areaType
+                    );
+
+                break;
+
+
+            case "RETURNS":
+
+                reportData =
+                    await fetchReturnData(
+                        start,
+                        end,
+                        departmentName,
+                        areaType
+                    );
+
+                break;
+
+
+            case "PURCHASE":
+
+                reportData =
+                    await fetchPurchaseData(
+                        start,
+                        end,
+                        departmentName
+                    );
+
+                break;
+
+
+            case "ALL":
+
+                reportData =
+                    await fetchAllTransactions(
+                        start,
+                        end,
+                        departmentName,
+                        areaType
+                    );
+
+                break;
+
+
+            default:
+
+                throw new Error(
+                    `Unsupported report type: ${recordType}`
                 );
-
         }
-
-
-        // ====================================================
-        // APPROVAL HISTORY
-        // ====================================================
-
-        else if (
-            recordType === "APPROVALS"
-        ) {
-
-            reportData =
-                await fetchApprovalData(
-                    fromDate,
-                    toDateEndOfDay.toISOString(),
-                    departmentName,
-                    areaType
-                );
-
-        }
-
-
-        // ====================================================
-        // MATERIAL CONSUMPTION / ISSUE
-        // ====================================================
-
-        else if (
-            recordType === "CONSUMPTION"
-        ) {
-
-            reportData =
-                await fetchConsumptionData(
-                    fromDate,
-                    toDateEndOfDay.toISOString(),
-                    departmentName,
-                    areaType
-                );
-
-        }
-
-
-        // ====================================================
-        // MATERIAL RETURNS
-        // ====================================================
-
-        else if (
-            recordType === "RETURNS"
-        ) {
-
-            reportData =
-                await fetchReturnData(
-                    fromDate,
-                    toDateEndOfDay.toISOString(),
-                    departmentName,
-                    areaType
-                );
-
-        }
-
-
-        // ====================================================
-        // STOCK PURCHASE
-        // ====================================================
-
-        else if (
-            recordType === "PURCHASE"
-        ) {
-
-            reportData =
-                await fetchPurchaseData(
-                    fromDate,
-                    toDateEndOfDay.toISOString(),
-                    departmentName
-                );
-
-        }
-
-
-        // ====================================================
-        // ALL TRANSACTIONS
-        // ====================================================
-
-        else if (
-            recordType === "ALL"
-        ) {
-
-            reportData =
-                await fetchAllTransactions(
-                    fromDate,
-                    toDateEndOfDay.toISOString(),
-                    departmentName,
-                    areaType
-                );
-
-        }
-
 
         renderReportTable(
             reportData,
             recordType
         );
 
-
     }
     catch (error) {
 
         console.error(
-            "Error generating report:",
+            "REPORT ERROR:",
             error
         );
 
+        if (tableBody) {
 
-        tableBody.innerHTML = `
-            <tr>
-                <td colspan="7"
-                    class="text-center text-danger py-5">
+            tableBody.innerHTML = `
+                <tr>
+                    <td
+                        colspan="11"
+                        class="text-center text-danger py-5"
+                    >
+                        <strong>
+                            Error generating report
+                        </strong>
 
-                    Error generating report.
+                        <br>
 
-                    <br>
+                        <small>
+                            ${escapeHtml(
+                                error?.message || "Unknown error"
+                            )}
+                        </small>
+                    </td>
+                </tr>
+            `;
+        }
 
-                    <small>
-                        ${error.message || ""}
-                    </small>
-
-                </td>
-            </tr>
-        `;
-
+        if (tableFooter) {
+            tableFooter.style.display = "none";
+        }
 
         showAlert(
+            error?.message ||
             "Failed to load report data.",
             "error"
         );
-
     }
-
 }
 
 
-// ====================================================
+// ============================================================
 // MATERIAL REQUEST REPORT
-// ====================================================
+// ============================================================
 
 async function fetchRequestData(
     fromDate,
@@ -408,21 +587,14 @@ async function fetchRequestData(
 ) {
 
     console.log(
-        "REPORT DEBUG: fetchRequestData started",
-        {
-            fromDate,
-            toDate,
-            departmentName,
-            areaType
-        }
+        "REPORT: Loading material requests..."
     );
 
+    const {
+        data,
+        error
+    } = await withReportTimeout(
 
-    // ==================================================
-    // SIMPLE REQUEST QUERY
-    // ==================================================
-
-    let query =
         supabase
             .from("material_requests")
             .select(`
@@ -436,246 +608,138 @@ async function fetchRequestData(
                 request_status,
                 created_at,
                 requested_by,
-                approved_by,
-
-          materials!material_requests_material_id_fkey(
-    material_code,
-    material_name,
-    category,
-    unit,
-    department_id,
-    departments(
-        department_name
-    )
-)
+                approved_by
             `)
-            .gte(
-                "created_at",
-                `${fromDate}T00:00:00`
-            )
-            .lte(
-                "created_at",
-                toDate
-            )
+            .gte("created_at", fromDate)
+            .lte("created_at", toDate)
             .order(
                 "created_at",
                 {
                     ascending: false
                 }
-            );
+            ),
 
-
-    console.log(
-        "REPORT DEBUG: sending Supabase request"
+        "Material Requests"
     );
 
+    if (error) {
+        throw error;
+    }
+
+    const rows = data || [];
+
+    console.log(
+        "REPORT: Material requests loaded:",
+        rows.length
+    );
 
     const {
-        data,
-        error
-    } = await query;
-
-
-    console.log(
-        "REPORT DEBUG: Supabase response",
-        {
-            rows: data?.length || 0,
-            error: error?.message || null
-        }
+        materialsMap,
+        departmentMap
+    } = await enrichRowsWithMaterials(
+        rows
     );
 
-
-    if (error)
-        throw error;
-
-
-    const rows =
-        data || [];
-
-
-    // ==================================================
-    // DEPARTMENT FILTER
-    // ==================================================
-
-    const filtered =
-        rows.filter(
-            row => {
-
-                const department =
-                    row.materials
-                        ?.department_id;
-
-
-                // When ALL departments are selected
-                if (
-                    departmentName === "ALL"
-                ) {
-
-                    return (
-                        areaType === "ALL"
-                        ||
-                        row.location_type ===
-                            areaType
-                    );
-
-                }
-
-
-                // Find department name
-                // directly from loaded material relation
-                const selectedDepartment =
-    row.materials
-        ?.departments
-        ?.department_name;
-
-
-                const departmentMatch =
-                    selectedDepartment ===
-                    departmentName;
-
-
-                const areaMatch =
-                    areaType === "ALL"
-                    ||
-                    row.location_type ===
-                        areaType;
-
-
-                return (
-                    departmentMatch &&
-                    areaMatch
-                );
-
-            }
-        );
-
-
-    // ==================================================
-    // BUILD REPORT DATA
-    // ==================================================
-
-    return filtered.map(
-        row => {
+    return rows
+        .filter(row => {
 
             const material =
-                row.materials || {};
+                getMaterialForRow(
+                    row,
+                    materialsMap
+                );
 
+            const department =
+                getDepartmentName(
+                    material,
+                    departmentMap
+                );
+
+            const departmentMatch =
+                departmentName === "ALL" ||
+                department === departmentName;
+
+            const areaMatch =
+                areaType === "ALL" ||
+                row.location_type === areaType;
+
+            return (
+                departmentMatch &&
+                areaMatch
+            );
+        })
+        .map(row => {
+
+            const material =
+                getMaterialForRow(
+                    row,
+                    materialsMap
+                );
 
             return {
 
                 date:
                     row.created_at,
 
-
                 reference:
-                    row.ticket_no
-                    || "-",
-
+                    row.ticket_no || "-",
 
                 complaintNumber:
-                    row.anacity_complaint_no
-                    || "N/A",
-
+                    row.anacity_complaint_no ||
+                    "N/A",
 
                 materialCode:
-                    material.material_code
-                    || "-",
-
+                    material.material_code ||
+                    "-",
 
                 material:
-                    material.material_name
-                    || "-",
-
+                    material.material_name ||
+                    "-",
 
                 category:
-                    material.category
-                    || "-",
-
+                    material.category ||
+                    "-",
 
                 department:
-    material.departments
-        ?.department_name
-    || "-",
-
+                    getDepartmentName(
+                        material,
+                        departmentMap
+                    ),
 
                 area:
-                    row.location_type
-                    || "-",
-
+                    row.location_type ||
+                    "-",
 
                 unit:
-                    material.unit
-                    || "-",
-
+                    material.unit ||
+                    "-",
 
                 quantity:
                     Number(
                         row.requested_qty || 0
                     ),
 
-
                 value:
                     0,
 
-
                 requestedBy:
-                    row.requested_by
-                    || "-",
-
+                    row.requested_by ||
+                    "-",
 
                 approvedBy:
-                    row.approved_by
-                    || "-",
-
+                    row.approved_by ||
+                    "-",
 
                 issuedBy:
                     "-"
-
             };
-
-        }
-    );
-
+        });
 }
-// ====================================================
-// REPORT QUERY TIMEOUT HELPER
-// ====================================================
 
-function withReportTimeout(
-    query,
-    label,
-    timeoutMs = 20000
-) {
 
-    return Promise.race([
-
-        query,
-
-        new Promise(
-            (_, reject) => {
-
-                setTimeout(
-                    () => {
-
-                        reject(
-                            new Error(
-                                `${label} query timed out after ${timeoutMs / 1000} seconds.`
-                            )
-                        );
-
-                    },
-                    timeoutMs
-                );
-
-            }
-        )
-
-    ]);
-
-}
-// ====================================================
+// ============================================================
 // APPROVAL HISTORY REPORT
-// ====================================================
+// ============================================================
 
 async function fetchApprovalData(
     fromDate,
@@ -684,45 +748,29 @@ async function fetchApprovalData(
     areaType
 ) {
 
-    let query =
+    const {
+        data,
+        error
+    } = await withReportTimeout(
+
         supabase
-
-            .from(
-                "material_requests"
-            )
-
-.select(`
-    id,
-    ticket_no,
-    anacity_complaint_no,
-    location_name,
-    location_type,
-    requested_qty,
-    request_status,
-    created_at,
-    technician_name,
-    requested_by,
-    approved_by,
-
- materials!material_requests_material_id_fkey(
-
-    material_code,
-
-    material_name,
-
-    category,
-
-    unit,
-
-    department_id,
-
-    departments(
-        department_name
-    )
-
-)
-`)
-
+            .from("material_requests")
+            .select(`
+                id,
+                ticket_no,
+                anacity_complaint_no,
+                material_id,
+                location_name,
+                location_type,
+                requested_qty,
+                approved_qty,
+                request_status,
+                created_at,
+                approval_date,
+                technician_name,
+                requested_by,
+                approved_by
+            `)
             .in(
                 "request_status",
                 [
@@ -730,236 +778,211 @@ async function fetchApprovalData(
                     "PARTIALLY_APPROVED"
                 ]
             )
-
             .gte(
                 "approval_date",
                 fromDate
             )
-
             .lte(
                 "approval_date",
                 toDate
             )
-
             .order(
                 "approval_date",
                 {
                     ascending: false
                 }
-            );
-
-
-    const {
-        data,
-        error
-    } = await query;
-
-
-    if (error)
-        throw error;
-
-
-    let filtered =
-        data || [];
-
-
-    if (
-        departmentName !== "ALL"
-    ) {
-
-        filtered =
-            filtered.filter(
-                row =>
-                    row.materials
-                        ?.departments
-                        ?.department_name
-                    === departmentName
-            );
-
-    }
-
-
-    if (
-        areaType !== "ALL"
-    ) {
-
-        filtered =
-            filtered.filter(
-                row =>
-                    row.location_type
-                    === areaType
-            );
-
-    }
-
-
-return filtered.map(
-    row => ({
-
-        date:
-            row.approval_date,
-
-        reference:
-            row.ticket_no,
-
-        complaintNumber:
-            row.anacity_complaint_no
-            || "N/A",
-
-materialCode:
-    row.materials
-        ?.material_code
-    || "-",
-
-material:
-    row.materials
-        ?.material_name
-    || "-",
-
-category:
-    row.materials
-        ?.category
-    || "-",
-
-unit:
-    row.materials
-        ?.unit
-    || "-",
-
-        department:
-            row.materials
-                ?.departments
-                ?.department_name
-            || "-",
-
-        area:
-            row.location_type
-            || "-",
-
-        quantity:
-            Number(
-                row.approved_qty ??
-                row.requested_qty ??
-                0
             ),
 
-        value:
-            0,
+        "Approval History"
+    );
 
-        requestedBy:
-            row.requested_by || "-",
+    if (error) {
+        throw error;
+    }
 
-        approvedBy:
-            row.approved_by || "-",
+    const rows = data || [];
 
-        issuedBy:
-            "-",
+    const {
+        materialsMap,
+        departmentMap
+    } = await enrichRowsWithMaterials(
+        rows
+    );
 
-        extra:
-            `Requested: ${
-                row.requested_qty
-                || 0
-            } | Approved: ${
-                row.approved_qty
-                ?? row.requested_qty
-                ?? 0
-            } | Status: ${
-                row.request_status
-                || "-"
-            }`
+    return rows
+        .filter(row => {
 
-    })
-);
+            const material =
+                getMaterialForRow(
+                    row,
+                    materialsMap
+                );
 
+            const department =
+                getDepartmentName(
+                    material,
+                    departmentMap
+                );
+
+            const departmentMatch =
+                departmentName === "ALL" ||
+                department === departmentName;
+
+            const areaMatch =
+                areaType === "ALL" ||
+                row.location_type === areaType;
+
+            return (
+                departmentMatch &&
+                areaMatch
+            );
+        })
+        .map(row => {
+
+            const material =
+                getMaterialForRow(
+                    row,
+                    materialsMap
+                );
+
+            return {
+
+                date:
+                    row.approval_date ||
+                    row.created_at,
+
+                reference:
+                    row.ticket_no ||
+                    "-",
+
+                complaintNumber:
+                    row.anacity_complaint_no ||
+                    "N/A",
+
+                materialCode:
+                    material.material_code ||
+                    "-",
+
+                material:
+                    material.material_name ||
+                    "-",
+
+                category:
+                    material.category ||
+                    "-",
+
+                department:
+                    getDepartmentName(
+                        material,
+                        departmentMap
+                    ),
+
+                area:
+                    row.location_type ||
+                    "-",
+
+                unit:
+                    material.unit ||
+                    "-",
+
+                quantity:
+                    Number(
+                        row.approved_qty ??
+                        row.requested_qty ??
+                        0
+                    ),
+
+                value:
+                    0,
+
+                requestedBy:
+                    row.requested_by ||
+                    "-",
+
+                approvedBy:
+                    row.approved_by ||
+                    "-",
+
+                issuedBy:
+                    "-",
+
+                extra:
+                    `Requested: ${
+                        row.requested_qty || 0
+                    } | Approved: ${
+                        row.approved_qty ??
+                        row.requested_qty ??
+                        0
+                    } | Status: ${
+                        row.request_status ||
+                        "-"
+                    }`
+            };
+        });
 }
 
-// ====================================================
-// LOAD COMPLAINT NUMBERS BY TICKET
-// ====================================================
+
+// ============================================================
+// COMPLAINT NUMBER MAP
+// ============================================================
 
 async function loadComplaintNumberMap(
     ticketNumbers
-){
+) {
+
+    const uniqueTickets =
+        uniqueIds(ticketNumbers);
 
     const complaintMap = {};
 
-
-    const uniqueTickets =
-        [
-            ...new Set(
-                (ticketNumbers || [])
-                    .filter(
-                        ticket =>
-                            ticket &&
-                            String(ticket).trim() !== ""
-                    )
-                    .map(
-                        ticket =>
-                            String(ticket).trim()
-                    )
-            )
-        ];
-
-
-    if(!uniqueTickets.length){
-
+    if (!uniqueTickets.length) {
         return complaintMap;
-
     }
-
 
     const {
         data,
         error
-    } = await supabase
+    } = await withReportTimeout(
 
-        .from("material_requests")
+        supabase
+            .from("material_requests")
+            .select(
+                "ticket_no, anacity_complaint_no"
+            )
+            .in(
+                "ticket_no",
+                uniqueTickets
+            ),
 
-        .select(
-            "ticket_no, anacity_complaint_no"
-        )
-
-        .in(
-            "ticket_no",
-            uniqueTickets
-        );
-
-
-    if(error)
-        throw error;
-
-
-    (data || []).forEach(
-        row => {
-
-            const ticket =
-                String(
-                    row.ticket_no || ""
-                ).trim();
-
-
-            if(
-                ticket &&
-                !complaintMap[ticket]
-            ){
-
-                complaintMap[ticket] =
-                    row.anacity_complaint_no ||
-                    "-";
-
-            }
-
-        }
+        "Complaint Numbers"
     );
 
+    if (error) {
+        throw error;
+    }
+
+    (data || []).forEach(row => {
+
+        const ticket =
+            String(
+                row.ticket_no || ""
+            ).trim();
+
+        if (ticket) {
+
+            complaintMap[ticket] =
+                row.anacity_complaint_no ||
+                "-";
+        }
+    });
 
     return complaintMap;
-
 }
 
-// ====================================================
+
+// ============================================================
 // MATERIAL CONSUMPTION / ISSUE REPORT
-// ====================================================
+// ============================================================
 
 async function fetchConsumptionData(
     fromDate,
@@ -968,225 +991,174 @@ async function fetchConsumptionData(
     areaType
 ) {
 
-    let query =
+    const {
+        data,
+        error
+    } = await withReportTimeout(
+
         supabase
-
-            .from(
-                "material_issue_register"
-            )
-
+            .from("material_issue_register")
             .select(`
+                id,
                 ticket_no,
+                material_id,
                 location_type,
                 location_name,
                 issued_date,
                 issued_qty,
                 unit_cost,
-                issued_by,
-
-                materials!material_issue_register_material_id_fkey(
-                    material_code,
-                    material_name,
-                    category,
-                    unit,
-                    department_id,
-
-                    departments(
-                        department_name
-                    )
-                )
+                issued_by
             `)
-
             .gte(
                 "issued_date",
                 fromDate
             )
-
             .lte(
                 "issued_date",
                 toDate
             )
-
             .order(
                 "issued_date",
                 {
                     ascending: false
                 }
-            );
+            ),
 
+        "Material Consumption"
+    );
+
+    if (error) {
+        throw error;
+    }
+
+    const rows = data || [];
 
     const {
-        data,
-        error
-    } = await query;
+        materialsMap,
+        departmentMap
+    } = await enrichRowsWithMaterials(
+        rows
+    );
 
+    const filtered =
+        rows.filter(row => {
 
-    if(error)
-        throw error;
+            const material =
+                getMaterialForRow(
+                    row,
+                    materialsMap
+                );
 
+            const department =
+                getDepartmentName(
+                    material,
+                    departmentMap
+                );
 
-    let filtered =
-        data || [];
+            const departmentMatch =
+                departmentName === "ALL" ||
+                department === departmentName;
 
+            const areaMatch =
+                areaType === "ALL" ||
+                row.location_type === areaType;
 
-    // ==================================================
-    // DEPARTMENT FILTER
-    // ==================================================
-
-    if(
-        departmentName !==
-        "ALL"
-    ){
-
-        filtered =
-            filtered.filter(
-                row =>
-                    row.materials
-                        ?.departments
-                        ?.department_name
-                    === departmentName
+            return (
+                departmentMatch &&
+                areaMatch
             );
-
-    }
-
-
-    // ==================================================
-    // AREA FILTER
-    // ==================================================
-
-    if(
-        areaType !==
-        "ALL"
-    ){
-
-        filtered =
-            filtered.filter(
-                row =>
-                    row.location_type
-                    === areaType
-            );
-
-    }
-
-
-    // ==================================================
-    // LOAD COMPLAINT NUMBERS
-    // ==================================================
+        });
 
     const complaintMap =
         await loadComplaintNumberMap(
-
             filtered.map(
-                row =>
-                    row.ticket_no
+                row => row.ticket_no
             )
-
         );
 
+    return filtered.map(row => {
 
-    // ==================================================
-    // BUILD REPORT
-    // ==================================================
+        const material =
+            getMaterialForRow(
+                row,
+                materialsMap
+            );
 
-    return filtered.map(
-        row => {
+        const ticketNo =
+            row.ticket_no || "-";
 
-            const material =
-                row.materials || {};
+        const quantity =
+            Number(
+                row.issued_qty || 0
+            );
 
+        const unitCost =
+            Number(
+                row.unit_cost || 0
+            );
 
-            const ticketNo =
-                row.ticket_no
-                || "-";
+        return {
 
+            date:
+                row.issued_date,
 
-            return {
+            complaintNumber:
+                complaintMap[
+                    String(ticketNo)
+                ] || "-",
 
-                date:
-                    row.issued_date,
+            reference:
+                ticketNo,
 
+            materialCode:
+                material.material_code ||
+                "-",
 
-                complaintNumber:
-                    complaintMap[
-                        String(ticketNo)
-                    ]
-                    || "-",
+            material:
+                material.material_name ||
+                "-",
 
+            category:
+                material.category ||
+                "-",
 
-                reference:
-                    ticketNo,
+            department:
+                getDepartmentName(
+                    material,
+                    departmentMap
+                ),
 
+            area:
+                row.location_type ||
+                "-",
 
-                materialCode:
-                    material.material_code
-                    || "-",
+            unit:
+                material.unit ||
+                "-",
 
+            quantity:
+                quantity,
 
-                material:
-                    material.material_name
-                    || "-",
+            value:
+                quantity * unitCost,
 
+            requestedBy:
+                "-",
 
-                category:
-                    material.category
-                    || "-",
+            approvedBy:
+                "-",
 
-
-                department:
-                    material.departments
-                        ?.department_name
-                    || "-",
-
-
-                area:
-                    row.location_type
-                    || "-",
-
-
-                unit:
-                    material.unit
-                    || "-",
-
-
-                quantity:
-                    Number(
-                        row.issued_qty || 0
-                    ),
-
-
-                value:
-                    Number(
-                        row.issued_qty || 0
-                    )
-                    *
-                    Number(
-                        row.unit_cost || 0
-                    ),
-
-
-                requestedBy:
-                    "-",
-
-
-                approvedBy:
-                    "-",
-
-
-                issuedBy:
-                    row.issued_by
-                    || "-"
-
-            };
-
-        }
-    );
-
+            issuedBy:
+                row.issued_by ||
+                "-"
+        };
+    });
 }
 
 
-// ====================================================
+// ============================================================
 // MATERIAL RETURN REPORT
-// ====================================================
+// ============================================================
 
 async function fetchReturnData(
     fromDate,
@@ -1195,10 +1167,13 @@ async function fetchReturnData(
     areaType
 ) {
 
-    let query =
+    const {
+        data,
+        error
+    } = await withReportTimeout(
+
         supabase
             .from("material_returns")
-
             .select(`
                 id,
                 issue_id,
@@ -1207,235 +1182,235 @@ async function fetchReturnData(
                 return_condition,
                 received_by,
                 return_date,
-                remarks,
-
-                material_issue_register!material_returns_issue_id_fkey(
-                    ticket_no,
-                    location_name,
-                    location_type,
-                    technician_name,
-                    issued_qty,
-
-                    materials!material_issue_register_material_id_fkey(
-                        material_code,
-                        material_name,
-                        category,
-                        unit,
-                        brand,
-                        item_type,
-                        item_size,
-                        specification,
-                        department_id,
-                        unit_cost,
-
-                        departments(
-                            department_name
-                        )
-                    )
-                )
+                remarks
             `)
-
             .gte(
                 "return_date",
                 fromDate
             )
-
             .lte(
                 "return_date",
                 toDate
             )
-
             .order(
                 "return_date",
                 {
                     ascending: false
                 }
-            );
+            ),
 
+        "Material Returns"
+    );
+
+    if (error) {
+        throw error;
+    }
+
+    const rows = data || [];
 
     const {
-        data,
-        error
-    } = await query;
+        materialsMap,
+        departmentMap
+    } = await enrichRowsWithMaterials(
+        rows
+    );
 
+    // Material return rows normally contain material_id.
+    // Area and ticket are loaded from issue register separately.
+    const issueIds = uniqueIds(
+        rows.map(
+            row => row.issue_id
+        )
+    );
 
-    if (error)
-        throw error;
+    let issueMap = {};
 
+    if (issueIds.length) {
 
-    let filtered =
-        data || [];
+        const {
+            data: issues,
+            error: issueError
+        } = await withReportTimeout(
 
+            supabase
+                .from("material_issue_register")
+                .select(`
+                    id,
+                    ticket_no,
+                    location_type,
+                    location_name
+                `)
+                .in(
+                    "id",
+                    issueIds
+                ),
 
-    // ==================================================
-    // DEPARTMENT FILTER
-    // ==================================================
+            "Return Issue Details"
+        );
 
-    if (departmentName !== "ALL") {
+        if (issueError) {
+            throw issueError;
+        }
 
-        filtered =
-            filtered.filter(
-                row =>
-                    row.material_issue_register
-                        ?.materials
-                        ?.departments
-                        ?.department_name
-                    === departmentName
-            );
+        (issues || []).forEach(issue => {
 
+            issueMap[
+                String(issue.id)
+            ] = issue;
+
+        });
     }
 
+    const filtered =
+        rows.filter(row => {
 
-    // ==================================================
-    // AREA FILTER
-    // ==================================================
+            const material =
+                getMaterialForRow(
+                    row,
+                    materialsMap
+                );
 
-    if (areaType !== "ALL") {
+            const issue =
+                issueMap[
+                    String(
+                        row.issue_id || ""
+                    )
+                ] || {};
 
-        filtered =
-            filtered.filter(
-                row =>
-                    row.material_issue_register
-                        ?.location_type
-                    === areaType
+            const department =
+                getDepartmentName(
+                    material,
+                    departmentMap
+                );
+
+            const departmentMatch =
+                departmentName === "ALL" ||
+                department === departmentName;
+
+            const areaMatch =
+                areaType === "ALL" ||
+                issue.location_type === areaType;
+
+            return (
+                departmentMatch &&
+                areaMatch
             );
-
-    }
-
-
-    // ==================================================
-    // LOAD COMPLAINT NUMBERS
-    // ==================================================
+        });
 
     const complaintMap =
         await loadComplaintNumberMap(
+            filtered.map(row => {
 
-            filtered.map(
-                row =>
-                    row.material_issue_register
-                        ?.ticket_no
-            )
+                const issue =
+                    issueMap[
+                        String(
+                            row.issue_id || ""
+                        )
+                    ] || {};
 
+                return issue.ticket_no;
+            })
         );
 
+    return filtered.map(row => {
 
-    // ==================================================
-    // BUILD REPORT
-    // ==================================================
+        const material =
+            getMaterialForRow(
+                row,
+                materialsMap
+            );
 
-    return filtered.map(
-        row => {
+        const issue =
+            issueMap[
+                String(
+                    row.issue_id || ""
+                )
+            ] || {};
 
-            const issue =
-                row.material_issue_register
-                || {};
+        const ticketNo =
+            issue.ticket_no || "-";
 
+        const quantity =
+            Number(
+                row.returned_qty || 0
+            );
 
-            const material =
-                issue.materials
-                || {};
+        const unitCost =
+            Number(
+                material.unit_cost || 0
+            );
 
+        return {
 
-            const ticketNo =
-                issue.ticket_no
-                || "-";
+            date:
+                row.return_date,
 
+            complaintNumber:
+                complaintMap[
+                    String(ticketNo)
+                ] || "-",
 
-            return {
+            reference:
+                ticketNo,
 
-                date:
-                    row.return_date,
+            materialCode:
+                material.material_code ||
+                "-",
 
+            material:
+                material.material_name ||
+                "-",
 
-                complaintNumber:
-                    complaintMap[
-                        String(ticketNo)
-                    ]
-                    || "-",
+            category:
+                material.category ||
+                "-",
 
+            department:
+                getDepartmentName(
+                    material,
+                    departmentMap
+                ),
 
-                reference:
-                    ticketNo,
+            area:
+                issue.location_type ||
+                "-",
 
+            unit:
+                material.unit ||
+                "-",
 
-                materialCode:
-                    material.material_code
-                    || "-",
+            quantity:
+                quantity,
 
+            value:
+                quantity * unitCost,
 
-                material:
-                    material.material_name
-                    || "-",
+            requestedBy:
+                "-",
 
+            approvedBy:
+                "-",
 
-                category:
-                    material.category
-                    || "-",
+            issuedBy:
+                row.received_by ||
+                "-",
 
-
-                department:
-                    material.departments
-                        ?.department_name
-                    || "-",
-
-
-                area:
-                    issue.location_type
-                    || "-",
-
-
-                unit:
-                    material.unit
-                    || "-",
-
-
-                quantity:
-                    Number(
-                        row.returned_qty || 0
-                    ),
-
-
-                value:
-                    Number(
-                        row.returned_qty || 0
-                    ) *
-                    Number(
-                        material.unit_cost || 0
-                    ),
-
-
-                requestedBy:
-                    "-",
-
-
-                approvedBy:
-                    "-",
-
-
-                issuedBy:
-                    row.received_by
-                    || "-",
-
-
-                extra:
-                    `Condition: ${
-                        row.return_condition
-                        || "-"
-                    } | Remarks: ${
-                        row.remarks
-                        || "-"
-                    }`
-
-            };
-
-        }
-    );
-
+            extra:
+                `Condition: ${
+                    row.return_condition ||
+                    "-"
+                } | Remarks: ${
+                    row.remarks ||
+                    "-"
+                }`
+        };
+    });
 }
 
-// ====================================================
+
+// ============================================================
 // STOCK PURCHASE REPORT
-// ====================================================
+// ============================================================
 
 async function fetchPurchaseData(
     fromDate,
@@ -1443,14 +1418,15 @@ async function fetchPurchaseData(
     departmentName
 ) {
 
-    let query =
+    const {
+        data,
+        error
+    } = await withReportTimeout(
+
         supabase
-
-            .from(
-                "stock_entry_details"
-            )
-
+            .from("stock_entry_details")
             .select(`
+                material_id,
                 quantity,
                 purchase_price,
                 gst_percentage,
@@ -1460,276 +1436,210 @@ async function fetchPurchaseData(
                     invoice_no,
                     invoice_date,
                     created_by
-                ),
-
-materials!stock_entry_details_material_id_fkey(
-
-    material_code,
-
-    material_name,
-
-    category,
-
-    unit,
-
-    department_id,
-
-    departments(
-        department_name
-    )
-
-)
+                )
             `)
-
             .gte(
                 "stock_entry_header.invoice_date",
                 fromDate
             )
-
             .lte(
                 "stock_entry_header.invoice_date",
                 toDate
             )
-
             .order(
                 "invoice_date",
                 {
                     foreignTable:
                         "stock_entry_header",
-
                     ascending: false
                 }
-            );
+            ),
 
+        "Stock Purchase"
+    );
 
-    const {
-        data,
-        error
-    } = await query;
-
-
-    if (error)
+    if (error) {
         throw error;
-
-
-    let filtered =
-        data || [];
-
-
-    // ==================================================
-    // DEPARTMENT FILTER
-    // ==================================================
-
-    if (
-        departmentName !== "ALL"
-    ) {
-
-        filtered =
-            filtered.filter(
-                row =>
-                    row.materials
-                        ?.departments
-                        ?.department_name
-                    === departmentName
-            );
-
     }
 
+    const rows = data || [];
 
-    // ==================================================
-    // LOAD USERS
-    // ==================================================
+    const {
+        materialsMap,
+        departmentMap
+    } = await enrichRowsWithMaterials(
+        rows
+    );
 
+    const filtered =
+        rows.filter(row => {
+
+            const material =
+                getMaterialForRow(
+                    row,
+                    materialsMap
+                );
+
+            const department =
+                getDepartmentName(
+                    material,
+                    departmentMap
+                );
+
+            return (
+                departmentName === "ALL" ||
+                department === departmentName
+            );
+        });
+
+    // Load creator names.
     const createdByIds =
-        [
-            ...new Set(
-                filtered
-                    .map(
-                        row =>
-                            row.stock_entry_header
-                                ?.created_by
-                    )
-                    .filter(
-                        id =>
-                            id !== null &&
-                            id !== undefined
-                    )
+        uniqueIds(
+            filtered.map(
+                row =>
+                    row.stock_entry_header
+                        ?.created_by
             )
-        ];
+        );
 
+    const userMap = {};
 
-    let userMap = {};
-
-
-    if (
-        createdByIds.length > 0
-    ) {
+    if (createdByIds.length) {
 
         const {
             data: users,
             error: usersError
-        } = await supabase
+        } = await withReportTimeout(
 
-            .from(
-                "users_master"
-            )
+            supabase
+                .from("users_master")
+                .select(
+                    "id, full_name"
+                )
+                .in(
+                    "id",
+                    createdByIds
+                ),
 
-            .select(
-                "id, full_name"
-            )
-
-            .in(
-                "id",
-                createdByIds
-            );
-
-
-        if (usersError)
-            throw usersError;
-
-
-        (users || []).forEach(
-            user => {
-
-                userMap[
-                    user.id
-                ] =
-                    user.full_name || "-";
-
-            }
+            "Purchase Users"
         );
 
+        if (usersError) {
+            throw usersError;
+        }
+
+        (users || []).forEach(user => {
+
+            userMap[
+                String(user.id)
+            ] =
+                user.full_name ||
+                "-";
+        });
     }
 
+    return filtered.map(row => {
 
-    // ==================================================
-    // BUILD REPORT ROWS
-    // ==================================================
+        const header =
+            row.stock_entry_header ||
+            {};
 
-    return filtered.map(
-        row => {
+        const material =
+            getMaterialForRow(
+                row,
+                materialsMap
+            );
 
-            const header =
-                row.stock_entry_header
-                || {};
+        const quantity =
+            Number(
+                row.quantity || 0
+            );
 
+        const unitPrice =
+            Number(
+                row.purchase_price || 0
+            );
 
-            const quantity =
+        const gstPercentage =
+            Number(
+                row.gst_percentage || 0
+            );
+
+        const basicAmount =
+            quantity * unitPrice;
+
+        const gstAmount =
+            basicAmount *
+            gstPercentage /
+            100;
+
+        const finalAmount =
+            basicAmount +
+            gstAmount;
+
+        return {
+
+            date:
+                header.invoice_date,
+
+            complaintNumber:
+                "-",
+
+            reference:
+                header.invoice_no ||
+                "-",
+
+            materialCode:
+                material.material_code ||
+                "-",
+
+            material:
+                material.material_name ||
+                "-",
+
+            category:
+                material.category ||
+                "-",
+
+            department:
+                getDepartmentName(
+                    material,
+                    departmentMap
+                ),
+
+            area:
+                "Stock Purchase",
+
+            unit:
+                material.unit ||
+                "-",
+
+            quantity:
+                quantity,
+
+            value:
                 Number(
-                    row.quantity || 0
-                );
+                    finalAmount.toFixed(2)
+                ),
 
+            requestedBy:
+                userMap[
+                    String(
+                        header.created_by || ""
+                    )
+                ] || "-",
 
-            const unitPrice =
-                Number(
-                    row.purchase_price || 0
-                );
+            approvedBy:
+                "-",
 
-
-            const gstPercentage =
-                Number(
-                    row.gst_percentage || 0
-                );
-
-
-            // ------------------------------------------
-            // BASIC MATERIAL VALUE
-            // ------------------------------------------
-
-            const basicAmount =
-                quantity *
-                unitPrice;
-
-
-            // ------------------------------------------
-            // GST
-            // ------------------------------------------
-
-            const gstAmount =
-                basicAmount *
-                gstPercentage /
-                100;
-
-
-            // ------------------------------------------
-            // FINAL REPORT VALUE
-            // BASIC + GST
-            // ------------------------------------------
-
-            const finalAmount =
-                basicAmount +
-                gstAmount;
-
-
-            return {
-
-                date:
-                    header.invoice_date,
-
-                reference:
-                    header.invoice_no
-                    || "-",
-
-materialCode:
-    row.materials
-        ?.material_code
-    || "-",
-
-material:
-    row.materials
-        ?.material_name
-    || "-",
-
-category:
-    row.materials
-        ?.category
-    || "-",
-
-unit:
-    row.materials
-        ?.unit
-    || "-",
-
-                department:
-                    row.materials
-                        ?.departments
-                        ?.department_name
-                    || "-",
-
-                area:
-                    "Stock Purchase",
-
-                quantity:
-                    quantity,
-
-                value:
-                    Number(
-                        finalAmount.toFixed(2)
-                    ),
-
-                requestedBy:
-                    userMap[
-                        header.created_by
-                    ]
-                    || "-",
-
-                approvedBy:
-                    "-",
-
-                issuedBy:
-                    "-"
-
-            };
-
-        }
-    );
-
+            issuedBy:
+                "-"
+        };
+    });
 }
-
-
-// ====================================================
+// ============================================================
 // ALL TRANSACTIONS
-// ====================================================
+// ============================================================
 
 async function fetchAllTransactions(
     fromDate,
@@ -1779,565 +1689,372 @@ async function fetchAllTransactions(
             toDate,
             departmentName
         )
-
     ]);
-
 
     return [
 
-        ...requests.map(
-            row => ({
-                ...row,
-                transactionType:
-                    "REQUEST"
-            })
-        ),
+        ...requests.map(row => ({
+            ...row,
+            transactionType:
+                "REQUEST"
+        })),
 
-        ...approvals.map(
-            row => ({
-                ...row,
-                transactionType:
-                    "APPROVAL"
-            })
-        ),
+        ...approvals.map(row => ({
+            ...row,
+            transactionType:
+                "APPROVAL"
+        })),
 
-        ...consumption.map(
-            row => ({
-                ...row,
-                transactionType:
-                    "ISSUE"
-            })
-        ),
+        ...consumption.map(row => ({
+            ...row,
+            transactionType:
+                "ISSUE"
+        })),
 
-        ...returns.map(
-            row => ({
-                ...row,
-                transactionType:
-                    "RETURN"
-            })
-        ),
+        ...returns.map(row => ({
+            ...row,
+            transactionType:
+                "RETURN"
+        })),
 
-        ...purchases.map(
-            row => ({
-                ...row,
-                transactionType:
-                    "PURCHASE"
-            })
-        )
+        ...purchases.map(row => ({
+            ...row,
+            transactionType:
+                "PURCHASE"
+        }))
 
     ].sort(
         (a, b) =>
             new Date(b.date) -
             new Date(a.date)
     );
-
 }
 
-// ====================================================
-// LAST GENERATED REPORT
-// Used by Excel and PDF exports
-// ====================================================
 
-let lastReportData = [];
+// ============================================================
+// PROCESSED BY
+// ============================================================
 
-let lastReportType = "";
+function getProcessedBy(
+    row,
+    recordType
+) {
 
-// ====================================================
+    if (recordType === "REQUESTS") {
+        return row.requestedBy || "-";
+    }
+
+    if (recordType === "APPROVALS") {
+
+        return `
+            <div>
+                Requested:
+                ${escapeHtml(
+                    row.requestedBy || "-"
+                )}
+            </div>
+
+            <div>
+                Approved:
+                ${escapeHtml(
+                    row.approvedBy || "-"
+                )}
+            </div>
+        `;
+    }
+
+    if (recordType === "CONSUMPTION") {
+        return row.issuedBy || "-";
+    }
+
+    if (recordType === "RETURNS") {
+        return row.issuedBy || "-";
+    }
+
+    if (recordType === "PURCHASE") {
+        return row.requestedBy || "-";
+    }
+
+    if (recordType === "ALL") {
+
+        if (row.transactionType === "REQUEST") {
+            return row.requestedBy || "-";
+        }
+
+        if (row.transactionType === "APPROVAL") {
+
+            return `
+                Requested:
+                ${escapeHtml(
+                    row.requestedBy || "-"
+                )}
+
+                <br>
+
+                Approved:
+                ${escapeHtml(
+                    row.approvedBy || "-"
+                )}
+            `;
+        }
+
+        if (row.transactionType === "ISSUE") {
+            return row.issuedBy || "-";
+        }
+
+        if (row.transactionType === "RETURN") {
+            return row.issuedBy || "-";
+        }
+
+        if (row.transactionType === "PURCHASE") {
+            return row.requestedBy || "-";
+        }
+    }
+
+    return "-";
+}
+
+
+// ============================================================
 // RENDER STANDARD REPORT TABLE
-// ====================================================
+// ============================================================
 
 function renderReportTable(
     data,
     recordType
-){
+) {
 
     const tableBody =
         document.getElementById(
             "reportTableBody"
         );
 
-
     const tableFooter =
         document.getElementById(
             "reportTableFooter"
         );
 
-lastReportData =
-    data || [];
-
-lastReportType =
-    recordType || "";
-
-    // Save for Excel / PDF
-
     lastReportData =
-        data || [];
+        Array.isArray(data)
+            ? data
+            : [];
 
     lastReportType =
         recordType || "";
 
+    if (!tableBody) {
+        return;
+    }
 
-    // =================================================
-    // EMPTY REPORT
-    // =================================================
-
-    if(
-        !data ||
-        data.length === 0
-    ){
+    if (!lastReportData.length) {
 
         tableBody.innerHTML = `
-
             <tr>
-
                 <td
                     colspan="11"
-                    class="text-center
-                           text-muted
-                           py-5">
-
+                    class="text-center text-muted py-5"
+                >
                     No records found
                     for the selected filters.
-
                 </td>
-
             </tr>
-
         `;
 
+        if (tableFooter) {
+            tableFooter.style.display =
+                "none";
+        }
 
-        tableFooter.style.display =
-            "none";
-
+        updateReportTotals(0, 0);
 
         return;
-
     }
 
+    tableBody.innerHTML = "";
 
-    tableBody.innerHTML =
-        "";
+    let totalQty = 0;
+    let totalValue = 0;
 
+    lastReportData.forEach(row => {
 
-    let totalQty =
-        0;
-
-
-    let totalVal =
-        0;
-
-
-    // =================================================
-    // PROCESSED BY
-    // =================================================
-
-    function getProcessedBy(row){
-
-        if(
-            recordType ===
-            "REQUESTS"
-        ){
-
-            return row.requestedBy ||
-                "-";
-
-        }
-
-
-        if(
-            recordType ===
-            "APPROVALS"
-        ){
-
-            return `
-                <div>
-                    Requested:
-                    ${row.requestedBy || "-"}
-                </div>
-
-                <div>
-                    Approved:
-                    ${row.approvedBy || "-"}
-                </div>
-            `;
-
-        }
-
-
-        if(
-            recordType ===
-            "CONSUMPTION"
-        ){
-
-            return row.issuedBy ||
-                "-";
-
-        }
-
-
-        if(
-            recordType ===
-            "RETURNS"
-        ){
-
-            return row.issuedBy ||
-                "-";
-
-        }
-
-
-        if(
-            recordType ===
-            "PURCHASE"
-        ){
-
-            return row.requestedBy ||
-                "-";
-
-        }
-
-
-        if(
-            recordType ===
-            "ALL"
-        ){
-
-            if(
-                row.transactionType ===
-                "REQUEST"
-            ){
-
-                return row.requestedBy ||
-                    "-";
-
-            }
-
-
-            if(
-                row.transactionType ===
-                "APPROVAL"
-            ){
-
-                return `
-                    Requested:
-                    ${row.requestedBy || "-"}
-
-                    <br>
-
-                    Approved:
-                    ${row.approvedBy || "-"}
-                `;
-
-            }
-
-
-            if(
-                row.transactionType ===
-                "ISSUE"
-            ){
-
-                return row.issuedBy ||
-                    "-";
-
-            }
-
-
-            if(
-                row.transactionType ===
-                "RETURN"
-            ){
-
-                return row.issuedBy ||
-                    "-";
-
-            }
-
-
-            if(
-                row.transactionType ===
-                "PURCHASE"
-            ){
-
-                return row.requestedBy ||
-                    "-";
-
-            }
-
-        }
-
-
-        return "-";
-
-    }
-
-
-    // =================================================
-    // RENDER ROWS
-    // =================================================
-
-    data.forEach(
-        row => {
-
-            totalQty +=
-                Number(
-                    row.quantity || 0
-                );
-
-
-            totalVal +=
-                Number(
-                    row.value || 0
-                );
-
-
-            const tr =
-                document.createElement(
-                    "tr"
-                );
-
-
-            const reference =
-                row.reference ||
-                "-";
-
-
-            const complaintNumber =
-                row.complaintNumber ||
-                "-";
-
-
-            const rowClass =
-                recordType === "ALL" &&
-                row.transactionType
-
-                    ? getTransactionRowClass(
-                        row.transactionType
-                    )
-
-                    : "";
-
-
-            tr.className =
-                rowClass;
-
-
-            const displayReference =
-                recordType === "PURCHASE"
-
-                    ? `
-
-                        <div
-                            class="fw-semibold
-                                   text-primary">
-
-                            Invoice:
-                            ${reference}
-
-                        </div>
-
-                      `
-
-                    : `
-
-                        <div
-                            class="fw-semibold
-                                   text-success">
-
-                            Complaint:
-                            ${complaintNumber}
-
-                        </div>
-
-
-                        <div
-                            class="fw-semibold
-                                   text-primary">
-
-                            MR:
-                            ${reference}
-
-                        </div>
-
-                      `;
-
-
-            const processedBy =
-                getProcessedBy(row);
-
-
-            tr.innerHTML = `
-
-                <!-- DATE -->
-
-                <td class="text-nowrap">
-
-                    ${formatDate(
-                        row.date
-                    )}
-
-                </td>
-
-
-                <!-- COMPLAINT / TICKET -->
-
-                <td
-                    class="text-start">
-
-                    ${displayReference}
-
-                </td>
-
-
-                <!-- ITEM CODE -->
-
-                <td
-                    class="fw-semibold
-                           text-primary
-                           text-nowrap">
-
-                    ${row.materialCode || "-"}
-
-                </td>
-
-
-                <!-- MATERIAL NAME -->
-
-                <td
-                    class="text-start">
-
-                    <div
-                        class="fw-semibold">
-
-                        ${row.material || "-"}
-
-                    </div>
-
-                </td>
-
-
-                <!-- CATEGORY -->
-
-                <td
-                    class="text-start">
-
-                    ${row.category || "-"}
-
-                </td>
-
-
-                <!-- DEPARTMENT -->
-
-                <td>
-
-                    ${row.department || "-"}
-
-                </td>
-
-
-                <!-- AREA -->
-
-                <td>
-
-                    <small>
-
-                        ${row.area || "-"}
-
-                    </small>
-
-                </td>
-
-
-                <!-- QUANTITY -->
-
-                <td
-                    class="fw-bold
-                           text-end
-                           text-nowrap">
-
-                    ${row.quantity ?? 0}
-
-                    <small
-                        class="text-muted">
-
-                        ${row.unit || ""}
-
-                    </small>
-
-                </td>
-
-
-                <!-- VALUE -->
-
-                <td
-                    class="text-end
-                           text-nowrap">
-
-                    ${formatCurrency(
-                        row.value || 0
-                    )}
-
-                </td>
-
-
-                <!-- PROCESSED BY -->
-
-                <td
-                    class="text-start">
-
-                    <small>
-
-                        ${processedBy}
-
-                    </small>
-
-                </td>
-
-            `;
-
-
-            tableBody.appendChild(
-                tr
+        totalQty +=
+            Number(
+                row.quantity || 0
             );
 
+        totalValue +=
+            Number(
+                row.value || 0
+            );
+
+        const tr =
+            document.createElement(
+                "tr"
+            );
+
+        if (
+            recordType === "ALL" &&
+            row.transactionType
+        ) {
+
+            tr.className =
+                getTransactionRowClass(
+                    row.transactionType
+                );
         }
+
+        const reference =
+            row.reference || "-";
+
+        const complaintNumber =
+            row.complaintNumber || "-";
+
+        const complaintCell =
+            recordType === "PURCHASE"
+                ? "-"
+                : complaintNumber;
+
+        const ticketCell =
+            reference;
+
+        const processedBy =
+            getProcessedBy(
+                row,
+                recordType
+            );
+
+        tr.innerHTML = `
+
+            <td class="text-nowrap">
+                ${formatDate(row.date)}
+            </td>
+
+            <td class="text-start text-nowrap">
+                ${escapeHtml(complaintCell)}
+            </td>
+
+            <td class="fw-semibold text-primary text-nowrap">
+                ${escapeHtml(ticketCell)}
+            </td>
+
+            <td class="fw-semibold text-primary text-nowrap">
+                ${escapeHtml(
+                    row.materialCode || "-"
+                )}
+            </td>
+
+            <td class="text-start">
+                <div class="fw-semibold">
+                    ${escapeHtml(
+                        row.material || "-"
+                    )}
+                </div>
+            </td>
+
+            <td class="text-start">
+                ${escapeHtml(
+                    row.category || "-"
+                )}
+            </td>
+
+            <td>
+                ${escapeHtml(
+                    row.department || "-"
+                )}
+            </td>
+
+            <td>
+                <small>
+                    ${escapeHtml(
+                        row.area || "-"
+                    )}
+                </small>
+            </td>
+
+            <td class="fw-bold text-end text-nowrap">
+                ${escapeHtml(
+                    String(
+                        row.quantity ?? 0
+                    )
+                )}
+
+                <small class="text-muted">
+                    ${escapeHtml(
+                        row.unit || ""
+                    )}
+                </small>
+            </td>
+
+            <td class="text-end text-nowrap">
+                ${formatCurrency(
+                    row.value || 0
+                )}
+            </td>
+
+            <td class="text-start">
+                <small>
+                    ${processedBy}
+                </small>
+            </td>
+        `;
+
+        tableBody.appendChild(tr);
+    });
+
+    updateReportTotals(
+        totalQty,
+        totalValue
     );
 
-
-    // =================================================
-    // TOTALS
-    // =================================================
-
-    document.getElementById(
-        "totalQuantity"
-    ).innerText =
-        totalQty;
-
-
-    document.getElementById(
-        "totalValue"
-    ).innerText =
-        formatCurrency(
-            totalVal
-        );
-
-
-    tableFooter.style.display =
-        "table-footer-group";
-
+    if (tableFooter) {
+        tableFooter.style.display =
+            "table-footer-group";
+    }
 }
 
 
-// ====================================================
-// ROW STYLE HELPER
-// ====================================================
+// ============================================================
+// TOTALS
+// ============================================================
+
+function updateReportTotals(
+    totalQty,
+    totalValue
+) {
+
+    const totalQuantity =
+        document.getElementById(
+            "totalQuantity"
+        );
+
+    const totalValueElement =
+        document.getElementById(
+            "totalValue"
+        );
+
+    if (totalQuantity) {
+        totalQuantity.innerText =
+            totalQty;
+    }
+
+    if (totalValueElement) {
+        totalValueElement.innerText =
+            formatCurrency(
+                totalValue
+            );
+    }
+}
+
+
+// ============================================================
+// ROW STYLE
+// ============================================================
 
 function getTransactionRowClass(
     transactionType
 ) {
 
-    switch (
-        transactionType
-    ) {
+    switch (transactionType) {
 
         case "REQUEST":
             return "table-primary";
@@ -2356,22 +2073,20 @@ function getTransactionRowClass(
 
         default:
             return "";
-
     }
-
 }
 
 
-// ====================================================
+// ============================================================
 // EXCEL EXPORT
-// ====================================================
+// ============================================================
 
-function exportToExcel(){
+function exportToExcel() {
 
-    if(
+    if (
         !lastReportData ||
         !lastReportData.length
-    ){
+    ) {
 
         showAlert(
             "No data available to export. Please generate a report first.",
@@ -2379,113 +2094,81 @@ function exportToExcel(){
         );
 
         return;
-
     }
 
+    if (
+        typeof XLSX === "undefined"
+    ) {
 
-    try{
+        showAlert(
+            "Excel library is not loaded.",
+            "danger"
+        );
 
-        const fromDate =
-            document.getElementById(
-                "filterFromDate"
-            )?.value || "";
+        return;
+    }
 
-
-        const toDate =
-            document.getElementById(
-                "filterToDate"
-            )?.value || "";
-
+    try {
 
         const department =
             document.getElementById(
                 "filterDepartment"
             )?.selectedOptions[0]
-                ?.text || "All Departments";
-
-
-        const recordType =
-            document.getElementById(
-                "filterRecordType"
-            )?.selectedOptions[0]
-                ?.text || lastReportType;
-
-
-        const areaType =
-            document.getElementById(
-                "filterAreaType"
-            )?.selectedOptions[0]
-                ?.text || "All Areas";
-
-
-        // =============================================
-        // REPORT ROWS
-        // =============================================
+                ?.text ||
+            "All Departments";
 
         const rows =
-            lastReportData.map(
-                row => ({
+            lastReportData.map(row => ({
 
-                    "Date":
-                        formatDate(
-                            row.date
-                        ),
+                "Date":
+                    formatDate(
+                        row.date
+                    ),
 
-                    "Complaint Number":
-                        row.complaintNumber
-                        || "-",
+                "Complaint Number":
+                    row.complaintNumber ||
+                    "-",
 
-                    "Ticket / Invoice":
-                        row.reference
-                        || "-",
+                "Ticket / Invoice":
+                    row.reference ||
+                    "-",
 
-                    "Item Code":
-                        row.materialCode
-                        || "-",
+                "Item Code":
+                    row.materialCode ||
+                    "-",
 
-                    "Material Name":
-                        row.material
-                        || "-",
+                "Material Name":
+                    row.material ||
+                    "-",
 
-                    "Category":
-                        row.category
-                        || "-",
+                "Category":
+                    row.category ||
+                    "-",
 
-                    "Department":
-                        row.department
-                        || "-",
+                "Department":
+                    row.department ||
+                    "-",
 
-                    "Area Type":
-                        row.area
-                        || "-",
+                "Area Type":
+                    row.area ||
+                    "-",
 
-                    "Quantity":
-                        Number(
-                            row.quantity || 0
-                        ),
+                "Qty / Unit":
+                    `${Number(row.quantity || 0)} ${row.unit || ""}`.trim(),
 
-                    "Unit":
-                        row.unit || "-",
+                "Value":
+                    Number(
+                        row.value || 0
+                    ),
 
-                    "Value":
-                        Number(
-                            row.value || 0
-                        ),
-
-                    "Processed By":
-                        getExcelProcessedBy(
-                            row
-                        )
-
-                })
-            );
-
+                "Processed By":
+                    getExcelProcessedBy(row)
+            }));
 
         const worksheet =
             XLSX.utils.json_to_sheet(
                 rows
             );
-
 
         worksheet["!cols"] = [
 
@@ -2497,29 +2180,18 @@ function exportToExcel(){
             { wch: 22 },
             { wch: 20 },
             { wch: 24 },
-            { wch: 12 },
-            { wch: 10 },
-            { wch: 15 },
+            { wch: 18 },
+            { wch: 28 },
             { wch: 28 }
-
         ];
 
-
         worksheet["!autofilter"] = {
-
             ref:
-                `A1:L${rows.length + 1}`
-
+                `A1:K${rows.length + 1}`
         };
-
-
-        // =============================================
-        // WORKBOOK
-        // =============================================
 
         const workbook =
             XLSX.utils.book_new();
-
 
         XLSX.utils.book_append_sheet(
             workbook,
@@ -2527,40 +2199,27 @@ function exportToExcel(){
             "Report"
         );
 
-
         const dateStr =
             new Date()
                 .toISOString()
                 .split("T")[0];
 
-
         const fileName =
             `RVRG_${lastReportType}_Report_${dateStr}.xlsx`;
-
 
         XLSX.writeFile(
             workbook,
             fileName
         );
 
-
-        // =============================================
-        // HISTORY
-        // =============================================
-
         const user =
             getCurrentUser();
 
-
         saveReportDownloadHistory(
-
             user?.name ||
             "Unknown User",
-
             department
-
         );
-
 
         showAlert(
             "Excel report downloaded successfully.",
@@ -2568,96 +2227,124 @@ function exportToExcel(){
         );
 
     }
-
-    catch(error){
+    catch (error) {
 
         console.error(
             "Excel Export Error:",
             error
         );
 
-
         showAlert(
             "Failed to export Excel report.",
             "danger"
         );
-
     }
-
 }
 
-function getExcelProcessedBy(
-    row
-){
 
-    if(
+function getExcelProcessedBy(row) {
+
+    if (
         lastReportType ===
         "REQUESTS"
-    ){
-
+    ) {
         return row.requestedBy || "-";
-
     }
 
-
-    if(
+    if (
         lastReportType ===
         "APPROVALS"
-    ){
-
-        return `Requested: ${
-            row.requestedBy || "-"
-        } | Approved: ${
-            row.approvedBy || "-"
-        }`;
-
+    ) {
+        return (
+            `Requested: ${
+                row.requestedBy || "-"
+            } | Approved: ${
+                row.approvedBy || "-"
+            }`
+        );
     }
 
-
-    if(
+    if (
         lastReportType ===
         "CONSUMPTION"
-    ){
-
+    ) {
         return row.issuedBy || "-";
-
     }
 
-
-    if(
+    if (
         lastReportType ===
         "RETURNS"
-    ){
-
+    ) {
         return row.issuedBy || "-";
-
     }
 
-
-    if(
+    if (
         lastReportType ===
         "PURCHASE"
-    ){
-
+    ) {
         return row.requestedBy || "-";
-
     }
 
+    if (
+        lastReportType ===
+        "ALL"
+    ) {
+
+        if (
+            row.transactionType ===
+            "REQUEST"
+        ) {
+            return row.requestedBy || "-";
+        }
+
+        if (
+            row.transactionType ===
+            "APPROVAL"
+        ) {
+            return (
+                `Requested: ${
+                    row.requestedBy || "-"
+                } | Approved: ${
+                    row.approvedBy || "-"
+                }`
+            );
+        }
+
+        if (
+            row.transactionType ===
+            "ISSUE"
+        ) {
+            return row.issuedBy || "-";
+        }
+
+        if (
+            row.transactionType ===
+            "RETURN"
+        ) {
+            return row.issuedBy || "-";
+        }
+
+        if (
+            row.transactionType ===
+            "PURCHASE"
+        ) {
+            return row.requestedBy || "-";
+        }
+    }
 
     return "-";
-
 }
 
-// ====================================================
+// ============================================================
 // PDF EXPORT
-// ====================================================
+// ============================================================
 
-function exportToPDF(){
+function exportToPDF() {
 
-    if(
+    if (
         !lastReportData ||
         !lastReportData.length
-    ){
+    ) {
 
         showAlert(
             "No data available to export. Please generate a report first.",
@@ -2665,14 +2352,12 @@ function exportToPDF(){
         );
 
         return;
-
     }
 
-
-    if(
+    if (
         !window.jspdf ||
         !window.jspdf.jsPDF
-    ){
+    ) {
 
         showAlert(
             "PDF library is not loaded.",
@@ -2680,43 +2365,46 @@ function exportToPDF(){
         );
 
         return;
-
     }
 
+    if (
+        typeof window.jspdf.jsPDF !==
+        "function"
+    ) {
 
-    try{
+        showAlert(
+            "PDF library is not available.",
+            "danger"
+        );
+
+        return;
+    }
+
+    try {
 
         const {
             jsPDF
         } = window.jspdf;
 
-
         const doc =
             new jsPDF({
-
                 orientation:
                     "landscape",
-
                 unit:
                     "mm",
-
                 format:
                     "a4"
-
             });
-
 
         const fromDate =
             document.getElementById(
                 "filterFromDate"
             )?.value || "";
 
-
         const toDate =
             document.getElementById(
                 "filterToDate"
             )?.value || "";
-
 
         const department =
             document.getElementById(
@@ -2725,7 +2413,6 @@ function exportToPDF(){
                 ?.text ||
             "All Departments";
 
-
         const recordType =
             document.getElementById(
                 "filterRecordType"
@@ -2733,18 +2420,12 @@ function exportToPDF(){
                 ?.text ||
             lastReportType;
 
-
         const areaType =
             document.getElementById(
                 "filterAreaType"
             )?.selectedOptions[0]
                 ?.text ||
             "All Areas";
-
-
-        // =============================================
-        // HEADER
-        // =============================================
 
         doc.setFontSize(16);
 
@@ -2759,7 +2440,6 @@ function exportToPDF(){
             14
         );
 
-
         doc.setFontSize(12);
 
         doc.setFont(
@@ -2773,7 +2453,6 @@ function exportToPDF(){
             21
         );
 
-
         doc.setFontSize(8);
 
         doc.text(
@@ -2782,13 +2461,11 @@ function exportToPDF(){
             28
         );
 
-
         doc.text(
             `Department: ${department}`,
             95,
             28
         );
-
 
         doc.text(
             `Record Type: ${recordType}`,
@@ -2796,13 +2473,11 @@ function exportToPDF(){
             28
         );
 
-
         doc.text(
             `Area: ${areaType}`,
             14,
             34
         );
-
 
         doc.text(
             `Generated: ${
@@ -2814,108 +2489,93 @@ function exportToPDF(){
             34
         );
 
-
-        // =============================================
-        // TABLE DATA
-        // =============================================
-
         const body =
-            lastReportData.map(
-                row => [
+            lastReportData.map(row => [
 
-                    formatDate(
-                        row.date
-                    ),
+                formatDate(
+                    row.date
+                ),
 
-                    row.complaintNumber
-                    || "-",
+                row.complaintNumber ||
+                "-",
 
-                    row.reference
-                    || "-",
+                row.reference ||
+                "-",
 
-                    row.materialCode
-                    || "-",
+                row.materialCode ||
+                "-",
 
-                    row.material
-                    || "-",
+                row.material ||
+                "-",
 
-                    row.category
-                    || "-",
+                row.category ||
+                "-",
 
-                    row.department
-                    || "-",
+                row.department ||
+                "-",
 
-                    row.area
-                    || "-",
+                row.area ||
+                "-",
 
-                    `${
-                        row.quantity ?? 0
-                    } ${
-                        row.unit || ""
-                    }`,
+                `${
+                    row.quantity ?? 0
+                } ${
+                    row.unit || ""
+                }`,
 
-                    `Rs. ${
-                        Number(
-                            row.value || 0
-                        ).toFixed(2)
-                    }`,
+                `Rs. ${
+                    Number(
+                        row.value || 0
+                    ).toFixed(2)
+                }`,
 
-                    getExcelProcessedBy(
-                        row
-                    )
+                getExcelProcessedBy(
+                    row
+                )
+            ]);
 
-                ]
+        if (
+            typeof doc.autoTable !==
+            "function"
+        ) {
+
+            throw new Error(
+                "PDF AutoTable plugin is not loaded."
             );
-
+        }
 
         doc.autoTable({
 
-            startY:
-                40,
+            startY: 40,
 
             head: [[
 
                 "Date",
-
                 "Complaint No.",
-
                 "Ticket / Invoice",
-
                 "Item Code",
-
                 "Material Name",
-
                 "Category",
-
                 "Department",
-
                 "Area Type",
-
                 "Qty / Unit",
-
                 "Value",
-
                 "Processed By"
 
             ]],
 
-            body:
-                body,
+            body: body,
 
-            theme:
-                "grid",
+            theme: "grid",
 
             styles: {
 
-                fontSize:
-                    6.5,
+                fontSize: 6.5,
 
-                cellPadding:
-                    2,
+                cellPadding: 2,
 
                 valign:
                     "middle"
-
             },
 
             headStyles: {
@@ -2923,9 +2583,7 @@ function exportToPDF(){
                 fontStyle:
                     "bold",
 
-                fontSize:
-                    7
-
+                fontSize: 7
             },
 
             columnStyles: {
@@ -2973,35 +2631,24 @@ function exportToPDF(){
                 10: {
                     cellWidth: 32
                 }
-
             },
 
             didDrawPage:
                 data => {
 
-                    doc.setFontSize(
-                        7
-                    );
+                    doc.setFontSize(7);
 
                     doc.text(
                         `Page ${data.pageNumber}`,
                         280,
                         200
                     );
-
                 }
-
         });
-
-
-        // =============================================
-        // TOTAL
-        // =============================================
 
         const finalY =
             doc.lastAutoTable.finalY +
             6;
-
 
         const totalValue =
             lastReportData.reduce(
@@ -3016,14 +2663,12 @@ function exportToPDF(){
                 0
             );
 
-
         doc.setFontSize(9);
 
         doc.setFont(
             "helvetica",
             "bold"
         );
-
 
         doc.text(
             `Total Records: ${
@@ -3033,7 +2678,6 @@ function exportToPDF(){
             finalY
         );
 
-
         doc.text(
             `Total Value: Rs. ${
                 totalValue.toFixed(2)
@@ -3042,17 +2686,14 @@ function exportToPDF(){
             finalY
         );
 
-
         const dateStr =
             new Date()
                 .toISOString()
                 .split("T")[0];
 
-
         doc.save(
             `RVRG_${lastReportType}_Report_${dateStr}.pdf`
         );
-
 
         showAlert(
             "PDF report downloaded successfully.",
@@ -3060,27 +2701,24 @@ function exportToPDF(){
         );
 
     }
-
-    catch(error){
+    catch (error) {
 
         console.error(
             "PDF Export Error:",
             error
         );
 
-
         showAlert(
+            error?.message ||
             "Failed to generate PDF report.",
             "danger"
         );
-
     }
-
 }
 
-// ====================================================
-// SAVE REPORT DOWNLOAD HISTORY
-// ====================================================
+// ============================================================
+// REPORT DOWNLOAD HISTORY
+// ============================================================
 
 async function saveReportDownloadHistory(
     downloadedBy,
@@ -3092,11 +2730,9 @@ async function saveReportDownloadHistory(
         const {
             error
         } = await supabase
-
             .from(
                 "report_download_history"
             )
-
             .insert([
 
                 {
@@ -3105,11 +2741,9 @@ async function saveReportDownloadHistory(
 
                     department:
                         department
-
                 }
 
             ]);
-
 
         if (error) {
 
@@ -3117,7 +2751,6 @@ async function saveReportDownloadHistory(
                 "Failed to save report download history:",
                 error.message
             );
-
         }
 
     }
@@ -3127,15 +2760,9 @@ async function saveReportDownloadHistory(
             "Report history error:",
             error
         );
-
     }
-
 }
 
-
-// ====================================================
-// LOAD REPORT DOWNLOAD HISTORY
-// ====================================================
 
 async function loadReportDownloadHistory() {
 
@@ -3144,10 +2771,9 @@ async function loadReportDownloadHistory() {
             "reportHistoryTable"
         );
 
-
-    if (!tableBody)
+    if (!tableBody) {
         return;
-
+    }
 
     tableBody.innerHTML = `
         <tr>
@@ -3160,41 +2786,40 @@ async function loadReportDownloadHistory() {
         </tr>
     `;
 
-
     try {
 
         const {
             data,
             error
-        } = await supabase
+        } = await withReportTimeout(
 
-            .from(
-                "report_download_history"
-            )
+            supabase
+                .from(
+                    "report_download_history"
+                )
+                .select(`
+                    downloaded_at,
+                    downloaded_by,
+                    department
+                `)
+                .order(
+                    "downloaded_at",
+                    {
+                        ascending: false
+                    }
+                )
+                .limit(50),
 
-            .select(`
-                downloaded_at,
-                downloaded_by,
-                department
-            `)
+            "Report Download History"
+        );
 
-            .order(
-                "downloaded_at",
-                {
-                    ascending: false
-                }
-            )
-
-            .limit(50);
-
-
-        if (error)
+        if (error) {
             throw error;
-
+        }
 
         if (
             !data ||
-            data.length === 0
+            !data.length
         ) {
 
             tableBody.innerHTML = `
@@ -3209,87 +2834,119 @@ async function loadReportDownloadHistory() {
             `;
 
             return;
-
         }
-
 
         tableBody.innerHTML = "";
 
+        data.forEach(record => {
 
-        data.forEach(
-            record => {
-
-                const row =
-                    document.createElement(
-                        "tr"
-                    );
-
-
-                const downloadDate =
-                    record.downloaded_at
-                        ? new Date(
-                            record.downloaded_at
-                        ).toLocaleString(
-                            "en-IN",
-                            {
-                                day: "2-digit",
-                                month: "2-digit",
-                                year: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit"
-                            }
-                        )
-                        : "-";
-
-
-                row.innerHTML = `
-
-                    <td>
-                        ${downloadDate}
-                    </td>
-
-                    <td class="fw-semibold">
-                        ${record.downloaded_by || "-"}
-                    </td>
-
-                    <td>
-                        ${record.department || "-"}
-                    </td>
-
-                `;
-
-
-                tableBody.appendChild(
-                    row
+            const row =
+                document.createElement(
+                    "tr"
                 );
 
-            }
-        );
+            const downloadDate =
+                record.downloaded_at
+                    ? new Date(
+                        record.downloaded_at
+                    ).toLocaleString(
+                        "en-IN",
+                        {
+                            day:
+                                "2-digit",
+                            month:
+                                "2-digit",
+                            year:
+                                "numeric",
+                            hour:
+                                "2-digit",
+                            minute:
+                                "2-digit"
+                        }
+                    )
+                    : "-";
+
+            row.innerHTML = `
+
+                <td>
+                    ${escapeHtml(
+                        downloadDate
+                    )}
+                </td>
+
+                <td class="fw-semibold">
+                    ${escapeHtml(
+                        record.downloaded_by ||
+                        "-"
+                    )}
+                </td>
+
+                <td>
+                    ${escapeHtml(
+                        record.department ||
+                        "-"
+                    )}
+                </td>
+            `;
+
+            tableBody.appendChild(row);
+        });
 
     }
     catch (error) {
 
         console.error(
             "Error loading report download history:",
-            error.message
+            error
         );
-
 
         tableBody.innerHTML = `
             <tr>
-
                 <td
                     colspan="3"
                     class="text-center text-danger py-4"
                 >
-
                     Failed to load report history.
-
+                    <br>
+                    <small>
+                        ${escapeHtml(
+                            error?.message || ""
+                        )}
+                    </small>
                 </td>
-
             </tr>
         `;
-
     }
+}
 
+
+// ============================================================
+// HTML ESCAPE HELPER
+// ============================================================
+
+function escapeHtml(value) {
+
+    return String(
+        value ?? ""
+    )
+        .replace(
+            /&/g,
+            "&amp;"
+        )
+        .replace(
+            /</g,
+            "&lt;"
+        )
+        .replace(
+            />/g,
+            "&gt;"
+        )
+        .replace(
+            /"/g,
+            "&quot;"
+        )
+        .replace(
+            /'/g,
+            "&#039;"
+        );
 }

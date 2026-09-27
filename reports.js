@@ -407,172 +407,325 @@ async function fetchRequestData(
     areaType
 ) {
 
-    let query =
+    // ==================================================
+    // 1. LOAD MATERIAL REQUESTS
+    // Keep this query simple and avoid deep nested joins
+    // ==================================================
+
+    const {
+        data,
+        error
+    } = await Promise.race([
+
         supabase
-
-            .from(
-                "material_requests"
-            )
-
-    .select(`
-    id,
-    ticket_no,
-    anacity_complaint_no,
-    location_name,
-    location_type,
-    requested_qty,
-    request_status,
-    created_at,
-    technician_name,
-    requested_by,
-    approved_by,
-
-materials!material_requests_material_id_fkey(
-    material_code,
-    material_name,
-    category,
-    unit,
-    department_id,
-    departments(
-        department_name
-    )
-)
-`)       
-
+            .from("material_requests")
+            .select(`
+                id,
+                ticket_no,
+                anacity_complaint_no,
+                material_id,
+                location_name,
+                location_type,
+                requested_qty,
+                request_status,
+                created_at,
+                technician_name,
+                requested_by,
+                approved_by
+            `)
             .gte(
                 "created_at",
                 fromDate
             )
-
             .lte(
                 "created_at",
                 toDate
             )
-
             .order(
                 "created_at",
                 {
                     ascending: false
                 }
-            );
+            ),
 
+        new Promise((_, reject) =>
+            setTimeout(
+                () =>
+                    reject(
+                        new Error(
+                            "Material Request query timed out after 20 seconds."
+                        )
+                    ),
+                20000
+            )
+        )
 
-    const {
-        data,
-        error
-    } = await query;
+    ]);
 
 
     if (error)
         throw error;
 
 
-    let filtered =
+    let requests =
         data || [];
 
 
-    if (
-        departmentName !== "ALL"
-    ) {
+    // ==================================================
+    // 2. LOAD MATERIAL MASTER
+    // ==================================================
 
-        filtered =
-            filtered.filter(
-                row =>
-                    row.materials
-                        ?.departments
-                        ?.department_name
-                    === departmentName
+    const materialIds = [
+        ...new Set(
+            requests
+                .map(
+                    row => row.material_id
+                )
+                .filter(Boolean)
+        )
+    ];
+
+
+    let materialMap = {};
+
+
+    if (materialIds.length > 0) {
+
+        const {
+            data: materials,
+            error: materialError
+        } = await supabase
+
+            .from("materials")
+
+            .select(`
+                id,
+                material_code,
+                material_name,
+                category,
+                unit,
+                department_id
+            `)
+
+            .in(
+                "id",
+                materialIds
             );
+
+
+        if (materialError)
+            throw materialError;
+
+
+        (materials || []).forEach(
+            material => {
+
+                materialMap[
+                    String(material.id)
+                ] = material;
+
+            }
+        );
 
     }
 
 
-    if (
-        areaType !== "ALL"
-    ) {
+    // ==================================================
+    // 3. LOAD DEPARTMENT MASTER
+    // ==================================================
 
-        filtered =
-            filtered.filter(
-                row =>
+    const departmentIds = [
+        ...new Set(
+            Object.values(materialMap)
+                .map(
+                    material =>
+                        material.department_id
+                )
+                .filter(Boolean)
+        )
+    ];
+
+
+    let departmentMap = {};
+
+
+    if (departmentIds.length > 0) {
+
+        const {
+            data: departments,
+            error: departmentError
+        } = await supabase
+
+            .from("departments")
+
+            .select(`
+                id,
+                department_name
+            `)
+
+            .in(
+                "id",
+                departmentIds
+            );
+
+
+        if (departmentError)
+            throw departmentError;
+
+
+        (departments || []).forEach(
+            department => {
+
+                departmentMap[
+                    String(department.id)
+                ] = department.department_name || "-";
+
+            }
+        );
+
+    }
+
+
+    // ==================================================
+    // 4. APPLY DEPARTMENT / AREA FILTERS
+    // ==================================================
+
+    let filtered =
+        requests.filter(
+            row => {
+
+                const material =
+                    materialMap[
+                        String(row.material_id)
+                    ] || {};
+
+                const department =
+                    departmentMap[
+                        String(material.department_id)
+                    ] || "-";
+
+
+                const departmentMatch =
+                    departmentName === "ALL"
+                    ||
+                    department === departmentName;
+
+
+                const areaMatch =
+                    areaType === "ALL"
+                    ||
+                    row.location_type === areaType;
+
+
+                return (
+                    departmentMatch &&
+                    areaMatch
+                );
+
+            }
+        );
+
+
+    // ==================================================
+    // 5. BUILD STANDARD REPORT ROWS
+    // ==================================================
+
+    return filtered.map(
+        row => {
+
+            const material =
+                materialMap[
+                    String(row.material_id)
+                ] || {};
+
+
+            const department =
+                departmentMap[
+                    String(material.department_id)
+                ] || "-";
+
+
+            return {
+
+                date:
+                    row.created_at,
+
+
+                reference:
+                    row.ticket_no
+                    || "-",
+
+
+                complaintNumber:
+                    row.anacity_complaint_no
+                    || "N/A",
+
+
+                materialCode:
+                    material.material_code
+                    || "-",
+
+
+                material:
+                    material.material_name
+                    || "-",
+
+
+                category:
+                    material.category
+                    || "-",
+
+
+                department:
+                    department,
+
+
+                area:
                     row.location_type
-                    === areaType
-            );
-
-    }
+                    || "-",
 
 
-return filtered.map(
-    row => ({
+                unit:
+                    material.unit
+                    || "-",
 
-        date:
-            row.created_at,
 
-        reference:
-            row.ticket_no,
+                quantity:
+                    Number(
+                        row.requested_qty || 0
+                    ),
 
-        complaintNumber:
-            row.anacity_complaint_no
-            || "N/A",
 
-       materialCode:
-    row.materials
-        ?.material_code
-    || "-",
+                value:
+                    0,
 
-material:
-    row.materials
-        ?.material_name
-    || "-",
 
-category:
-    row.materials
-        ?.category
-    || "-",
+                requestedBy:
+                    row.requested_by
+                    || "-",
 
-unit:
-    row.materials
-        ?.unit
-    || "-",
 
-        department:
-            row.materials
-                ?.departments
-                ?.department_name
-            || "-",
+                approvedBy:
+                    row.approved_by
+                    || "-",
 
-        area:
-            row.location_type
-            || "-",
 
-        quantity:
-            Number(
-                row.requested_qty || 0
-            ),
+                issuedBy:
+                    "-",
 
-        value:
-            0,
 
-        requestedBy:
-            row.requested_by || "-",
+                extra:
+                    `Status: ${
+                        row.request_status
+                        || "-"
+                    }`
 
-        approvedBy:
-            row.approved_by || "-",
+            };
 
-        issuedBy:
-            "-",
-
-        extra:
-            `Status: ${
-                row.request_status
-                || "-"
-            }`
-
-    })
-);
+        }
+    );
 
 }
-
-
 // ====================================================
 // APPROVAL HISTORY REPORT
 // ====================================================

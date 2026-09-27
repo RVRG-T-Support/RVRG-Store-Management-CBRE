@@ -1979,19 +1979,12 @@ const ticketsToDisplay = [
 ticketsToDisplay.forEach(
     ticket => {
 
-        const isPending =
-            ticket.items.some(
-                item =>
-                    item.request_status ===
-                    "PENDING"
-            );
-
-                const isPending =
-                    ticket.items.some(
-                        item =>
-                            item.request_status ===
-                            "PENDING"
-                    );
+const isPending =
+    ticket.items.some(
+        item =>
+            item.request_status ===
+            "PENDING"
+    );
 
 
 // =================================================

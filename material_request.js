@@ -1936,14 +1936,55 @@ async function loadRecentRequests(){
         table.innerHTML = "";
 
 
-        Object.values(
-            ticketGroups
+       const allTickets =
+    Object.values(ticketGroups);
+
+
+// -------------------------------------------------
+// Always show ALL pending tickets
+// Plus latest 20 non-pending tickets
+// -------------------------------------------------
+
+const pendingTickets =
+    allTickets.filter(
+        ticket =>
+            ticket.items.some(
+                item =>
+                    item.request_status ===
+                    "PENDING"
+            )
+    );
+
+
+const nonPendingTickets =
+    allTickets
+        .filter(
+            ticket =>
+                !ticket.items.some(
+                    item =>
+                        item.request_status ===
+                        "PENDING"
+                )
         )
+        .slice(0, 20);
 
-        .slice(0, 20)
 
-        .forEach(
-            ticket => {
+// Remove duplicates and preserve latest order
+const ticketsToDisplay = [
+    ...pendingTickets,
+    ...nonPendingTickets
+];
+
+
+ticketsToDisplay.forEach(
+    ticket => {
+
+        const isPending =
+            ticket.items.some(
+                item =>
+                    item.request_status ===
+                    "PENDING"
+            );
 
                 const isPending =
                     ticket.items.some(

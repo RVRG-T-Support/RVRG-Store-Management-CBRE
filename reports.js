@@ -101,13 +101,50 @@ if(pdfButton){
         );
 
 
-document
-    .getElementById("btnExportReport")
-    .addEventListener(
-        "click",
-        exportToExcel
-    );
+    // ====================================================
+    // OPTIONAL EXPORT BUTTONS
+    // ====================================================
 
+    const excelButton =
+        document.getElementById("btnExportReport");
+
+    const pdfButton =
+        document.getElementById("btnExportPdfReport");
+
+
+    // Show Excel export only when the button actually exists
+    if (
+        user.role === "ADMIN" &&
+        excelButton
+    ) {
+
+        excelButton
+            .classList
+            .remove("d-none");
+
+    }
+
+
+    // PDF button is optional
+    if (pdfButton) {
+
+        pdfButton.addEventListener(
+            "click",
+            exportToPDF
+        );
+
+    }
+
+
+    // Excel button is optional
+    if (excelButton) {
+
+        excelButton.addEventListener(
+            "click",
+            exportToExcel
+        );
+
+    }
 
 document
     .getElementById("btnReportHistory")
@@ -1058,42 +1095,43 @@ async function fetchReturnData(
 
     let query =
         supabase
+            .from("material_returns")
 
-            .from(
-                "material_returns"
-            )
+            .select(`
+                id,
+                issue_id,
+                material_id,
+                returned_qty,
+                return_condition,
+                received_by,
+                return_date,
+                remarks,
 
-.select(`
-    id,
-    issue_id,
-    material_id,
-    returned_qty,
-    return_condition,
-    received_by,
-    return_date,
-    remarks,
+                material_issue_register!material_returns_issue_id_fkey(
+                    ticket_no,
+                    location_name,
+                    location_type,
+                    technician_name,
+                    issued_qty,
 
-    material_issue_register!material_returns_issue_id_fkey(
-        ticket_no,
-        location_name,
-        location_type,
-        technician_name,
-        issued_qty,
+                    materials!material_issue_register_material_id_fkey(
+                        material_code,
+                        material_name,
+                        category,
+                        unit,
+                        brand,
+                        item_type,
+                        item_size,
+                        specification,
+                        department_id,
+                        unit_cost,
 
-        materials!material_issue_register_material_id_fkey(
-            material_code,
-            material_name,
-            category,
-            unit,
-            department_id,
-            unit_cost,
-
-            departments(
-                department_name
-            )
-        )
-    )
-`)
+                        departments(
+                            department_name
+                        )
+                    )
+                )
+            `)
 
             .gte(
                 "return_date",
@@ -1127,9 +1165,11 @@ async function fetchReturnData(
         data || [];
 
 
-    if (
-        departmentName !== "ALL"
-    ) {
+    // ==================================================
+    // DEPARTMENT FILTER
+    // ==================================================
+
+    if (departmentName !== "ALL") {
 
         filtered =
             filtered.filter(
@@ -1144,9 +1184,11 @@ async function fetchReturnData(
     }
 
 
-    if (
-        areaType !== "ALL"
-    ) {
+    // ==================================================
+    // AREA FILTER
+    // ==================================================
+
+    if (areaType !== "ALL") {
 
         filtered =
             filtered.filter(
@@ -1158,75 +1200,136 @@ async function fetchReturnData(
 
     }
 
+
+    // ==================================================
+    // LOAD COMPLAINT NUMBERS
+    // ==================================================
+
+    const complaintMap =
+        await loadComplaintNumberMap(
+
+            filtered.map(
+                row =>
+                    row.material_issue_register
+                        ?.ticket_no
+            )
+
+        );
+
+
+    // ==================================================
+    // BUILD REPORT
+    // ==================================================
+
     return filtered.map(
-    row => {
+        row => {
 
-        const issue =
-            row.material_issue_register
-            || {};
+            const issue =
+                row.material_issue_register
+                || {};
 
-        const material =
-            issue.materials
-            || {};
-const complaintMap =
-    await loadComplaintNumberMap([
-        issue.ticket_no
-    ]);
 
-        return {
+            const material =
+                issue.materials
+                || {};
 
-            date:
-                row.return_date,
 
-            reference:
+            const ticketNo =
                 issue.ticket_no
-                || "-",
+                || "-";
 
-            material:
-                material.material_name
-                || "-",
 
-            department:
-                material.departments
-                    ?.department_name
-                || "-",
+            return {
 
-            area:
-                issue.location_type
-                || "-",
+                date:
+                    row.return_date,
 
-            quantity:
-                Number(
-                    row.returned_qty || 0
-                ),
 
-            value:
-                0,
+                complaintNumber:
+                    complaintMap[
+                        String(ticketNo)
+                    ]
+                    || "-",
 
-            requestedBy:
-                "-",
 
-            approvedBy:
-                "-",
+                reference:
+                    ticketNo,
 
-            issuedBy:
-                row.received_by || "-",
 
-            extra:
-                `Condition: ${
-                    row.return_condition
-                    || "-"
-                } | Remarks: ${
-                    row.remarks
-                    || "-"
-                }`
+                materialCode:
+                    material.material_code
+                    || "-",
 
-        };
 
-    }
-);
+                material:
+                    material.material_name
+                    || "-",
+
+
+                category:
+                    material.category
+                    || "-",
+
+
+                department:
+                    material.departments
+                        ?.department_name
+                    || "-",
+
+
+                area:
+                    issue.location_type
+                    || "-",
+
+
+                unit:
+                    material.unit
+                    || "-",
+
+
+                quantity:
+                    Number(
+                        row.returned_qty || 0
+                    ),
+
+
+                value:
+                    Number(
+                        row.returned_qty || 0
+                    ) *
+                    Number(
+                        material.unit_cost || 0
+                    ),
+
+
+                requestedBy:
+                    "-",
+
+
+                approvedBy:
+                    "-",
+
+
+                issuedBy:
+                    row.received_by
+                    || "-",
+
+
+                extra:
+                    `Condition: ${
+                        row.return_condition
+                        || "-"
+                    } | Remarks: ${
+                        row.remarks
+                        || "-"
+                    }`
+
+            };
+
+        }
+    );
+
 }
-
 
 // ====================================================
 // STOCK PURCHASE REPORT

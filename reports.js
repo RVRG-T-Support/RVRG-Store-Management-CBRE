@@ -407,137 +407,136 @@ async function fetchRequestData(
     areaType
 ) {
 
-    // ==================================================
-    // 1. LOAD REQUESTS
-    // ==================================================
-
-    const requestQuery = supabase
-        .from("material_requests")
-        .select(`
-            id,
-            ticket_no,
-            anacity_complaint_no,
-            material_id,
-            location_name,
-            location_type,
-            requested_qty,
-            request_status,
-            created_at,
-            technician_name,
-            requested_by,
-            approved_by
-        `)
-        .gte("created_at", fromDate)
-        .lte("created_at", toDate)
-        .order("created_at", {
-            ascending: false
-        });
-
-    const requestResult =
-        await withReportTimeout(
-            requestQuery,
-            "Material Requests"
-        );
-
-    if (requestResult.error)
-        throw requestResult.error;
-
-    const requests =
-        requestResult.data || [];
+    console.log(
+        "REPORT DEBUG: fetchRequestData started",
+        {
+            fromDate,
+            toDate,
+            departmentName,
+            areaType
+        }
+    );
 
 
     // ==================================================
-    // 2. LOAD MATERIAL MASTER
+    // SIMPLE REQUEST QUERY
     // ==================================================
 
-    const materialResult =
-        await withReportTimeout(
-            supabase
-                .from("materials")
-                .select(`
-                    id,
+    let query =
+        supabase
+            .from("material_requests")
+            .select(`
+                id,
+                ticket_no,
+                anacity_complaint_no,
+                material_id,
+                location_name,
+                location_type,
+                requested_qty,
+                request_status,
+                created_at,
+                requested_by,
+                approved_by,
+
+                materials!material_requests_material_id_fkey(
                     material_code,
                     material_name,
                     category,
                     unit,
                     department_id
-                `),
-            "Material Master"
-        );
+                )
+            `)
+            .gte(
+                "created_at",
+                `${fromDate}T00:00:00`
+            )
+            .lte(
+                "created_at",
+                toDate
+            )
+            .order(
+                "created_at",
+                {
+                    ascending: false
+                }
+            );
 
-    if (materialResult.error)
-        throw materialResult.error;
 
-    const materialMap = {};
+    console.log(
+        "REPORT DEBUG: sending Supabase request"
+    );
 
-    (materialResult.data || []).forEach(
-        material => {
 
-            materialMap[
-                String(material.id)
-            ] = material;
+    const {
+        data,
+        error
+    } = await query;
 
+
+    console.log(
+        "REPORT DEBUG: Supabase response",
+        {
+            rows: data?.length || 0,
+            error: error?.message || null
         }
     );
 
 
-    // ==================================================
-    // 3. LOAD DEPARTMENT MASTER
-    // ==================================================
+    if (error)
+        throw error;
 
-    const departmentResult =
-        await withReportTimeout(
-            supabase
-                .from("departments")
-                .select(`
-                    id,
-                    department_name
-                `),
-            "Department Master"
-        );
 
-    if (departmentResult.error)
-        throw departmentResult.error;
-
-    const departmentMap = {};
-
-    (departmentResult.data || []).forEach(
-        department => {
-
-            departmentMap[
-                String(department.id)
-            ] =
-                department.department_name || "-";
-
-        }
-    );
+    const rows =
+        data || [];
 
 
     // ==================================================
-    // 4. APPLY FILTERS
+    // DEPARTMENT FILTER
     // ==================================================
 
     const filtered =
-        requests.filter(
+        rows.filter(
             row => {
 
-                const material =
-                    materialMap[
-                        String(row.material_id)
-                    ] || {};
-
                 const department =
-                    departmentMap[
-                        String(material.department_id)
-                    ] || "-";
+                    row.materials
+                        ?.department_id;
+
+
+                // When ALL departments are selected
+                if (
+                    departmentName === "ALL"
+                ) {
+
+                    return (
+                        areaType === "ALL"
+                        ||
+                        row.location_type ===
+                            areaType
+                    );
+
+                }
+
+
+                // Find department name
+                // directly from loaded material relation
+                const selectedDepartment =
+    row.materials
+        ?.departments
+        ?.department_name;
+
 
                 const departmentMatch =
-                    departmentName === "ALL" ||
-                    department === departmentName;
+                    selectedDepartment ===
+                    departmentName;
+
 
                 const areaMatch =
-                    areaType === "ALL" ||
-                    row.location_type === areaType;
+                    areaType === "ALL"
+                    ||
+                    row.location_type ===
+                        areaType;
+
 
                 return (
                     departmentMatch &&
@@ -549,72 +548,85 @@ async function fetchRequestData(
 
 
     // ==================================================
-    // 5. BUILD REPORT ROWS
+    // BUILD REPORT DATA
     // ==================================================
 
     return filtered.map(
         row => {
 
             const material =
-                materialMap[
-                    String(row.material_id)
-                ] || {};
+                row.materials || {};
 
-            const department =
-                departmentMap[
-                    String(material.department_id)
-                ] || "-";
 
             return {
 
                 date:
                     row.created_at,
 
+
                 reference:
-                    row.ticket_no || "-",
+                    row.ticket_no
+                    || "-",
+
 
                 complaintNumber:
-                    row.anacity_complaint_no || "N/A",
+                    row.anacity_complaint_no
+                    || "N/A",
+
 
                 materialCode:
-                    material.material_code || "-",
+                    material.material_code
+                    || "-",
+
 
                 material:
-                    material.material_name || "-",
+                    material.material_name
+                    || "-",
+
 
                 category:
-                    material.category || "-",
+                    material.category
+                    || "-",
+
 
                 department:
-                    department,
+    material.departments
+        ?.department_name
+    || "-",
+
 
                 area:
-                    row.location_type || "-",
+                    row.location_type
+                    || "-",
+
 
                 unit:
-                    material.unit || "-",
+                    material.unit
+                    || "-",
+
 
                 quantity:
                     Number(
                         row.requested_qty || 0
                     ),
 
+
                 value:
                     0,
 
+
                 requestedBy:
-                    row.requested_by || "-",
+                    row.requested_by
+                    || "-",
+
 
                 approvedBy:
-                    row.approved_by || "-",
+                    row.approved_by
+                    || "-",
+
 
                 issuedBy:
-                    "-",
-
-                extra:
-                    `Status: ${
-                        row.request_status || "-"
-                    }`
+                    "-"
 
             };
 
@@ -622,8 +634,6 @@ async function fetchRequestData(
     );
 
 }
-
-
 // ====================================================
 // REPORT QUERY TIMEOUT HELPER
 // ====================================================

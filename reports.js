@@ -1081,6 +1081,8 @@ async function fetchConsumptionData(
         }
     );
 
+}
+
 
 // ====================================================
 // MATERIAL RETURN REPORT

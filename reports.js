@@ -408,189 +408,116 @@ async function fetchRequestData(
 ) {
 
     // ==================================================
-    // 1. LOAD MATERIAL REQUESTS
-    // Keep this query simple and avoid deep nested joins
+    // 1. LOAD REQUESTS
     // ==================================================
 
-    const {
-        data,
-        error
-    } = await Promise.race([
+    const requestQuery = supabase
+        .from("material_requests")
+        .select(`
+            id,
+            ticket_no,
+            anacity_complaint_no,
+            material_id,
+            location_name,
+            location_type,
+            requested_qty,
+            request_status,
+            created_at,
+            technician_name,
+            requested_by,
+            approved_by
+        `)
+        .gte("created_at", fromDate)
+        .lte("created_at", toDate)
+        .order("created_at", {
+            ascending: false
+        });
 
-        supabase
-            .from("material_requests")
-            .select(`
-                id,
-                ticket_no,
-                anacity_complaint_no,
-                material_id,
-                location_name,
-                location_type,
-                requested_qty,
-                request_status,
-                created_at,
-                technician_name,
-                requested_by,
-                approved_by
-            `)
-            .gte(
-                "created_at",
-                fromDate
-            )
-            .lte(
-                "created_at",
-                toDate
-            )
-            .order(
-                "created_at",
-                {
-                    ascending: false
-                }
-            ),
+    const requestResult =
+        await withReportTimeout(
+            requestQuery,
+            "Material Requests"
+        );
 
-        new Promise((_, reject) =>
-            setTimeout(
-                () =>
-                    reject(
-                        new Error(
-                            "Material Request query timed out after 20 seconds."
-                        )
-                    ),
-                20000
-            )
-        )
+    if (requestResult.error)
+        throw requestResult.error;
 
-    ]);
-
-
-    if (error)
-        throw error;
-
-
-    let requests =
-        data || [];
+    const requests =
+        requestResult.data || [];
 
 
     // ==================================================
     // 2. LOAD MATERIAL MASTER
     // ==================================================
 
-    const materialIds = [
-        ...new Set(
-            requests
-                .map(
-                    row => row.material_id
-                )
-                .filter(Boolean)
-        )
-    ];
-
-
-    let materialMap = {};
-
-
-    if (materialIds.length > 0) {
-
-        const {
-            data: materials,
-            error: materialError
-        } = await supabase
-
-            .from("materials")
-
-            .select(`
-                id,
-                material_code,
-                material_name,
-                category,
-                unit,
-                department_id
-            `)
-
-            .in(
-                "id",
-                materialIds
-            );
-
-
-        if (materialError)
-            throw materialError;
-
-
-        (materials || []).forEach(
-            material => {
-
-                materialMap[
-                    String(material.id)
-                ] = material;
-
-            }
+    const materialResult =
+        await withReportTimeout(
+            supabase
+                .from("materials")
+                .select(`
+                    id,
+                    material_code,
+                    material_name,
+                    category,
+                    unit,
+                    department_id
+                `),
+            "Material Master"
         );
 
-    }
+    if (materialResult.error)
+        throw materialResult.error;
+
+    const materialMap = {};
+
+    (materialResult.data || []).forEach(
+        material => {
+
+            materialMap[
+                String(material.id)
+            ] = material;
+
+        }
+    );
 
 
     // ==================================================
     // 3. LOAD DEPARTMENT MASTER
     // ==================================================
 
-    const departmentIds = [
-        ...new Set(
-            Object.values(materialMap)
-                .map(
-                    material =>
-                        material.department_id
-                )
-                .filter(Boolean)
-        )
-    ];
-
-
-    let departmentMap = {};
-
-
-    if (departmentIds.length > 0) {
-
-        const {
-            data: departments,
-            error: departmentError
-        } = await supabase
-
-            .from("departments")
-
-            .select(`
-                id,
-                department_name
-            `)
-
-            .in(
-                "id",
-                departmentIds
-            );
-
-
-        if (departmentError)
-            throw departmentError;
-
-
-        (departments || []).forEach(
-            department => {
-
-                departmentMap[
-                    String(department.id)
-                ] = department.department_name || "-";
-
-            }
+    const departmentResult =
+        await withReportTimeout(
+            supabase
+                .from("departments")
+                .select(`
+                    id,
+                    department_name
+                `),
+            "Department Master"
         );
 
-    }
+    if (departmentResult.error)
+        throw departmentResult.error;
+
+    const departmentMap = {};
+
+    (departmentResult.data || []).forEach(
+        department => {
+
+            departmentMap[
+                String(department.id)
+            ] =
+                department.department_name || "-";
+
+        }
+    );
 
 
     // ==================================================
-    // 4. APPLY DEPARTMENT / AREA FILTERS
+    // 4. APPLY FILTERS
     // ==================================================
 
-    let filtered =
+    const filtered =
         requests.filter(
             row => {
 
@@ -604,18 +531,13 @@ async function fetchRequestData(
                         String(material.department_id)
                     ] || "-";
 
-
                 const departmentMatch =
-                    departmentName === "ALL"
-                    ||
+                    departmentName === "ALL" ||
                     department === departmentName;
 
-
                 const areaMatch =
-                    areaType === "ALL"
-                    ||
+                    areaType === "ALL" ||
                     row.location_type === areaType;
-
 
                 return (
                     departmentMatch &&
@@ -627,7 +549,7 @@ async function fetchRequestData(
 
 
     // ==================================================
-    // 5. BUILD STANDARD REPORT ROWS
+    // 5. BUILD REPORT ROWS
     // ==================================================
 
     return filtered.map(
@@ -638,92 +560,104 @@ async function fetchRequestData(
                     String(row.material_id)
                 ] || {};
 
-
             const department =
                 departmentMap[
                     String(material.department_id)
                 ] || "-";
-
 
             return {
 
                 date:
                     row.created_at,
 
-
                 reference:
-                    row.ticket_no
-                    || "-",
-
+                    row.ticket_no || "-",
 
                 complaintNumber:
-                    row.anacity_complaint_no
-                    || "N/A",
-
+                    row.anacity_complaint_no || "N/A",
 
                 materialCode:
-                    material.material_code
-                    || "-",
-
+                    material.material_code || "-",
 
                 material:
-                    material.material_name
-                    || "-",
-
+                    material.material_name || "-",
 
                 category:
-                    material.category
-                    || "-",
-
+                    material.category || "-",
 
                 department:
                     department,
 
-
                 area:
-                    row.location_type
-                    || "-",
-
+                    row.location_type || "-",
 
                 unit:
-                    material.unit
-                    || "-",
-
+                    material.unit || "-",
 
                 quantity:
                     Number(
                         row.requested_qty || 0
                     ),
 
-
                 value:
                     0,
 
-
                 requestedBy:
-                    row.requested_by
-                    || "-",
-
+                    row.requested_by || "-",
 
                 approvedBy:
-                    row.approved_by
-                    || "-",
-
+                    row.approved_by || "-",
 
                 issuedBy:
                     "-",
 
-
                 extra:
                     `Status: ${
-                        row.request_status
-                        || "-"
+                        row.request_status || "-"
                     }`
 
             };
 
         }
     );
+
+}
+
+
+// ====================================================
+// REPORT QUERY TIMEOUT HELPER
+// ====================================================
+
+function withReportTimeout(
+    query,
+    label,
+    timeoutMs = 20000
+) {
+
+    return Promise.race([
+
+        query,
+
+        new Promise(
+            (_, reject) => {
+
+                setTimeout(
+                    () => {
+
+                        reject(
+                            new Error(
+                                `${label} query timed out after ${timeoutMs / 1000} seconds.`
+                            )
+                        );
+
+                    },
+                    timeoutMs
+                );
+
+            }
+        )
+
+    ]);
 
 }
 // ====================================================

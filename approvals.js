@@ -921,10 +921,12 @@ async function loadApprovedHistory() {
                     )
                 )
             `)
-            .in(
-                'request_status',
-                ['APPROVED', 'PARTIALLY_APPROVED']
-            )
+
+.in(
+    'request_status',
+    ['APPROVED', 'PARTIALLY_APPROVED', 'ISSUED']
+)
+
             .order(
                 'approval_date',
                 { ascending: false }
@@ -991,21 +993,28 @@ async function loadApprovedHistory() {
                     req.approved_qty ?? requestedQty
                 );
 
-            const status =
-                req.request_status;
+           
+const status = req.request_status;
 
-            const statusBadge =
-                status === "PARTIALLY_APPROVED"
-                    ? `
-                        <span class="badge bg-warning text-dark">
-                            Partially Approved
-                        </span>
-                    `
-                    : `
-                        <span class="badge bg-success">
-                            Approved
-                        </span>
-                    `;
+const statusBadge =
+    status === "PARTIALLY_APPROVED"
+        ? `
+            <span class="badge bg-warning text-dark">
+                Partially Approved
+            </span>
+        `
+        : status === "ISSUED"
+            ? `
+                <span class="badge bg-primary">
+                    Issued
+                </span>
+            `
+            : `
+                <span class="badge bg-success">
+                    Approved
+                </span>
+            `;
+
 
 const approvalDate =
     req.approval_date

@@ -771,13 +771,14 @@ async function fetchApprovalData(
                 requested_by,
                 approved_by
             `)
-            .in(
-                "request_status",
-                [
-                    "APPROVED",
-                    "PARTIALLY_APPROVED"
-                ]
-            )
+.in(
+    "request_status",
+    [
+        "APPROVED",
+        "PARTIALLY_APPROVED",
+        "ISSUED"
+    ]
+)
             .gte(
                 "approval_date",
                 fromDate

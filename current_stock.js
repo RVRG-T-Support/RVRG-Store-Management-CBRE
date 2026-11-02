@@ -108,6 +108,8 @@ async function loadCurrentStock() {
 
             .select(`
                 id,
+                material_code,
+                unit_cost,
                 category,
                 brand,
                 item_type,
@@ -125,6 +127,15 @@ async function loadCurrentStock() {
         // ------------------------------------------------
 
         const materialMap = {};
+        const materialByCode = {};
+
+        const normalizeCode = code =>
+            String(code || "").trim().toUpperCase();
+
+        const positiveCost = value => {
+            const cost = Number(value);
+            return Number.isFinite(cost) && cost > 0 ? cost : 0;
+        };
 
 
         (materialRows || []).forEach(
@@ -133,6 +144,9 @@ async function loadCurrentStock() {
                 materialMap[
                     String(material.id)
                 ] = material;
+
+                const code = normalizeCode(material.material_code);
+                if (code) materialByCode[code] = material;
 
             }
         );
@@ -154,9 +168,20 @@ async function loadCurrentStock() {
                         ] || {};
 
 
+                    // Match the dashboard: prefer the stock cost, then the
+                    // Material Master cost by ID, then by material code.
+                    const unitCost =
+                        positiveCost(stock.unit_cost) ||
+                        positiveCost(details.unit_cost) ||
+                        positiveCost(
+                            materialByCode[normalizeCode(stock.material_code)]?.unit_cost
+                        );
+
                     return {
 
                         ...stock,
+
+                        unit_cost: unitCost,
 
                         category:
                             details.category || "",
@@ -879,6 +904,9 @@ function setupStockEvents() {
         exportCurrentStock
     );
 
+    document.getElementById("btnExportStockPdf")
+        .addEventListener("click", exportCurrentStockPdf);
+
 }
 
 
@@ -1154,4 +1182,77 @@ function escapeHtml(value) {
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
 
+}
+
+
+// Export the same filtered stock and resolved costs used by the table and Excel.
+function exportCurrentStockPdf() {
+    if (!filteredStockData.length) {
+        showAlert("There is no stock data to export.", "warning");
+        return;
+    }
+
+    if (typeof window.jspdf?.jsPDF !== "function") {
+        showAlert("PDF library is not loaded. Please refresh and try again.", "error");
+        return;
+    }
+
+    try {
+        const doc = new window.jspdf.jsPDF({
+            orientation: "landscape", unit: "mm", format: "a4"
+        });
+        if (typeof doc.autoTable !== "function") {
+            throw new Error("PDF table library is not loaded. Please refresh and try again.");
+        }
+
+        let totalQuantity = 0;
+        let totalValue = 0;
+        const rows = filteredStockData.map(item => {
+            const quantity = Number(item.current_stock || 0);
+            const cost = Number(item.unit_cost || 0);
+            const minimum = Number(item.minimum_stock || 0);
+            const value = quantity * cost;
+            totalQuantity += quantity;
+            totalValue += value;
+            return [
+                item.material_code || "", item.material_name || "",
+                item.department_name || "", item.unit || "",
+                formatNumber(cost), formatNumber(quantity), formatNumber(minimum),
+                formatNumber(value),
+                quantity <= 0 ? "OUT OF STOCK" : quantity <= minimum ? "LOW" : "OK"
+            ];
+        });
+
+        // Standard PDF fonts do not support the rupee glyph; label currency INR.
+        doc.setFontSize(16);
+        doc.text("RVRG Store Management - Current Stock", 14, 16);
+        doc.setFontSize(9);
+        doc.text(`Department: ${document.getElementById("stockDepartment").value || "All Departments"}`, 14, 23);
+        doc.text(`Search: ${document.getElementById("stockSearch").value.trim() || "All materials"} | Stock status: ${document.getElementById("stockStatus").selectedOptions[0]?.textContent.trim() || "All Stock"}`, 14, 29);
+        doc.autoTable({
+            startY: 35,
+            head: [["Material Code", "Material Name", "Department", "Unit",
+                "Unit Cost (INR)", "Current Stock", "Minimum Stock", "Stock Value (INR)", "Status"]],
+            body: rows,
+            foot: [["", "TOTAL", `${rows.length} Materials`, "", "",
+                formatNumber(totalQuantity), "", formatNumber(totalValue), ""]],
+            showFoot: "lastPage",
+            styles: { fontSize: 8, cellPadding: 2, overflow: "linebreak" },
+            headStyles: { fillColor: [0, 71, 65] },
+            columnStyles: {
+                4: { halign: "right" }, 5: { halign: "right" },
+                6: { halign: "right" }, 7: { halign: "right" }
+            },
+            margin: { top: 14, bottom: 16 },
+            didDrawPage: () => {
+                doc.setFontSize(8);
+                doc.text(`Page ${doc.internal.getNumberOfPages()}`, 14,
+                    doc.internal.pageSize.getHeight() - 8);
+            }
+        });
+        doc.save("RVRG_Current_Stock.pdf");
+    } catch (error) {
+        console.error("Stock PDF Export Error:", error);
+        showAlert("Failed to export current stock to PDF: " + error.message, "error");
+    }
 }

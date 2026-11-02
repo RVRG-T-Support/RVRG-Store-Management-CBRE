@@ -161,6 +161,15 @@
 
                         <button
                             type="button"
+                            id="btnExportStockPdf"
+                            class="btn btn-outline-danger btn-sm"
+                        >
+                            <i class="fa-solid fa-file-pdf me-1"></i>
+                            Export PDF
+                        </button>
+
+                        <button
+                            type="button"
                             id="btnRefreshStock"
                             class="btn btn-success btn-sm"
                         >
@@ -513,6 +522,8 @@
 
     <!-- Page Logic -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
     <script src="current_stock.js"></script>
 
 </body>

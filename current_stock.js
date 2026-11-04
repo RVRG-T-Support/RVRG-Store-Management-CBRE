@@ -204,6 +204,8 @@ async function loadCurrentStock() {
             );
 
 
+        await fillMissingStockCosts(stockData);
+
         filteredStockData =
             [...stockData];
 
@@ -252,6 +254,57 @@ async function loadCurrentStock() {
     }
 
 }
+
+// Stock Entry stores purchase prices separately from Material Master. Use the
+// newest recorded entry only when both existing cost sources have no price.
+async function fillMissingStockCosts(rows) {
+    const missingIds = [...new Set(rows
+        .filter(row => !(Number(row.unit_cost) > 0) && row.material_id != null)
+        .map(row => row.material_id))];
+    const costs = new Map();
+    const pageSize = 1000;
+
+    try {
+        // Bound URL size and paginate so older purchases are not silently lost.
+        for (let start = 0; start < missingIds.length; start += 100) {
+            const ids = missingIds.slice(start, start + 100);
+            for (let offset = 0; ; offset += pageSize) {
+                const { data, error } = await window.supabaseClient
+                    .from("stock_entry_details")
+                    .select("material_id, purchase_price, stock_entry_id")
+                    .in("material_id", ids)
+                    .gt("purchase_price", 0)
+                    .order("stock_entry_id", { ascending: false })
+                    .range(offset, offset + pageSize - 1);
+                if (error) throw error;
+
+                for (const entry of data || []) {
+                    const id = String(entry.material_id);
+                    const cost = Number(entry.purchase_price);
+                    if (!costs.has(id) && Number.isFinite(cost) && cost > 0) {
+                        costs.set(id, cost);
+                    }
+                }
+                if ((data || []).length < pageSize ||
+                    ids.every(id => costs.has(String(id)))) break;
+            }
+        }
+
+        rows.forEach(row => {
+            if (!(Number(row.unit_cost) > 0)) {
+                row.unit_cost = costs.get(String(row.material_id)) || 0;
+            }
+        });
+    } catch (error) {
+        console.error("Stock purchase cost lookup failed:", error);
+        showAlert(
+            "Some unit costs could not be loaded from Stock Entry. " +
+            "Inventory values may be incomplete. " + (error?.message || String(error)),
+            "warning"
+        );
+    }
+}
+
 
 //====================================================
 // POPULATE DEPARTMENT FILTER

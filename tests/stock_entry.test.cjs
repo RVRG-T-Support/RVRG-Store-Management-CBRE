@@ -1,0 +1,140 @@
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const path = require('node:path');
+const source = fs.readFileSync(path.join(__dirname, '..', 'stock_entry.js'), 'utf8');
+
+function setup(items, failure = '') {
+    const calls = [], alerts = [];
+    const elements = new Map();
+    const element = id => {
+        if (!elements.has(id)) elements.set(id, {
+            value: '', innerHTML: '', innerText: '', dataset: {}, reset() { this.resetCalled = true; }
+        });
+        return elements.get(id);
+    };
+    const values = {
+        vendorName: 'Sample Vendor', vendorNumber: '12345', invoiceNo: 'TEST-INVOICE',
+        invoiceDate: '2026-11-02', transportationCost: '0', roundOff: '0', billedAmount: '885'
+    };
+    for (const [id, value] of Object.entries(values)) element(id).value = value;
+    items.forEach((item, index) => {
+        for (const [field, value] of Object.entries(item)) element(`${field}-${index + 1}`).value = String(value);
+    });
+    const context = vm.createContext({
+        document: {
+            addEventListener() {}, getElementById: element,
+            querySelectorAll: () => items.map((_, i) => ({ id: `row-${i + 1}` }))
+        },
+        getCurrentUser: () => ({ id: 123 }),
+        window: { location: { replace() {} } },
+        console: { error() {} },
+        showAlert: (message, type) => alerts.push({ message, type }),
+        supabase: { from(table) { return {
+            insert(rows) {
+                calls.push({ table, action: 'insert', rows });
+                if (table === 'stock_entry_header') return { select: async () => ({ data: [{ id: 42 }], error: null }) };
+                if (table === 'stock_entry_details') return { select: async () => ({
+                    data: rows.map(row => ({ ...row,
+                        purchase_price: failure === 'missing-price' ? null : row.purchase_price,
+                        line_total: failure === 'missing-total' ? 0 : row.line_total
+                    })),
+                    error: failure === table ? { message: 'Insert denied' } : null
+                }) };
+                return Promise.resolve({ error: failure === table ? { message: 'Insert denied' } : null });
+            },
+            update(values) { return { eq(field, id) {
+                calls.push({ table, action: 'update', values, field, id });
+                if (table === 'stock_entry_header') return Promise.resolve({ error: null });
+                assert.equal(table, 'materials');
+                return { select: async () => ({
+                    data: failure === 'silent-material' ? [] : [{ id }],
+                    error: failure === 'materials' ? { message: 'Update denied' } : null
+                }) };
+            } }; }
+        }; } }
+    });
+    vm.runInContext(source, context);
+    vm.runInContext('confirmModalInstance = { hide() {} }; addRow = () => {};', context);
+    return { calls, alerts, element, run: () => vm.runInContext('saveStockEntry()', context) };
+}
+const item = { material: 1, qty: 6, price: 125.5, gst: 18 };
+
+test('save persists invoice price and GST total, then synchronizes master cost', async () => {
+    const app = setup([item]);
+    await app.run();
+    const details = app.calls.find(c => c.table === 'stock_entry_details');
+    assert.equal(details.rows[0].purchase_price, 125.5);
+    assert.equal(details.rows[0].quantity, 6);
+    assert.equal(details.rows[0].line_total, 888.54);
+    assert.equal(details.rows[0].stock_entry_id, 42);
+    const master = app.calls.find(c => c.table === 'materials');
+    assert.equal(master.values.unit_cost, 125.5);
+    assert.equal(master.id, 1);
+    assert.ok(app.calls.indexOf(master) > app.calls.findIndex(c => c.table === 'stock_ledger'));
+    assert.equal(app.element('stockEntryForm').resetCalled, true);
+    assert.equal(app.alerts.filter(a => a.type === 'warning').length, 0);
+});
+
+test('multiple material prices update their matching master records', async () => {
+    const app = setup([item, { material: 2, qty: 10, price: 100, gst: 0 }]);
+    await app.run();
+    const updates = app.calls.filter(c => c.table === 'materials');
+    assert.deepEqual(updates.map(c => [c.id, c.values.unit_cost]), [[1, 125.5], [2, 100]]);
+});
+
+test('invalid prices, quantities, duplicate materials and empty invoices write nothing', async () => {
+    for (const items of [
+        [], [{ ...item, price: '' }], [{ ...item, price: 'Infinity' }],
+        [{ ...item, qty: 'NaN' }], [{ ...item, price: '12abc' }],
+        [{ ...item, gst: 'Infinity' }], [{ ...item, gst: -1 }], [{ ...item, qty: 0 }], [{ ...item, price: -1 }],
+        [{ ...item, material: 'invalid' }], [item, item]
+    ]) {
+        const app = setup(items);
+        await app.run();
+        assert.equal(app.calls.length, 0);
+        assert.equal(app.alerts[0].type, 'error');
+        assert.equal(app.element('btnConfirmSave').disabled, false);
+    }
+});
+
+test('failed detail or ledger writes never update Material Master costs', async () => {
+    for (const table of ['stock_entry_details', 'stock_ledger']) {
+        const app = setup([item], table);
+        await app.run();
+        assert.equal(app.calls.some(c => c.table === 'materials'), false);
+        assert.equal(app.alerts[0].type, 'error');
+        assert.notEqual(app.element('stockEntryForm').resetCalled, true);
+    }
+});
+
+test('denied or unconfirmed cost updates warn that invoice is saved and must not be re-entered', async () => {
+    for (const failure of ['materials', 'silent-material']) {
+        const app = setup([item], failure);
+        await app.run();
+        const warning = app.alerts.find(a => a.type === 'warning');
+        assert.match(warning.message, /was saved.*could not be updated/);
+        assert.match(warning.message, /Do not re-enter this invoice/);
+        assert.equal(app.element('stockEntryForm').resetCalled, true);
+    }
+});
+
+
+test('missing stored price or total prevents success and stock movement', async () => {
+    for (const failure of ['missing-price', 'missing-total']) {
+        const app = setup([item], failure);
+        await app.run();
+        assert.equal(app.calls.some(c => c.table === 'stock_ledger'), false);
+        assert.equal(app.calls.some(c => c.table === 'materials'), false);
+        assert.equal(app.alerts.some(a => a.type === 'success'), false);
+        assert.match(app.alerts[0].message, /prices or totals could not be confirmed/);
+        assert.match(app.alerts[0].message, /partially saved.*Do not re-enter/);
+    }
+});
+
+test('a repeated click while saving cannot create a second invoice', async () => {
+    const app = setup([item]);
+    await Promise.all([app.run(), app.run()]);
+    assert.equal(app.calls.filter(c => c.table === 'stock_entry_header' && c.action === 'insert').length, 1);
+});

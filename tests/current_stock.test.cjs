@@ -6,7 +6,7 @@ const vm = require('node:vm');
 
 const source = readFileSync(join(__dirname, '..', 'current_stock.js'), 'utf8');
 
-function setup(stockRows, materialRows, materialError = null) {
+function setup(stockRows, materialRows, materialError = null, purchases = [], purchaseError = null) {
     const elements = new Map();
     const exports = [];
     const alerts = [];
@@ -34,6 +34,24 @@ function setup(stockRows, materialRows, materialError = null) {
                 if (table === 'current_stock') return {
                     order: async () => ({ data: stockRows, error: null })
                 };
+                if (table === 'stock_entry_details') {
+                    const query = {
+                        in(field, ids) { this.ids = ids.map(String); return this; },
+                        gt() { return this; },
+                        order(field, options) {
+                            assert.equal(field, 'stock_entry_id');
+                            assert.equal(options.ascending, false);
+                            return this;
+                        },
+                        async range(start, end) {
+                            return { data: purchases
+                                .filter(row => this.ids.includes(String(row.material_id)))
+                                .sort((a, b) => b.stock_entry_id - a.stock_entry_id)
+                                .slice(start, end + 1), error: purchaseError };
+                        }
+                    };
+                    return query;
+                }
                 assert.equal(table, 'materials');
                 return Promise.resolve({ data: materialRows, error: materialError });
             } };
@@ -159,4 +177,47 @@ test('PDF handles empty data, missing libraries and generation errors', async ()
     assert.match(app.alerts[0][0], /PDF library is not loaded/);
     app.run('window.jspdf = { jsPDF: function() {} }; exportCurrentStockPdf()');
     assert.match(app.alerts[1][0], /PDF table library is not loaded/);
+});
+
+
+test('uses newest recorded purchase only when stock and master costs are missing', async () => {
+    const app = setup([stock(1, 0), stock(2, 30), stock(3, 0), stock(4, 0)],
+        [{ id: 1, unit_cost: 0 }, { id: 3, unit_cost: 40 }], null, [
+            { material_id: 1, purchase_price: 100, stock_entry_id: 1 },
+            { material_id: 1, purchase_price: '125.50', stock_entry_id: 2 },
+            { material_id: 2, purchase_price: 999, stock_entry_id: 3 },
+            { material_id: 3, purchase_price: 999, stock_entry_id: 3 }
+        ]);
+    await app.run('loadCurrentStock()');
+    assert.deepEqual(JSON.parse(app.run('JSON.stringify(stockData.map(row => row.unit_cost))')),
+        [125.5, 30, 40, 0]);
+    assert.equal(app.element('totalInventoryValue').textContent, '₹1,173.00');
+    app.run('exportCurrentStock()');
+    assert.equal(app.exports[0][0]['Unit Cost'], 125.5);
+    assert.equal(app.exports[0][0]['Stock Value'], 753);
+    assert.equal(app.exports[0][4]['Stock Value'], 1173);
+});
+
+test('skips purchase lookup when all existing costs are available', async () => {
+    const app = setup([stock(1, 30)], []);
+    await app.run('loadCurrentStock()');
+    assert.equal(app.queries.some(q => q.table === 'stock_entry_details'), false);
+});
+
+test('purchase read failure keeps stock visible and warns about incomplete valuation', async () => {
+    const app = setup([stock(1, 0)], [], null, [], { message: 'Permission denied' });
+    await app.run('loadCurrentStock()');
+    assert.equal(app.element('stockRecordCount').textContent, '1 Records');
+    assert.match(app.alerts[0][0], /Inventory values may be incomplete.*Permission denied/);
+});
+
+test('paginates purchase history to find an older price for another material', async () => {
+    const history = Array.from({ length: 1000 }, (_, i) => ({
+        material_id: 1, purchase_price: 10, stock_entry_id: i + 2
+    }));
+    history.push({ material_id: 2, purchase_price: 20, stock_entry_id: 1 });
+    const app = setup([stock(1, 0), stock(2, 0)], [], null, history);
+    await app.run('loadCurrentStock()');
+    assert.equal(app.run('stockData[1].unit_cost'), 20);
+    assert.equal(app.element('totalInventoryValue').textContent, '₹180.00');
 });

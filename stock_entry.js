@@ -1988,6 +1988,7 @@ if (differenceInPaise !== 0) {
 // --- SAVE STOCK ENTRY ---
 async function saveStockEntry() {
     const btnConfirm = document.getElementById('btnConfirmSave');
+    if (btnConfirm.disabled) return;
     btnConfirm.disabled = true;
     btnConfirm.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
 
@@ -2024,7 +2025,112 @@ const invoiceDate =
     ) || 0;
     const totalAmount = parseFloat(document.getElementById('billedAmount').value) || 0;
 
+    let savedEntryId = null;
     try {
+        // Validate and prepare all items before creating the invoice.
+        const selectedMaterials = new Set();
+        const detailsArray = [];
+        const ledgerArray = [];
+        const rows = document.querySelectorAll('#stockEntryItems tr');
+        
+        if (!rows.length) throw new Error("Please add at least one material item.");
+
+        rows.forEach(row => {
+            const rowId = row.id.split('-')[1];
+            const materialId = document.getElementById(`material-${rowId}`).value;
+            if (!materialId) {
+    throw new Error("Please select a material.");
+}
+
+if (!Number.isSafeInteger(Number(materialId)) || Number(materialId) <= 0) {
+    throw new Error("Please select a valid material.");
+}
+
+if (selectedMaterials.has(materialId)) {
+    throw new Error("Duplicate materials are not allowed in one invoice.");
+}
+
+selectedMaterials.add(materialId);
+const qty =
+    Number(document.getElementById(`qty-${rowId}`).value);
+
+const price =
+    Number(document.getElementById(`price-${rowId}`).value);
+
+const gstPercentage =
+    Number(document.getElementById(`gst-${rowId}`).value);
+
+if (!Number.isFinite(gstPercentage) || gstPercentage < 0 || gstPercentage > 100) {
+    throw new Error("GST must be a number between 0 and 100.");
+}
+
+if (!Number.isFinite(qty) || qty <= 0) {
+    throw new Error("Quantity must be greater than zero.");
+}
+
+if (!Number.isFinite(price) || price <= 0) {
+    throw new Error("Unit Price must be greater than zero.");
+}
+
+const basicAmount =
+    qty * price;
+
+
+// --------------------------------------------
+// GST CALCULATION
+// --------------------------------------------
+
+const gstAmount =
+    basicAmount *
+    gstPercentage /
+    100;
+
+
+// --------------------------------------------
+// FINAL LINE TOTAL
+// BASIC + GST
+// --------------------------------------------
+
+const lineTotal =
+    basicAmount +
+    gstAmount;
+
+if (!Number.isFinite(lineTotal)) {
+    throw new Error("Item amount is too large. Please check quantity and price.");
+}
+
+detailsArray.push({
+    material_id: Number(materialId),
+    quantity: qty,
+    purchase_price: price,
+    gst_type: "EXCLUDED",
+    gst_percentage: gstPercentage,
+    line_total: Number(
+        lineTotal.toFixed(2)
+    )
+});
+
+    ledgerArray.push({
+    material_id: Number(materialId),
+
+    transaction_type: "STOCK_IN",
+
+    quantity: qty,
+
+    reference_no: invoiceNo,
+
+    request_id: null,
+
+    remarks: `Invoice ${invoiceNo}`,
+
+    created_by: user.id,
+
+    transaction_date: new Date().toISOString()
+});
+            
+        });
+
+
         // Generate Stock Entry Number
 
 const currentYear = new Date().getFullYear();
@@ -2060,7 +2166,9 @@ remarks: "",
             .select();
 
         if (headerError) throw headerError;
-        const entryId = headerData[0].id;
+        const entryId = headerData?.[0]?.id;
+        if (!entryId) throw new Error("Stock entry header was not confirmed.");
+        savedEntryId = entryId;
         const stockEntryNo =
     `STE-${currentYear}-${String(entryId).padStart(6, "0")}`;
 
@@ -2074,103 +2182,49 @@ const { error: updateNoError } = await supabase
 if (updateNoError)
     throw updateNoError;
 
-        // Step 2 & 3: Details and Ledger
-        const selectedMaterials = new Set();
-        const detailsArray = [];
-        const ledgerArray = [];
-        const rows = document.querySelectorAll('#stockEntryItems tr');
-        
-        rows.forEach(row => {
-            const rowId = row.id.split('-')[1];
-            const materialId = document.getElementById(`material-${rowId}`).value;
-            if (!materialId) {
-    throw new Error("Please select a material.");
-}
-
-if (selectedMaterials.has(materialId)) {
-    throw new Error("Duplicate materials are not allowed in one invoice.");
-}
-
-selectedMaterials.add(materialId);
-const qty =
-    parseFloat(document.getElementById(`qty-${rowId}`).value);
-
-const price =
-    parseFloat(document.getElementById(`price-${rowId}`).value);
-
-const gstPercentage =
-    parseFloat(document.getElementById(`gst-${rowId}`).value) || 0;
-
-if (qty <= 0) {
-    throw new Error("Quantity must be greater than zero.");
-}
-
-if (price <= 0) {
-    throw new Error("Unit Price must be greater than zero.");
-}
-
-const basicAmount =
-    qty * price;
-
-
-// --------------------------------------------
-// GST CALCULATION
-// --------------------------------------------
-
-const gstAmount =
-    basicAmount *
-    gstPercentage /
-    100;
-
-
-// --------------------------------------------
-// FINAL LINE TOTAL
-// BASIC + GST
-// --------------------------------------------
-
-const lineTotal =
-    basicAmount +
-    gstAmount;
-
-
-detailsArray.push({
-    stock_entry_id: entryId,
-    material_id: Number(materialId),
-    quantity: qty,
-    purchase_price: price,
-    gst_type: "EXCLUDED",
-    gst_percentage: gstPercentage,
-    line_total: Number(
-        lineTotal.toFixed(2)
-    )
-});
-
-    ledgerArray.push({
-    material_id: Number(materialId),
-
-    transaction_type: "STOCK_IN",
-
-    quantity: qty,
-
-    reference_no: invoiceNo,
-
-    request_id: null,
-
-    remarks: `Invoice ${invoiceNo}`,
-
-    created_by: user.id,
-
-    transaction_date: new Date().toISOString()
-});
-            
-        });
-
-        const { error: detailsError } = await supabase.from('stock_entry_details').insert(detailsArray);
+        const { data: savedDetails, error: detailsError } = await supabase
+            .from('stock_entry_details')
+            .insert(detailsArray.map(item => ({ ...item, stock_entry_id: entryId })))
+            .select("material_id, quantity, purchase_price, gst_percentage, line_total");
         if (detailsError) throw detailsError;
+
+        // Confirm the database returned the actual invoice amounts, rather than
+        // reporting success when a trigger or policy has removed/changed them.
+        if (!savedDetails || savedDetails.length !== detailsArray.length ||
+            !detailsArray.every(item => savedDetails.some(saved =>
+                String(saved.material_id) === String(item.material_id) &&
+                Number(saved.quantity) === item.quantity &&
+                Number(saved.purchase_price) === item.purchase_price &&
+                Number(saved.gst_percentage) === item.gst_percentage &&
+                Number(saved.line_total) === item.line_total))) {
+            throw new Error("Saved item prices or totals could not be confirmed. Check Stock Entry Details.");
+        }
 
         const { error: ledgerError } = await supabase.from('stock_ledger').insert(ledgerArray);
         if (ledgerError) throw ledgerError;
-    
+
+        // Keep the Material Master cost (and the current_stock view) in sync
+        // only after the invoice details and stock movement have been saved.
+        const costFailures = [];
+        for (const item of detailsArray) {
+            try {
+                const { data, error } = await supabase.from("materials")
+                    .update({ unit_cost: item.purchase_price })
+                    .eq("id", item.material_id)
+                    .select("id");
+                if (error) throw error;
+                if (!data?.some(material => String(material.id) === String(item.material_id))) {
+                    throw new Error("Material cost update was not confirmed.");
+                }
+                const material = materialsData.find(material =>
+                    String(material.id) === String(item.material_id));
+                if (material) material.unit_cost = item.purchase_price;
+            } catch (error) {
+                console.error("Material cost update failed:", error);
+                costFailures.push(item.material_id);
+            }
+        }
+
         confirmModalInstance.hide();
        showAlert(
 `Stock Entry Saved Successfully
@@ -2179,7 +2233,16 @@ RVRG Ref No : ${stockEntryNo}
 
 Vendor Invoice : ${invoiceNo}`,
 "success");
-        
+
+        if (costFailures.length) {
+            showAlert(
+                `Stock entry ${stockEntryNo} was saved, but Material Master costs ` +
+                `could not be updated for material IDs: ${costFailures.join(", ")}. ` +
+                "Do not re-enter this invoice. Check update permissions or correct these costs in Material Master.",
+                "warning"
+            );
+        }
+
         document.getElementById('stockEntryForm').reset();
         document.getElementById('invoiceDate').value =
         new Date().toISOString().split('T')[0];
@@ -2191,7 +2254,12 @@ Vendor Invoice : ${invoiceNo}`,
 
     } catch (error) {
         console.error("Save Error:", error.message);
-        showAlert(error.message, "error");
+        showAlert(
+            error.message + (savedEntryId
+                ? ` Stock entry ID ${savedEntryId} may be partially saved. Do not re-enter this invoice until its details and stock movement have been checked.`
+                : ""),
+            "error"
+        );
     } finally {
         btnConfirm.disabled = false;
         btnConfirm.innerHTML = 'Confirm & Save';

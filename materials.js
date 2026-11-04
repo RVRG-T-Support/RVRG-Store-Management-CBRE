@@ -1337,18 +1337,6 @@ async function generateMaterialCode(){
                 .value
                 .trim();
 
-        const shortName =
-            document.getElementById("materialShortName")
-                .value
-                .trim()
-                .toUpperCase();
-
-        const specification =
-            document.getElementById("specification")
-                .value
-                .trim()
-                .toUpperCase();
-
         if(dept.selectedIndex <= 0){
 
             showAlert(
@@ -1384,22 +1372,7 @@ async function generateMaterialCode(){
             return;
         }
 
-        let code = prefix;
-
-        if(shortName != ""){
-
-            code += "-" + cleanCode(shortName);
-
-        }
-
-        if(specification != ""){
-
-            code += "-" + cleanCode(specification);
-
-        }
-
-        code =
-            await getUniqueMaterialCode(code);
+        const code = await generateImportMaterialCode(prefix, dept.value);
 
         document
             .getElementById("materialCode")
@@ -2925,95 +2898,59 @@ function escapeHtml(value){
 // GENERATE SEQUENTIAL MATERIAL CODE
 //====================================================
 
-async function generateImportMaterialCode(prefix){
-
-    const cleanPrefix =
-        String(prefix || "")
-            .trim()
-            .toUpperCase();
-
-    if(!cleanPrefix){
-
-        throw new Error(
-            "Department Prefix Missing"
-        );
-
+// Read every page: Supabase's default row limit must not restart numbering.
+async function loadMaterialsForCodes(columns = "id, material_code, department_id") {
+    const rows = [];
+    const pageSize = 1000;
+    for (let offset = 0; ; offset += pageSize) {
+        const { data, error } = await supabase.from("materials")
+            .select(columns)
+            .order("id", { ascending: true })
+            .range(offset, offset + pageSize - 1);
+        if (error) throw error;
+        rows.push(...(data || []));
+        if ((data || []).length < pageSize) return rows;
     }
+}
 
-    const {data,error} =
-        await supabase
-            .from("materials")
-            .select("material_code")
-            .like(
-                "material_code",
-                cleanPrefix + "-%"
-            );
-
-    if(error){
-        throw error;
-    }
-
-    let maxNumber = 0;
-
-    (data || []).forEach(item => {
-
-        const code =
-            String(
-                item.material_code || ""
-            )
-            .trim()
-            .toUpperCase();
-
-        const escapedPrefix =
-            cleanPrefix.replace(
-                /[-\/\\^$*+?.()|[\]{}]/g,
-                "\\$&"
-            );
-
-        const match =
-            code.match(
-                new RegExp(
-                    "^" +
-                    escapedPrefix +
-                    "-(\\d{3})$"
-                )
-            );
-
-        if(match){
-
-            const number =
-                parseInt(
-                    match[1],
-                    10
-                );
-
-            if(number > maxNumber){
-                maxNumber = number;
+function nextMaterialSerial(materials, prefix, departmentId) {
+    const cleanPrefix = String(prefix || "").trim().toUpperCase();
+    if (!cleanPrefix) throw new Error("Department Prefix Missing");
+    let count = 0;
+    let highest = 0;
+    for (const material of materials || []) {
+        const code = String(material.material_code || "").trim().toUpperCase();
+        const hasPrefix = code === cleanPrefix || code.startsWith(cleanPrefix + "-");
+        const inDepartment = departmentId != null && String(departmentId) !== "" &&
+            String(material.department_id) === String(departmentId);
+        if (hasPrefix || inDepartment) count++;
+        if (code.startsWith(cleanPrefix + "-")) {
+            const suffix = code.slice(cleanPrefix.length + 1);
+            if (/^\d+$/.test(suffix)) {
+                const serial = Number(suffix);
+                if (!Number.isSafeInteger(serial)) {
+                    throw new Error("Invalid existing material serial for " + cleanPrefix);
+                }
+                highest = Math.max(highest, serial);
             }
-
         }
-
-    });
-
-    const nextNumber =
-        maxNumber + 1;
-
-    if(nextNumber > 999){
-
-        throw new Error(
-            "Material code limit reached for department " +
-            cleanPrefix
-        );
-
     }
+    return Math.max(count + 1, highest + 1);
+}
 
-    return (
-        cleanPrefix +
-        "-" +
-        String(nextNumber)
-            .padStart(3,"0")
-    );
+function formatSerialMaterialCode(prefix, serial) {
+    const cleanPrefix = String(prefix || "").trim().toUpperCase();
+    if (!cleanPrefix) throw new Error("Department Prefix Missing");
+    if (!Number.isSafeInteger(serial) || serial < 1 || serial > 999) {
+        throw new Error("Material code limit reached for department " + cleanPrefix);
+    }
+    return cleanPrefix + "-" + String(serial).padStart(3, "0");
+}
 
+async function generateImportMaterialCode(prefix, departmentId) {
+    const materials = await loadMaterialsForCodes();
+    return formatSerialMaterialCode(prefix,
+        nextMaterialSerial(materials, prefix, departmentId));
 }
 //====================================================
 // NORMALIZE VALUE FOR DUPLICATE CHECK
@@ -4519,12 +4456,7 @@ return {
         // LOAD EXISTING MATERIAL CODES ONCE
         // ====================================================
 
-       const {
-    data: existingMaterials,
-    error: materialError
-} = await supabase
-    .from("materials")
-   .select(`
+        const existingMaterials = await loadMaterialsForCodes(`
     id,
     material_code,
     material_name,
@@ -4543,69 +4475,8 @@ return {
     gst_type,
     gst_percentage,
     description
-`)
-        if(materialError){
+`);
 
-            throw materialError;
-
-        }
-
-
-        // ====================================================
-        // FIND CURRENT MAX NUMBER FOR EACH PREFIX
-        // ====================================================
-
-        const nextNumbers = {};
-
-
-        (existingMaterials || [])
-            .forEach(
-                item => {
-
-                    const code =
-                        String(
-                            item.material_code ||
-                            ""
-                        )
-                        .trim()
-                        .toUpperCase();
-
-
-                    const match =
-                        code.match(
-                            /^([A-Z0-9]+)-(\d{3})$/
-                        );
-
-
-                    if(!match){
-
-                        return;
-
-                    }
-
-
-                    const prefix =
-                        match[1];
-
-
-                    const number =
-                        parseInt(
-                            match[2],
-                            10
-                        );
-
-
-                    if(
-                        !nextNumbers[prefix] ||
-                        number >=
-                        nextNumbers[prefix]
-                    ){
-
-                        nextNumbers[prefix] =
-                            number + 1;
-                    }
-                }
-            );
 // ====================================================
 // IMPORT EACH ROW
 // ====================================================
@@ -5303,36 +5174,8 @@ else{
         }
 
 
-        if(!nextNumbers[prefix]){
-
-            nextNumbers[prefix] = 1;
-
-        }
-
-
-        const nextNumber =
-            nextNumbers[prefix];
-
-
-        if(nextNumber > 999){
-
-            throw new Error(
-                "Material code limit reached for department " +
-                prefix
-            );
-
-        }
-
-
-        materialCode =
-            prefix +
-            "-" +
-            String(nextNumber)
-                .padStart(3, "0");
-
-
-        nextNumbers[prefix] =
-            nextNumber + 1;
+        materialCode = formatSerialMaterialCode(prefix,
+            nextMaterialSerial(existingMaterials, prefix, department.id));
 
     }
 
@@ -5634,15 +5477,6 @@ else{
 
 
 // --------------------------------------------
-// SAVE / UPDATE OPENING STOCK
-// --------------------------------------------
-
-await saveOpeningStock(
-    insertedMaterial.id,
-    insertedMaterial.material_code,
-    row.Opening_Stock
-);
-// --------------------------------------------
 // ADD NEWLY INSERTED MATERIAL TO LOCAL LIST
 // --------------------------------------------
     if(insertedMaterial){
@@ -5652,6 +5486,16 @@ await saveOpeningStock(
         );
 
     }
+
+// --------------------------------------------
+// SAVE / UPDATE OPENING STOCK
+// --------------------------------------------
+
+await saveOpeningStock(
+    insertedMaterial.id,
+    insertedMaterial.material_code,
+    row.Opening_Stock
+);
 
 }
 

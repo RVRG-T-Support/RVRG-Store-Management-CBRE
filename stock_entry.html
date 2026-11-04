@@ -52,6 +52,11 @@
                             <h5 class="card-title text-primary mb-0"><i class="fa-solid fa-file-invoice me-2"></i>1. Invoice Details</h5>
                         </div>
                         <div class="card-body bg-light rounded-bottom">
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="isCashBill" aria-describedby="cashBillHelp">
+                            <label class="form-check-label fw-semibold" for="isCashBill">Cash bill — no vendor invoice number</label>
+                            <div id="cashBillHelp" class="form-text">For cash bills, the system generates a bill reference when you save.</div>
+                        </div>
                         <div class="row g-3">
 
     <div class="col-md-3">
@@ -82,7 +87,7 @@
 
 
     <div class="col-md-3">
-        <label class="form-label fw-semibold">
+        <label class="form-label fw-semibold" for="invoiceNo" id="invoiceNoLabel">
             Invoice Number *
         </label>
 

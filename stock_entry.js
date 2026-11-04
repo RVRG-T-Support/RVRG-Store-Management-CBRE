@@ -28,6 +28,8 @@ addRow();
     document.getElementById('btnAddRow').addEventListener('click', () => addRow());
     document.getElementById('transportationCost').addEventListener('input', calculateGrandTotal);
     document.getElementById('roundOff').addEventListener('input',calculateGrandTotal);
+    document.getElementById('isCashBill').addEventListener('change', updateInvoiceRequirement);
+    updateInvoiceRequirement();
     document.getElementById('stockEntryForm').addEventListener('submit', openConfirmationModal);
     document.getElementById('btnConfirmSave').addEventListener('click', saveStockEntry);
     
@@ -1946,11 +1948,27 @@ function processExcelUpload() {
 
 }
 
+// --- CASH BILL / VENDOR INVOICE ---
+function updateInvoiceRequirement() {
+    const cashBill = document.getElementById('isCashBill').checked;
+    const invoice = document.getElementById('invoiceNo');
+    invoice.required = !cashBill;
+    invoice.disabled = cashBill;
+    invoice.placeholder = cashBill ? 'Generated when saved' : 'e.g. INV-2026-001';
+    document.getElementById('invoiceNoLabel').textContent =
+        cashBill ? 'Bill Reference (automatic)' : 'Invoice Number *';
+}
+
 // --- MODAL & VERIFICATION ---
 function openConfirmationModal(e) {
     e.preventDefault(); 
     
+    const cashBill = document.getElementById('isCashBill').checked;
     const invoiceNo = document.getElementById('invoiceNo').value.trim();
+    if (!cashBill && !invoiceNo) {
+        showAlert('Please enter the vendor invoice number or select Cash bill.', 'warning');
+        return;
+    }
     const billedAmount = parseFloat(document.getElementById('billedAmount').value) || 0;
     if (billedAmount <= 0) {
     showAlert("Please enter the billed invoice amount.", "warning");
@@ -1964,7 +1982,8 @@ function openConfirmationModal(e) {
         return;
     }
 
-    document.getElementById('modalInvoiceNo').innerText = invoiceNo;
+    document.getElementById('modalInvoiceNo').innerText = cashBill
+        ? 'Cash bill — reference generated when saved' : invoiceNo;
     document.getElementById('modalItemCount').innerText = itemCount;
     document.getElementById('modalBilledAmount').innerText = formatCurrency(billedAmount);
     document.getElementById('modalCalculatedTotal').innerText = formatCurrency(calculatedTotal);
@@ -2006,7 +2025,8 @@ const vendorNumber =
         .value
         .trim();
 
-const invoiceNo =
+const cashBill = document.getElementById('isCashBill').checked;
+let invoiceNo =
     document
         .getElementById("invoiceNo")
         .value
@@ -2027,6 +2047,13 @@ const invoiceDate =
 
     let savedEntryId = null;
     try {
+        if (!cashBill && !invoiceNo) {
+            throw new Error("Please enter the vendor invoice number or select Cash bill.");
+        }
+        // A unique temporary reference satisfies existing invoice constraints
+        // until the header ID is available for the final system bill reference.
+        if (cashBill) invoiceNo = `CASH-PENDING-${crypto.randomUUID()}`;
+
         // Validate and prepare all items before creating the invoice.
         const selectedMaterials = new Set();
         const detailsArray = [];
@@ -2158,7 +2185,7 @@ transport_cost:
 round_off:
     roundOff,
 
-remarks: "",
+remarks: cashBill ? "Cash bill - no vendor invoice number" : "",
 
     created_by: user.id
 
@@ -2172,10 +2199,19 @@ remarks: "",
         const stockEntryNo =
     `STE-${currentYear}-${String(entryId).padStart(6, "0")}`;
 
+if (cashBill) {
+    invoiceNo = `CASH-${stockEntryNo}`;
+    ledgerArray.forEach(item => {
+        item.reference_no = invoiceNo;
+        item.remarks = `Cash bill ${invoiceNo}`;
+    });
+}
+
 const { error: updateNoError } = await supabase
     .from("stock_entry_header")
     .update({
-        stock_entry_no: stockEntryNo
+        stock_entry_no: stockEntryNo,
+        ...(cashBill ? { invoice_no: invoiceNo } : {})
     })
     .eq("id", entryId);
 
@@ -2231,7 +2267,7 @@ if (updateNoError)
 
 RVRG Ref No : ${stockEntryNo}
 
-Vendor Invoice : ${invoiceNo}`,
+${cashBill ? "Cash Bill Reference" : "Vendor Invoice"} : ${invoiceNo}`,
 "success");
 
         if (costFailures.length) {
@@ -2244,6 +2280,7 @@ Vendor Invoice : ${invoiceNo}`,
         }
 
         document.getElementById('stockEntryForm').reset();
+        updateInvoiceRequirement();
         document.getElementById('invoiceDate').value =
         new Date().toISOString().split('T')[0];
         document.getElementById('stockEntryItems').innerHTML = '';

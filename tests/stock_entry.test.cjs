@@ -27,6 +27,7 @@ function setup(items, failure = '') {
             addEventListener() {}, getElementById: element,
             querySelectorAll: () => items.map((_, i) => ({ id: `row-${i + 1}` }))
         },
+        crypto: require('node:crypto').webcrypto,
         getCurrentUser: () => ({ id: 123 }),
         window: { location: { replace() {} } },
         console: { error() {} },
@@ -57,7 +58,8 @@ function setup(items, failure = '') {
     });
     vm.runInContext(source, context);
     vm.runInContext('confirmModalInstance = { hide() {} }; addRow = () => {};', context);
-    return { calls, alerts, element, run: () => vm.runInContext('saveStockEntry()', context) };
+    return { calls, alerts, element, evaluate: code => vm.runInContext(code, context),
+        run: () => vm.runInContext('saveStockEntry()', context) };
 }
 const item = { material: 1, qty: 6, price: 125.5, gst: 18 };
 
@@ -137,4 +139,48 @@ test('a repeated click while saving cannot create a second invoice', async () =>
     const app = setup([item]);
     await Promise.all([app.run(), app.run()]);
     assert.equal(app.calls.filter(c => c.table === 'stock_entry_header' && c.action === 'insert').length, 1);
+});
+
+
+test('cash bill without invoice number saves a generated reference and amounts', async () => {
+    const app = setup([{ material: 1, qty: 2, price: 45, gst: 0 }]);
+    app.element('isCashBill').checked = true;
+    app.element('invoiceNo').value = '';
+    await app.run();
+    const header = app.calls.find(c => c.table === 'stock_entry_header' && c.action === 'insert');
+    assert.match(header.rows[0].invoice_no, /^CASH-PENDING-/);
+    const update = app.calls.find(c => c.table === 'stock_entry_header' && c.action === 'update');
+    assert.equal(update.values.invoice_no, `CASH-${update.values.stock_entry_no}`);
+    const ledger = app.calls.find(c => c.table === 'stock_ledger');
+    assert.equal(ledger.rows[0].reference_no, update.values.invoice_no);
+    const details = app.calls.find(c => c.table === 'stock_entry_details');
+    assert.equal(details.rows[0].purchase_price, 45);
+    assert.equal(details.rows[0].line_total, 90);
+    assert.equal(app.calls.find(c => c.table === 'materials').values.unit_cost, 45);
+    assert.match(app.alerts.find(a => a.type === 'success').message, /Cash Bill Reference : CASH-STE-/);
+});
+
+test('regular invoice still requires and preserves vendor invoice number', async () => {
+    const missing = setup([item]);
+    missing.element('invoiceNo').value = '   ';
+    await missing.run();
+    assert.equal(missing.calls.length, 0);
+    assert.match(missing.alerts[0].message, /vendor invoice number/);
+    const app = setup([item]);
+    await app.run();
+    assert.equal(app.calls.find(c => c.table === 'stock_entry_header').rows[0].invoice_no, 'TEST-INVOICE');
+    assert.equal(app.calls.find(c => c.table === 'stock_ledger').rows[0].reference_no, 'TEST-INVOICE');
+});
+
+test('cash toggle removes invoice requirement and restores it without losing typed text', () => {
+    const app = setup([item]);
+    app.element('isCashBill').checked = true;
+    app.evaluate('updateInvoiceRequirement()');
+    assert.equal(app.element('invoiceNo').required, false);
+    assert.equal(app.element('invoiceNo').disabled, true);
+    app.element('isCashBill').checked = false;
+    app.evaluate('updateInvoiceRequirement()');
+    assert.equal(app.element('invoiceNo').required, true);
+    assert.equal(app.element('invoiceNo').disabled, false);
+    assert.equal(app.element('invoiceNo').value, 'TEST-INVOICE');
 });

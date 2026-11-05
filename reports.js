@@ -575,6 +575,32 @@ async function generateReport(e) {
 }
 
 
+// Resolve the users recorded on each request, rather than the report viewer.
+// Fetch only display fields; passwords and contact details are not needed.
+async function loadReportUserNames(rows) {
+    const ids = uniqueIds(rows.flatMap(row => [row.requested_by, row.approved_by]));
+    const names = new Map();
+    for (let start = 0; start < ids.length; start += 100) {
+        const { data, error } = await withReportTimeout(
+            supabase.from("users_master")
+                .select("id, full_name, username")
+                .in("id", ids.slice(start, start + 100)),
+            "Report user names"
+        );
+        if (error) throw error;
+        for (const user of data || []) {
+            names.set(String(user.id), String(user.full_name || "").trim() ||
+                String(user.username || "").trim());
+        }
+    }
+    return id => {
+        if (id == null || String(id).trim() === "") return "-";
+        const key = String(id).trim();
+        return names.get(key) || `Unknown user (ID: ${key})`;
+    };
+}
+
+
 // ============================================================
 // MATERIAL REQUEST REPORT
 // ============================================================
@@ -627,6 +653,7 @@ async function fetchRequestData(
     }
 
     const rows = data || [];
+    const userName = await loadReportUserNames(rows);
 
     console.log(
         "REPORT: Material requests loaded:",
@@ -723,12 +750,10 @@ async function fetchRequestData(
                     0,
 
                 requestedBy:
-                    row.requested_by ||
-                    "-",
+                    userName(row.requested_by),
 
                 approvedBy:
-                    row.approved_by ||
-                    "-",
+                    userName(row.approved_by),
 
                 issuedBy:
                     "-"
@@ -802,6 +827,7 @@ async function fetchApprovalData(
     }
 
     const rows = data || [];
+    const userName = await loadReportUserNames(rows);
 
     const {
         materialsMap,
@@ -897,12 +923,10 @@ async function fetchApprovalData(
                     0,
 
                 requestedBy:
-                    row.requested_by ||
-                    "-",
+                    userName(row.requested_by),
 
                 approvedBy:
-                    row.approved_by ||
-                    "-",
+                    userName(row.approved_by),
 
                 issuedBy:
                     "-",
@@ -1742,7 +1766,7 @@ function getProcessedBy(
 ) {
 
     if (recordType === "REQUESTS") {
-        return row.requestedBy || "-";
+        return escapeHtml(row.requestedBy || "-");
     }
 
     if (recordType === "APPROVALS") {
@@ -1773,13 +1797,13 @@ function getProcessedBy(
     }
 
     if (recordType === "PURCHASE") {
-        return row.requestedBy || "-";
+        return escapeHtml(row.requestedBy || "-");
     }
 
     if (recordType === "ALL") {
 
         if (row.transactionType === "REQUEST") {
-            return row.requestedBy || "-";
+            return escapeHtml(row.requestedBy || "-");
         }
 
         if (row.transactionType === "APPROVAL") {
@@ -1808,7 +1832,7 @@ function getProcessedBy(
         }
 
         if (row.transactionType === "PURCHASE") {
-            return row.requestedBy || "-";
+            return escapeHtml(row.requestedBy || "-");
         }
     }
 

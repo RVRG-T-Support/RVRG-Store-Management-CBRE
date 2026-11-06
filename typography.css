@@ -1,0 +1,56 @@
+/* Shared compact typography, loaded after each page's existing styles.
+   Layout dimensions, colours, icons and application behaviour stay unchanged. */
+:root {
+    font-size: 14px;
+    --bs-body-font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --bs-body-font-size: 13px;
+    --bs-body-line-height: 1.45;
+}
+
+body {
+    font-family: var(--bs-body-font-family);
+    font-size: 13px;
+    line-height: 1.45;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
+h1, .h1 { font-size: 26px; }
+h2, .h2 { font-size: 23px; }
+h3, .h3 { font-size: 21px; }
+h4, .h4, .stock-page-title { font-size: 19px; }
+h5, .h5, .section-title { font-size: 16px; }
+h6, .h6 { font-size: 14px; }
+h1, h2, h3, h4, h5, h6, .section-title {
+    line-height: 1.3;
+    font-weight: 600;
+}
+
+.form-label, .input-group-text { font-size: 12.5px; }
+.form-control, .form-select, .btn {
+    font-size: 13px;
+    line-height: 1.45;
+}
+.form-control-sm, .form-select-sm, .btn-sm { font-size: 12px; }
+small, .small, .form-text { font-size: 11.5px; }
+.table, .table th, .table td { font-size: 12.5px; }
+.table small, .table .small { font-size: 11.5px; }
+.table th { font-weight: 600; }
+.card-header { font-size: 13px; }
+.badge { font-size: 10px; font-weight: 600; }
+
+/* Existing page styles use fixed pixel sizes for these shared elements. */
+.title-main { font-size: 18px; }
+.title-sub, .sidebar-subtitle { font-size: 10px; }
+.sidebar-heading { font-size: 15px; }
+.sidebar .nav-link { font-size: 13px; }
+.header-center, .header-right { font-size: 12px; }
+.stock-summary-label { font-size: 12px; }
+.stock-summary-value { font-size: 22px; }
+
+/* Keep touch input readable and prevent iOS focus zoom. */
+@media (max-width: 767.98px) {
+    body { font-size: 14px; }
+    .form-control, .form-select { font-size: 16px !important; }
+    .btn:not(.btn-sm) { min-height: 40px; }
+}

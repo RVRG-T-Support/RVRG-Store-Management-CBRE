@@ -185,6 +185,7 @@ async function loadMaterials(departmentId) {
                 id,
                 material_code,
                 material_name,
+                category,
                 brand,
                 item_type,
                 item_size,
@@ -214,8 +215,9 @@ async function loadMaterials(departmentId) {
             throw error;
 
 
-        window.currentMaterials =
-            data || [];
+        const materials = data || [];
+        await refreshRequestMaterialStock(materials);
+        window.currentMaterials = materials;
 
 
         // Start with one request item
@@ -231,12 +233,45 @@ async function loadMaterials(departmentId) {
         );
 
         window.currentMaterials = [];
-
+        showAlert("Unable to load materials and available stock. Please try again.", "danger");
         renderRequestItems();
 
     }
 
 }
+// Read stock separately; no schema changes or production writes are needed.
+async function refreshRequestMaterialStock(materials) {
+    const ids = [...new Set(materials.map(material => material.id))];
+    const stock = new Map();
+    for (let start = 0; start < ids.length; start += 100) {
+        for (let offset = 0; ; offset += 1000) {
+            const { data, error } = await supabase.from("current_stock")
+                .select("material_id, current_stock")
+                .in("material_id", ids.slice(start, start + 100))
+                .order("material_id", { ascending: true })
+                .range(offset, offset + 999);
+            if (error) throw error;
+            for (const row of data || []) stock.set(String(row.material_id), Number(row.current_stock));
+            if ((data || []).length < 1000) break;
+        }
+    }
+    materials.forEach(material => {
+        material.current_stock = stock.get(String(material.id)) ?? 0;
+    });
+}
+
+function requestMaterialAvailable(material) {
+    return !!material && Number.isFinite(Number(material.current_stock)) &&
+        Number(material.current_stock) > 0;
+}
+
+function requestMaterialStockText(material) {
+    const quantity = Number(material.current_stock);
+    if (!Number.isFinite(quantity)) return "Stock unavailable";
+    return `Stock: ${quantity.toLocaleString("en-IN", { maximumFractionDigits: 3 })} ${material.unit || ""}`.trim() +
+        (quantity <= 0 ? " — OUT OF STOCK" : "");
+}
+
 // ====================================================
 // HTML ESCAPE HELPER
 // ====================================================
@@ -423,9 +458,9 @@ function renderRequestItems(){
                         data-item-id="${item.id}"
                         value="${
                             selectedMaterial
-                                ? buildMaterialSearchText(
+                                ? escapeHtml(buildMaterialSearchText(
                                     selectedMaterial
-                                )
+                                ))
                                 : ""
                         }"
                         placeholder="Search code / material / brand / type / size / specification..."
@@ -464,7 +499,7 @@ function renderRequestItems(){
 
                                 <div>
 
-                                    <div class="fw-bold text-primary">
+                                    <div class="fw-bold ${requestMaterialAvailable(selectedMaterial) ? "text-primary" : "text-danger"}">
 
                                         ${escapeHtml(
                                             buildMaterialSearchText(
@@ -610,6 +645,7 @@ function buildMaterialSearchText(
 
         material.material_code,
         material.material_name,
+        material.category,
         material.brand,
         material.item_type,
         material.item_size,
@@ -686,6 +722,7 @@ function handleRequestItemSearch(
 
                     material.material_code,
                     material.material_name,
+                    material.category,
                     material.brand,
                     material.item_type,
                     material.item_size,
@@ -800,58 +837,24 @@ function renderMaterialSearchResults(
                 : "list-group-item list-group-item-action";
 
 
-            button.disabled =
-                alreadyUsed;
+            const available = requestMaterialAvailable(material);
+            button.disabled = alreadyUsed || !available;
+            button.setAttribute("aria-disabled", String(button.disabled));
+            button.classList.add(available ? "text-primary" : "text-danger");
+            button.style.fontSize = "0.75rem";
+            button.style.lineHeight = "1.25";
+            button.style.overflowWrap = "anywhere";
 
 
             button.innerHTML = `
-
-                <div class="fw-bold text-primary">
-
-                    ${escapeHtml(
-                        material.material_code || "-"
-                    )}
-
-                </div>
-
-                <div class="fw-semibold">
-
-                    ${escapeHtml(
-                        material.material_name || "-"
-                    )}
-
-                </div>
-
-                <div class="small text-muted">
-
-                    ${
-                        escapeHtml(
-                            buildMaterialSearchText(
-                                material
-                            )
-                        )
-                    }
-
-                </div>
-
-                ${
-                    alreadyUsed
-
-                    ? `
-                        <div class="small text-danger mt-1">
-
-                            Already added to this request.
-
-                        </div>
-                      `
-
-                    : ""
-                }
-
+                <div class="fw-bold">${escapeHtml(material.material_code || "-")} — ${escapeHtml(material.material_name || "-")}</div>
+                <div>Category: ${escapeHtml(material.category || "-")} | Brand: ${escapeHtml(material.brand || "-")} | Type: ${escapeHtml(material.item_type || "-")} | Size: ${escapeHtml(material.item_size || "-")}</div>
+                <div>Spec: ${escapeHtml(material.specification || "-")} | Unit: ${escapeHtml(material.unit || "-")}</div>
+                <div class="fw-bold">${escapeHtml(requestMaterialStockText(material))} | Cost: ₹${escapeHtml(Number(material.unit_cost || 0).toFixed(2))} | GST: ${escapeHtml(material.gst_type || "-")}</div>
+                ${alreadyUsed ? '<div>Already added to this request.</div>' : ""}
             `;
 
-
-            if(!alreadyUsed){
+            if(!alreadyUsed && available){
 
                 button.addEventListener(
                     "click",
@@ -901,6 +904,13 @@ function selectRequestMaterial(
     if(!item)
         return;
 
+
+    const material = (window.currentMaterials || []).find(row =>
+        String(row.id) === String(materialId));
+    if (!requestMaterialAvailable(material)) {
+        showAlert("This material is out of stock or stock is unavailable. Select an in-stock item.", "warning");
+        return;
+    }
 
     // Prevent duplicate material
 
@@ -1074,6 +1084,8 @@ function buildMaterialDetails(
             material.material_name
         ],
 
+        ["Category", material.category],
+        ["Available Stock", requestMaterialStockText(material)],
         [
             "Brand",
             material.brand
@@ -1370,103 +1382,39 @@ async function submitMaterialRequest(e){
         );
 
 
-    if(!validItems.length){
-        // ------------------------------------------------
-// VALIDATE QUANTITY BY UNIT
-// ------------------------------------------------
-
-for(
-    const item of validItems
-){
-
-    const material =
-        (window.currentMaterials || [])
-            .find(
-                m =>
-                    String(m.id) ===
-                    String(item.materialId)
-            );
-
-
-    if(!material)
-        continue;
-
-
-    const quantity =
-        Number(item.quantity);
-
-
-    const settings =
-        getQuantitySettings(
-            material.unit
-        );
-
-
-    const minimum =
-        Number(
-            settings.min
-        );
-
-
-    const step =
-        Number(
-            settings.step
-        );
-
-
-    if(
-        !Number.isFinite(quantity) ||
-        quantity < minimum
-    ){
-
-        showAlert(
-
-            `${material.material_name} requires a quantity of at least ${settings.min} ${material.unit}.`,
-
-            "warning"
-
-        );
-
+    if (!validItems.length) {
+        showAlert("Please add at least one material and quantity.", "warning");
         return;
-
     }
 
-
-    // Whole-number units
-
-    if(step === 1){
-
-        if(
-            !Number.isInteger(
-                quantity
-            )
-        ){
-
-            showAlert(
-
-                `${material.material_name} (${material.unit}) must be entered as a whole number.`,
-
-                "warning"
-
-            );
-
+    const selectedMaterials = validItems.map(item =>
+        (window.currentMaterials || []).find(material =>
+            String(material.id) === String(item.materialId)));
+    if (selectedMaterials.some(material => !material)) {
+        showAlert("Material details unavailable. Please select the material again.", "warning");
+        return;
+    }
+    try {
+        await refreshRequestMaterialStock(selectedMaterials);
+    } catch (error) {
+        showAlert("Unable to verify available stock. Please try again.", "danger");
+        return;
+    }
+    for (const [index, item] of validItems.entries()) {
+        const material = selectedMaterials[index];
+        if (!requestMaterialAvailable(material)) {
+            showAlert(`${material.material_name} is out of stock. Select an in-stock item.`, "warning");
+            renderRequestItems();
             return;
-
         }
-
+        const quantity = Number(item.quantity);
+        const settings = getQuantitySettings(material.unit);
+        if (!Number.isFinite(quantity) || quantity < Number(settings.min) ||
+            (Number(settings.step) === 1 && !Number.isInteger(quantity))) {
+            showAlert(`Enter a valid quantity for ${material.material_name} (${material.unit}).`, "warning");
+            return;
+        }
     }
-
-}
-
-        showAlert(
-            "Please add at least one material and quantity.",
-            "warning"
-        );
-
-        return;
-
-    }
-
 
     // ------------------------------------------------
     // CHECK DUPLICATES

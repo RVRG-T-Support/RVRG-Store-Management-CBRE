@@ -184,3 +184,14 @@ test('cash toggle removes invoice requirement and restores it without losing typ
     assert.equal(app.element('invoiceNo').disabled, false);
     assert.equal(app.element('invoiceNo').value, 'TEST-INVOICE');
 });
+
+
+test('secure stock entry preserves the pre-GST price meaning for approval valuation', async () => {
+    const app = setup([item]);
+    app.evaluate('window.RvrgSecure = { enabled: () => true };');
+    await app.run();
+    const master = app.calls.find(c => c.table === 'materials');
+    assert.equal(master.values.unit_cost, 125.5);
+    assert.equal(master.values.gst_type, 'EXCLUDED');
+    assert.equal(master.values.gst_percentage, 18);
+});

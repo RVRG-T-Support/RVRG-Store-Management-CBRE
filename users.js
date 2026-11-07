@@ -25,6 +25,16 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
     }
 
+    if (window.RvrgSecure?.enabled()) {
+        const profile = await window.RvrgSecure.profile();
+        if (profile.role.toUpperCase() !== 'ADMIN') return;
+        document.getElementById('approvalManagementLink').classList.remove('d-none');
+        const roleSelect = document.getElementById('role');
+        if (![...roleSelect.options].some(option => option.value === 'CRM')) {
+            const option = document.createElement('option');
+            option.value = 'CRM'; option.textContent = 'CRM'; roleSelect.appendChild(option);
+        }
+    }
     await loadApplicationSections();
     await loadUsers();
 
@@ -681,36 +691,17 @@ async function saveUser() {
 
         // Insert user
 
-       const {
-    data: newUser,
-    error
-} = await supabaseClient
-
-    .from("users_master")
-
-    .insert({
-
-        full_name: fullName,
-
-        email: email || null,
-
-        username: username,
-
-        password: password,
-
-        role: role,
-
-        is_active: isActive
-
-    })
-
-    .select("id")
-    .single();
-
-
-if (error)
-    throw error;
-
+       let newUser;
+       if (window.RvrgSecure?.enabled()) {
+           newUser = await window.RvrgSecure.adminUser({ action: 'create',
+               full_name: fullName, email, username, password, role, is_active: isActive });
+       } else {
+           const result = await supabaseClient.from('users_master').insert({
+               full_name: fullName, email: email || null, username, password, role, is_active: isActive
+           }).select('id').single();
+           if (result.error) throw result.error;
+           newUser = result.data;
+       }
 
 // ================================================
 // SAVE SECTION PERMISSIONS
@@ -946,28 +937,14 @@ async function updateUser() {
         };
 
 
-        // Only update password if a new one was entered
-        if (password) {
-
-            updateData.password = password;
-
+        if (window.RvrgSecure?.enabled()) {
+            await window.RvrgSecure.adminUser({ action: 'update', id: Number(id),
+                ...updateData, ...(password ? { password } : {}) });
+        } else {
+            if (password) updateData.password = password;
+            const { error } = await supabaseClient.from('users_master').update(updateData).eq('id', id);
+            if (error) throw error;
         }
-
-
-        const {
-    error
-} = await supabaseClient
-
-    .from("users_master")
-
-    .update(updateData)
-
-    .eq("id", id);
-
-
-if (error)
-    throw error;
-
 
 // ================================================
 // UPDATE SECTION PERMISSIONS
@@ -1215,6 +1192,12 @@ async function toggleUserStatus(id, currentStatus) {
 
         const newStatus =
             !currentStatus;
+
+        if (window.RvrgSecure?.enabled()) {
+            await window.RvrgSecure.adminUser({ action: 'update', id: Number(id), is_active: newStatus });
+            await loadUsers();
+            return;
+        }
 
 
         const {

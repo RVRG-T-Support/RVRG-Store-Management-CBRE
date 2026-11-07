@@ -99,6 +99,8 @@ function getNavigationItems(role, permissions = {}) {
 
 
     return items.filter(item => {
+        if (window.RvrgSecure?.enabled() && item.section === 'approvals' &&
+            permissions.approvals === true) return true;
 
         // User must first belong to the role
         if (!item.roles.includes(role)) {

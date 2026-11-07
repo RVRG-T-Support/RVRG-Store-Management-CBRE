@@ -2245,7 +2245,13 @@ if (updateNoError)
         for (const item of detailsArray) {
             try {
                 const { data, error } = await supabase.from("materials")
-                    .update({ unit_cost: item.purchase_price })
+                    .update({
+                        unit_cost: item.purchase_price,
+                        ...(window.RvrgSecure?.enabled() ? {
+                            gst_type: item.gst_type,
+                            gst_percentage: item.gst_percentage
+                        } : {})
+                    })
                     .eq("id", item.material_id)
                     .select("id");
                 if (error) throw error;

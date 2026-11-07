@@ -25,6 +25,10 @@ async function validateActiveSession() {
     if (!user) return false;
 
     try {
+        if (window.RvrgSecure?.enabled()) {
+            await window.RvrgSecure.profile();
+            return true;
+        }
 
         const { data, error } = await supabase
 
@@ -61,6 +65,10 @@ async function validateActiveSession() {
             error
         );
 
+        if (window.RvrgSecure?.enabled()) {
+            localStorage.removeItem('RVRG_ACTIVE_USER');
+            window.location.replace('index.html');
+        }
         return false;
 
     }
@@ -75,11 +83,12 @@ if (!loggedInUser)
 // Validate that the logged-in user is still active
 validateActiveSession();
 
-function logout() {
+async function logout() {
 
     if (!confirm("Are you sure you want to logout?"))
         return;
 
+    if (window.RvrgSecure?.enabled()) await window.supabaseClient.auth.signOut();
     localStorage.removeItem("RVRG_ACTIVE_USER");
 
     window.location.replace("index.html");

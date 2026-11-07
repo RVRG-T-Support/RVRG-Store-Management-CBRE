@@ -1,0 +1,16 @@
+{
+  "name": "rvrg-store-management-checks",
+  "private": true,
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "test": "node tests/run-tests.cjs",
+    "test:approval-db": "node tests/approval_db.test.cjs",
+    "test:approval-browser": "node tests/browser/approval-workflow.cjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.3.14",
+    "playwright": "1.56.1"
+  }
+}

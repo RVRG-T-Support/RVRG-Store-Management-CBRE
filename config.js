@@ -7,3 +7,6 @@ window.supabaseClient = window.supabase.createClient(
 );
 
 window.supabaseDb = window.supabaseClient;
+
+// REVIEW ONLY: enable together with tested Auth links and the reviewed SQL cutover.
+window.RVRG_APPROVAL_WORKFLOW_ENABLED = false;

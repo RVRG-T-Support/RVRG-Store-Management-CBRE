@@ -23,14 +23,14 @@ body { background-color: #f4f6f9; display: flex; align-items: center; justify-co
 
 <form id="loginForm">
 <div class="mb-3">
-<label class="form-label fw-semibold small">User ID / Username</label>
+<label for="loginUsername" class="form-label fw-semibold small">User ID / Username</label>
 <div class="input-group">
 <span class="input-group-text bg-light"><i class="fa-solid fa-user"></i></span>
 <input type="text" class="form-control" id="loginUsername" required>
 </div>
 </div>
 <div class="mb-4">
-<label class="form-label fw-semibold small">Password</label>
+<label for="loginPassword" class="form-label fw-semibold small">Password</label>
 <div class="input-group">
 <span class="input-group-text bg-light"><i class="fa-solid fa-lock"></i></span>
 <input type="password" class="form-control" id="loginPassword" required>
@@ -45,10 +45,15 @@ body { background-color: #f4f6f9; display: flex; align-items: center; justify-co
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
+<script src="secure-auth.js"></script>
 <script>
         // Safe client initialization
         // Use existing client from config.js
-console.log(supabase);
+if (window.RvrgSecure?.enabled()) {
+    document.querySelector('label[for="loginUsername"]').textContent = 'Email address';
+    document.getElementById('loginUsername').type = 'email';
+    document.getElementById('loginUsername').placeholder = 'Linked account email';
+}
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
 e.preventDefault();
 const btn = document.getElementById('btnLogin');
@@ -61,6 +66,11 @@ const username = document.getElementById('loginUsername').value.trim();
 const password = document.getElementById('loginPassword').value.trim();
 
 try {
+if (window.RvrgSecure?.enabled()) {
+    await window.RvrgSecure.login(username, password);
+    window.location.href = 'dashboard.html';
+    return;
+}
                 // Check users_master table for credentials
 const { data, error } = await window.supabaseClient
     .from('users_master')

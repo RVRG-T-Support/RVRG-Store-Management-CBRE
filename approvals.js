@@ -34,6 +34,7 @@ function formatDateTime(dateValue){
 let rejectModalInstance = null;
 
 document.addEventListener('DOMContentLoaded', () => {
+    if (window.RvrgSecure?.enabled()) { window.location.replace('approval_workflow.html'); return; }
     // 1. Security Check: Only ADMIN, FM, and AFM can access approvals
     // If a STORE user tries to load this, they get redirected to the dashboard.
     const hasAccess = checkUserAccess(['ADMIN', 'FM', 'AFM']);

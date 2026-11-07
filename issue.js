@@ -556,6 +556,17 @@ window.processIssue = async function(
         // FETCH MATERIAL COST
         // ------------------------------------------------
 
+        if (window.RvrgSecure?.enabled()) {
+            const { error } = await supabaseClient.rpc('approval_issue', {
+                p_request: requestId, p_quantity: issueQty
+            });
+            if (error) throw error;
+            showAlert('Material issued after final approval.', 'success');
+            await loadApprovedRequests();
+            await loadIssuedHistory();
+            return;
+        }
+
         const {
             data: requestInfo,
             error: requestInfoError

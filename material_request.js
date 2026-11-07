@@ -1596,7 +1596,19 @@ try{
     // EDIT EXISTING PENDING TICKET
     // ====================================================
 
-    if(editingTicketNo){
+    if (window.RvrgSecure?.enabled()) {
+        const params = {
+            p_items: validItems.map(item => ({ material_id: Number(item.materialId), quantity: Number(item.quantity) })),
+            p_location_type: locationType, p_location_name: locationName,
+            p_complaint: anacityComplaintNo, p_technician: technicianName, p_remarks: remarks
+        };
+        if (editingTicketNo) params.p_ticket = editingTicketNo;
+        const { data: newTicket, error } = await supabase.rpc(
+            editingTicketNo ? 'approval_replace' : 'approval_submit', params);
+        if (error) throw error;
+        showAlert(`Request ${newTicket} submitted for value-based approval.`, 'success');
+    }
+    else if(editingTicketNo){
 
         // Delete the old pending material rows
         // for this ticket before saving the edited version.
@@ -2538,6 +2550,13 @@ window.deleteMaterialRequest = async function(
 
     try{
 
+        if (window.RvrgSecure?.enabled()) {
+            const { error } = await supabase.rpc('approval_withdraw', { p_ticket: ticketNo });
+            if (error) throw error;
+            showAlert('Request withdrawn; its history is preserved.', 'success');
+            await loadRecentRequests();
+            return;
+        }
         // Safety check:
         // Only PENDING requests can be deleted.
 

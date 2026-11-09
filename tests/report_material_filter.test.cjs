@@ -36,3 +36,20 @@ test('a selected suggestion matches its exact code, excluding similar codes and 
  const a=setup();const rows=[...records,{materialCode:'ELE-0320',material:'Combined Box',quantity:1}];
  assert.equal(a.run(`filterReportByMaterial(${JSON.stringify(rows)},'ELE-032','ELE-032').length`),1);
 });
+
+
+test('universal search matches ticket, invoice and numeric complaint identifiers',()=>{
+ const a=setup();const rows=[{reference:'MR-2026-0022',complaintNumber:191838,materialCode:'ELE-115',material:'Spike Lights'},{reference:'CASH-STE-2026-000042',complaintNumber:'-',materialCode:'CIV-084',material:'Hose Clamp'}];
+ for(const [text,expected] of [['mr-2026-0022','ELE-115'],['191838','ELE-115'],['cash-ste-2026-000042','CIV-084'],['191838 spike','ELE-115']]){
+  const found=a.run(`filterReportByMaterial(${JSON.stringify(rows)},${JSON.stringify(text)})`);
+  assert.equal(found.length,1);assert.equal(found[0].materialCode,expected);
+ }
+ assert.equal(a.run(`filterReportByMaterial(${JSON.stringify(rows)},'notfound').length`),0);
+});
+test('ticket search keeps all items on that ticket and exports only those rows',async()=>{
+ const a=setup();const rows=[{reference:'MR-2026-0022',complaintNumber:'191838',materialCode:'ELE-115',material:'Spike Lights',quantity:1,value:10},{reference:'MR-2026-0022',complaintNumber:'191838',materialCode:'ELE-134',material:'Meter',quantity:2,value:20},{reference:'MR-2026-0023',complaintNumber:'191842',materialCode:'ELE-115',material:'Spike Lights',quantity:3,value:30}];
+ a.element('filterMaterialSearch').value='MR-2026-0022';
+ a.run(`fetchRequestData=async()=>${JSON.stringify(rows)};renderReportTable=(rows,type)=>{lastReportData=rows;lastReportType=type};`);
+ await a.run('generateReport({preventDefault(){}})');assert.equal(a.run('lastReportData.length'),2);assert.match(a.element('reportMaterialSummary').textContent,/Search: MR-2026-0022/);
+ a.run('exportToExcel()');assert.equal(a.exports[0].length,2);assert.equal(a.run('lastReportData.reduce((sum,row)=>sum+row.value,0)'),30);
+});

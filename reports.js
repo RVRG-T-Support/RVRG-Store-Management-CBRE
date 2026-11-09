@@ -392,7 +392,7 @@ function initializeReportMaterialPicker() {
             if (current !== version) return;
             const matches = matchReportMaterials(catalog, search, document.getElementById('filterDepartment')?.value || 'ALL');
             list.textContent = '';
-            if (!matches.length) { status('No matching materials. You can still use free-text search.'); return; }
+            if (!matches.length) { status('No material suggestions. Click Generate to search ticket/invoice numbers, complaints and materials.'); return; }
             matches.slice(0, 20).forEach((material, index) => {
                 const option = document.createElement('button'); option.type = 'button';
                 option.className = 'list-group-item list-group-item-action text-start';
@@ -406,7 +406,7 @@ function initializeReportMaterialPicker() {
             });
             if (matches.length > 20) { const hint = document.createElement('div'); hint.className = 'list-group-item small text-muted'; hint.textContent = 'Showing 20 matches. Keep typing to narrow the list.'; list.appendChild(hint); }
         } catch (error) {
-            if (current === version) status('Suggestions unavailable. You can still type a code or name and generate the report.');
+            if (current === version) status('Material suggestions unavailable. Type a ticket, complaint, material code or name and click Generate.');
         }
     }
     input.addEventListener('input', () => { selectedReportMaterialCode = ''; show(); });
@@ -435,7 +435,7 @@ function filterReportByMaterial(rows, search, exactCode = '') {
     const terms = String(search || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
     if (!terms.length) return rows;
     return rows.filter(row => {
-        const text = `${row.materialCode || ''} ${row.material || ''}`.toLowerCase();
+        const text = `${row.reference ?? ''} ${row.complaintNumber ?? ''} ${row.materialCode ?? ''} ${row.material ?? ''}`.toLowerCase();
         return terms.every(term => text.includes(term));
     });
 }
@@ -635,7 +635,7 @@ async function generateReport(e) {
 
         const matchingData = filterReportByMaterial(reportData, materialSearch, exactMaterialCode);
         renderReportTable(matchingData, recordType);
-        if (summary) summary.textContent = `${materialSearch ? 'Material: ' + materialSearch : 'All materials'} — ${matchingData.length} record(s)`;
+        if (summary) summary.textContent = `${materialSearch ? (exactMaterialCode ? 'Material: ' : 'Search: ') + materialSearch : 'All records'} — ${matchingData.length} record(s)`;
 
     }
     catch (error) {

@@ -70,6 +70,8 @@ document.addEventListener("DOMContentLoaded", () => {
         reportForm.addEventListener("submit", generateReport);
     }
 
+    initializeReportMaterialPicker();
+
     // Excel
     const excelButton = document.getElementById("btnExportReport");
 
@@ -340,11 +342,96 @@ function getDepartmentName(
 }
 
 
+let selectedReportMaterialCode = '';
+let reportMaterialCatalogPromise = null;
+
+async function loadReportMaterialCatalog() {
+    if (!reportMaterialCatalogPromise) {
+        reportMaterialCatalogPromise = (async () => {
+            const materials = [];
+            for (let offset = 0; ; offset += 1000) {
+                const { data, error } = await withReportTimeout(
+                    supabase.from('materials').select('id, material_code, material_name, department_id')
+                        .order('id', { ascending: true }).range(offset, offset + 999),
+                    'Material suggestions');
+                if (error) throw error;
+                materials.push(...(data || []));
+                if ((data || []).length < 1000) break;
+            }
+            const departments = await loadDepartmentMap(materials.map(m => m.department_id));
+            return materials.map(m => ({ ...m, department_name: departments[String(m.department_id)] || '' }));
+        })().catch(error => { reportMaterialCatalogPromise = null; throw error; });
+    }
+    return reportMaterialCatalogPromise;
+}
+
+function matchReportMaterials(materials, search, department = 'ALL') {
+    const terms = String(search || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
+    if (!terms.length) return [];
+    return materials.filter(m => (department === 'ALL' || m.department_name === department) &&
+        terms.every(term => `${m.material_code || ''} ${m.material_name || ''}`.toLowerCase().includes(term)));
+}
+
+function initializeReportMaterialPicker() {
+    const input = document.getElementById('filterMaterialSearch');
+    const list = document.getElementById('reportMaterialSuggestions');
+    const picker = document.getElementById('reportMaterialPicker');
+    if (!input?.setAttribute || !list || !picker || input.dataset.suggestionsBound) return;
+    input.dataset.suggestionsBound = 'true';
+    let version = 0, active = -1;
+    const close = () => { version++; list.hidden = true; input.setAttribute('aria-expanded', 'false'); input.removeAttribute('aria-activedescendant'); active = -1; };
+    const status = text => { list.textContent = ''; const item = document.createElement('div'); item.className = 'list-group-item small text-muted'; item.textContent = text; list.appendChild(item); };
+    async function show() {
+        const search = input.value.trim();
+        if (!search) { close(); return; }
+        const current = ++version;
+        list.hidden = false; input.setAttribute('aria-expanded', 'true'); active = -1;
+        input.removeAttribute('aria-activedescendant'); status('Loading materials...');
+        try {
+            const catalog = await loadReportMaterialCatalog();
+            if (current !== version) return;
+            const matches = matchReportMaterials(catalog, search, document.getElementById('filterDepartment')?.value || 'ALL');
+            list.textContent = '';
+            if (!matches.length) { status('No matching materials. You can still use free-text search.'); return; }
+            matches.slice(0, 20).forEach((material, index) => {
+                const option = document.createElement('button'); option.type = 'button';
+                option.className = 'list-group-item list-group-item-action text-start';
+                option.id = `reportMaterialOption-${index}`; option.setAttribute('role', 'option'); option.setAttribute('aria-selected', 'false');
+                const code = document.createElement('strong'); code.textContent = material.material_code || '-';
+                const name = document.createElement('div'); name.textContent = material.material_name || '-';
+                const department = document.createElement('small'); department.textContent = material.department_name;
+                option.append(code, name, department);
+                option.onclick = () => { selectedReportMaterialCode = material.material_code; input.value = material.material_code; close(); input.focus(); };
+                list.appendChild(option);
+            });
+            if (matches.length > 20) { const hint = document.createElement('div'); hint.className = 'list-group-item small text-muted'; hint.textContent = 'Showing 20 matches. Keep typing to narrow the list.'; list.appendChild(hint); }
+        } catch (error) {
+            if (current === version) status('Suggestions unavailable. You can still type a code or name and generate the report.');
+        }
+    }
+    input.addEventListener('input', () => { selectedReportMaterialCode = ''; show(); });
+    input.addEventListener('focus', () => { if (!selectedReportMaterialCode || input.value !== selectedReportMaterialCode) show(); });
+    input.addEventListener('keydown', event => {
+        if (event.key === 'Escape') { close(); return; }
+        if (list.hidden) return;
+        const options = [...list.querySelectorAll('[role="option"]')];
+        if (event.key === 'Enter' && active >= 0) { event.preventDefault(); options[active]?.click(); return; }
+        if (!['ArrowDown', 'ArrowUp'].includes(event.key) || !options.length) return;
+        event.preventDefault(); active = (active + (event.key === 'ArrowDown' ? 1 : -1) + options.length) % options.length;
+        options.forEach((option, index) => { option.classList.toggle('active', index === active); option.setAttribute('aria-selected', String(index === active)); });
+        input.setAttribute('aria-activedescendant', options[active].id); options[active].scrollIntoView({block:'nearest'});
+    });
+    picker.addEventListener('focusout', event => { if (!picker.contains(event.relatedTarget)) close(); });
+    document.addEventListener('click', event => { if (!picker.contains(event.target)) close(); });
+    document.getElementById('filterDepartment')?.addEventListener('change', close);
+}
+
 function canExportReportExcel(user) {
     return ['ADMIN', 'STOREKEEPER', 'STORE'].includes(String(user?.role || '').trim().toUpperCase());
 }
 
-function filterReportByMaterial(rows, search) {
+function filterReportByMaterial(rows, search, exactCode = '') {
+    if (exactCode) return rows.filter(row => String(row.materialCode || '').trim().toLowerCase() === exactCode.trim().toLowerCase());
     const terms = String(search || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
     if (!terms.length) return rows;
     return rows.filter(row => {
@@ -407,6 +494,7 @@ async function generateReport(e) {
     }
 
     const materialSearch = document.getElementById('filterMaterialSearch')?.value.trim() || '';
+    const exactMaterialCode = materialSearch.toLowerCase() === selectedReportMaterialCode.toLowerCase() ? selectedReportMaterialCode : '';
     // Never export a previous report while a new query is loading or has failed.
     lastReportData = [];
     const summary = document.getElementById('reportMaterialSummary');
@@ -545,7 +633,7 @@ async function generateReport(e) {
                 );
         }
 
-        const matchingData = filterReportByMaterial(reportData, materialSearch);
+        const matchingData = filterReportByMaterial(reportData, materialSearch, exactMaterialCode);
         renderReportTable(matchingData, recordType);
         if (summary) summary.textContent = `${materialSearch ? 'Material: ' + materialSearch : 'All materials'} — ${matchingData.length} record(s)`;
 

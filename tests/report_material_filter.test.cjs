@@ -22,3 +22,17 @@ test('Storekeeper id 1 gets a visible, wired Excel button; AFM stays restricted'
  const a=setup();a.events.find(e=>!e.id).fn();assert.ok(a.events.some(e=>e.id==='btnExportReport'&&e.type==='click'));assert.equal(a.run("canExportReportExcel({id:1,role:'STOREKEEPER'})"),true);assert.equal(a.run("canExportReportExcel({role:'ADMIN'})"),true);assert.equal(a.run("canExportReportExcel({role:'AFM'})"),false);
 });
 test('failed regeneration clears the old export dataset',async()=>{const a=setup();a.run("lastReportData=[{material:'Old'}];fetchRequestData=async()=>{throw new Error('Test failure')}");await a.run('generateReport({preventDefault(){}})');assert.equal(a.run('lastReportData.length'),0)});
+
+
+test('suggestions match partial names/codes, combined terms and department',()=>{
+ const a=setup();const catalog=[{material_code:'ELE-032',material_name:'Combined Box',department_name:'Electrical'},{material_code:'CIV-032',material_name:'Combined Box',department_name:'Civil'}];
+ const data=JSON.stringify(catalog);
+ assert.equal(a.run(`matchReportMaterials(${data},'comb','ALL').length`),2);
+ assert.equal(a.run(`matchReportMaterials(${data},'ELE box','Electrical').length`),1);
+ assert.equal(a.run(`matchReportMaterials(${data},'box','Civil')[0].material_code`),'CIV-032');
+ assert.equal(a.run(`matchReportMaterials(${data},'','ALL').length`),0);
+});
+test('a selected suggestion matches its exact code, excluding similar codes and names',()=>{
+ const a=setup();const rows=[...records,{materialCode:'ELE-0320',material:'Combined Box',quantity:1}];
+ assert.equal(a.run(`filterReportByMaterial(${JSON.stringify(rows)},'ELE-032','ELE-032').length`),1);
+});

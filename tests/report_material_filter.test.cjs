@@ -53,3 +53,14 @@ test('ticket search keeps all items on that ticket and exports only those rows',
  await a.run('generateReport({preventDefault(){}})');assert.equal(a.run('lastReportData.length'),2);assert.match(a.element('reportMaterialSummary').textContent,/Search: MR-2026-0022/);
  a.run('exportToExcel()');assert.equal(a.exports[0].length,2);assert.equal(a.run('lastReportData.reduce((sum,row)=>sum+row.value,0)'),30);
 });
+
+test('request quantity columns distinguish requested, approved and issued values',()=>{
+ const a=setup();assert.equal(a.run("reportQuantityHeaders('REQUESTS').join('|')"),'Requested Qty|Approved Qty|Issued Qty');
+ assert.equal(a.run("reportQuantityCells({quantity:10,approvedQuantity:6,issuedQuantity:4,unit:'NOS'},'REQUESTS').join('|')"),'10 NOS|6 NOS|4 NOS');
+ assert.equal(a.run("reportQuantityCells({quantity:10,approvedQuantity:null,issuedQuantity:0,unit:'NOS'},'REQUESTS').join('|')"),'10 NOS|-|0 NOS');
+ assert.equal(a.run("reportQuantityHeaders('CONSUMPTION').join('|')"),'Qty / Unit');
+});
+test('Excel request exports include all three quantity columns',()=>{
+ const a=setup();a.run("lastReportType='REQUESTS';lastReportData=[{materialCode:'ELE-001',quantity:10,approvedQuantity:6,issuedQuantity:4,unit:'NOS'}];exportToExcel()");
+ assert.equal(a.exports[0][0]['Requested Qty'],'10 NOS');assert.equal(a.exports[0][0]['Approved Qty'],'6 NOS');assert.equal(a.exports[0][0]['Issued Qty'],'4 NOS');
+});

@@ -11,6 +11,24 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="theme.css" rel="stylesheet">
     <link rel="stylesheet" href="typography.css">
+<style>
+.reports-content { padding-top: 8px; }
+#reportFilters .card-body { padding: 12px; }
+#reportFilterForm { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:10px 12px; margin:0; }
+#reportFilterForm > div { width:auto; padding:0; margin:0; }
+#reportFilterForm #reportMaterialPicker { grid-column:span 4; }
+#reportFilterForm .form-label { margin-bottom:4px; }
+#reportFilterForm > div:last-child { align-self:center; }
+#materialSearchHelp { margin-top:3px; }
+.report-table-scroll { max-height:calc(100dvh - 150px); min-height:180px; overflow:auto; }
+.report-table-scroll table { border-collapse:separate; border-spacing:0; }
+#reportTableHeader th { position:sticky; top:0; z-index:3; background:#212529; color:#fff; vertical-align:middle; }
+@media(max-width:767.98px) {
+ #reportFilterForm { grid-template-columns:repeat(2,minmax(0,1fr)); }
+ #reportFilterForm #reportMaterialPicker,#reportFilterForm > div:last-child { grid-column:1 / -1; }
+ .report-table-scroll { max-height:65dvh; }
+}
+</style>
 </head>
 <body class="bg-light">
 
@@ -22,8 +40,8 @@
 
     <div class="main-content">
 
-    <div class="container-fluid px-4 my-4">
-        <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="container-fluid px-2 my-2 reports-content">
+        <div class="d-flex justify-content-between align-items-center mb-3">
             <h3 class="fw-bold text-dark"><i class="fa-solid fa-chart-line me-2 text-success"></i>System Reports</h3>
 <!-- Report Actions -->
 
@@ -70,7 +88,7 @@
         </div>
 
         <!-- Filter Control Panel -->
-        <div class="card shadow-sm border-0 mb-4">
+        <div class="card shadow-sm border-0 mb-3" id="reportFilters">
             <div class="card-header bg-white pt-3 pb-2 border-bottom-0">
                 <h6 class="card-title text-muted mb-0"><i class="fa-solid fa-filter me-2"></i>Report Filters</h6>
             </div>
@@ -155,7 +173,7 @@
                         <label for="filterMaterialSearch" class="form-label fw-semibold small">Universal search</label>
                         <input id="filterMaterialSearch" type="search" class="form-control form-control-sm" placeholder="Ticket / invoice no., complaint no., material code or name" aria-describedby="materialSearchHelp" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="reportMaterialSuggestions" aria-expanded="false">
                         <div id="reportMaterialSuggestions" role="listbox" aria-label="Matching materials" class="list-group position-absolute shadow bg-white" style="z-index:1050;left:0.75rem;right:0.75rem;max-height:240px;overflow-y:auto" hidden></div>
-                        <div id="materialSearchHelp" class="form-text">Search ticket/invoice number, complaint number, material code or name within the selected filters. Select a material suggestion for an exact item, or type text and click Generate. Leave blank for all records.</div>
+                        <div id="materialSearchHelp" class="form-text">Ticket, complaint, material code or name. Select a suggestion or click Generate. Blank = all records.</div>
                     </div>
                     <!-- Generate Button -->
                     <div class="col-md-2">
@@ -167,11 +185,11 @@
             </div>
         </div>
 
-        <p id="reportMaterialSummary" class="small text-muted" role="status" aria-live="polite">All records</p>
+        <p id="reportMaterialSummary" class="small text-muted mb-2" role="status" aria-live="polite">All records</p>
         <!-- Report Results Table -->
         <div class="card shadow-sm border-0">
             <div class="card-body p-0">
-                <div class="table-responsive">
+                <div class="table-responsive report-table-scroll" tabindex="0" aria-label="Report results; scroll to view more rows">
                     <table class="table table-bordered table-hover align-middle mb-0 text-center">
 <thead class="table-dark" id="reportTableHeader">
 
@@ -193,7 +211,9 @@
 
         <th>Area Type</th>
 
-        <th>Qty / Unit</th>
+        <th id="reportQuantityHeader">Qty / Unit</th>
+        <th class="request-quantity-column d-none">Approved Qty</th>
+        <th class="request-quantity-column d-none">Issued Qty</th>
 
         <th>Value</th>
 
@@ -210,7 +230,7 @@
 </td>
 </tr>
 </tbody>
-<tr>
+<tfoot id="reportTableFooter" style="display:none"><tr>
 
     <td
         colspan="8"
@@ -226,6 +246,8 @@
     </td>
 
 
+    <td id="totalApprovedQuantity" class="request-quantity-column d-none">-</td>
+    <td id="totalIssuedQuantity" class="request-quantity-column d-none">-</td>
     <td
         id="totalValue"
         class="text-success">
@@ -239,7 +261,7 @@
         -
     </td>
 
-</tr>
+</tr></tfoot>
                     </table>
                 </div>
             </div>

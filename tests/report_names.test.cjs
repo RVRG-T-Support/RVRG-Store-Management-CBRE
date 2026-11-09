@@ -34,7 +34,7 @@ function setup(rows, users, failure = false) {
     vm.runInContext('withReportTimeout = async promise => promise;', context);
     return { run: code => vm.runInContext(code, context), queries };
 }
-const request = { material_id:10, requested_by:1, approved_by:'3', requested_qty:2, approved_qty:1,
+const request = { material_id:10, requested_by:1, approved_by:'3', requested_qty:2, approved_qty:1, issued_qty:0.5,
     location_type:'Common Area', approval_date:'2026-11-04', created_at:'2026-11-04', request_status:'APPROVED' };
 const users = [{id:1, full_name:'Store'}, {id:3, full_name:'Upender'}, {id:6, full_name:'Bibhu Datta'}];
 
@@ -56,6 +56,8 @@ test('request report and filtered results use the same user names', async () => 
     assert.equal(rows[0].requestedBy, 'Store');
     assert.equal(rows[0].approvedBy, 'Upender');
     assert.equal(rows[0].quantity, 2);
+    assert.equal(rows[0].approvedQuantity, 1);
+    assert.equal(rows[0].issuedQuantity, 0.5);
     const empty = await app.run('fetchRequestData("2026-11-01", "2026-11-05", "Civil", "ALL")');
     assert.equal(empty.length, 0);
 });

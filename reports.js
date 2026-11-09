@@ -739,6 +739,8 @@ async function fetchRequestData(
                 location_name,
                 location_type,
                 requested_qty,
+                approved_qty,
+                issued_qty,
                 request_status,
                 created_at,
                 requested_by,
@@ -854,6 +856,8 @@ async function fetchRequestData(
                         row.requested_qty || 0
                     ),
 
+                approvedQuantity: row.approved_qty == null ? null : Number(row.approved_qty),
+                issuedQuantity: Number(row.issued_qty || 0),
                 value:
                     0,
 
@@ -1952,6 +1956,14 @@ function getProcessedBy(
 // RENDER STANDARD REPORT TABLE
 // ============================================================
 
+function reportQuantityHeaders(type) {
+    return type === 'REQUESTS' ? ['Requested Qty','Approved Qty','Issued Qty'] : ['Qty / Unit'];
+}
+function reportQuantityCells(row, type) {
+    const values = type === 'REQUESTS' ? [row.quantity ?? 0, row.approvedQuantity, row.issuedQuantity ?? 0] : [row.quantity ?? 0];
+    return values.map(value => value == null ? '-' : `${value} ${row.unit || ''}`.trim());
+}
+
 function renderReportTable(
     data,
     recordType
@@ -1975,6 +1987,13 @@ function renderReportTable(
     lastReportType =
         recordType || "";
 
+    const quantityHeader = document.getElementById('reportQuantityHeader');
+    if (quantityHeader) quantityHeader.textContent = reportQuantityHeaders(recordType)[0];
+    document.querySelectorAll?.('.request-quantity-column').forEach(cell => cell.classList.toggle('d-none', recordType !== 'REQUESTS'));
+    for (const [id, field] of [['totalApprovedQuantity','approvedQuantity'],['totalIssuedQuantity','issuedQuantity']]) {
+        const cell = document.getElementById(id);
+        if (cell) cell.textContent = lastReportData.reduce((sum,row) => sum + Number(row[field] || 0), 0);
+    }
     if (!tableBody) {
         return;
     }
@@ -1984,7 +2003,7 @@ function renderReportTable(
         tableBody.innerHTML = `
             <tr>
                 <td
-                    colspan="11"
+                    colspan="${recordType === 'REQUESTS' ? 13 : 11}"
                     class="text-center text-muted py-5"
                 >
                     No records found
@@ -2104,19 +2123,7 @@ function renderReportTable(
                 </small>
             </td>
 
-            <td class="fw-bold text-end text-nowrap">
-                ${escapeHtml(
-                    String(
-                        row.quantity ?? 0
-                    )
-                )}
-
-                <small class="text-muted">
-                    ${escapeHtml(
-                        row.unit || ""
-                    )}
-                </small>
-            </td>
+            ${reportQuantityCells(row, recordType).map(value => `<td class="fw-bold text-end text-nowrap">${escapeHtml(value)}</td>`).join('')}
 
             <td class="text-end text-nowrap">
                 ${formatCurrency(
@@ -2290,8 +2297,7 @@ function exportToExcel() {
                     row.area ||
                     "-",
 
-                "Qty / Unit":
-                    `${Number(row.quantity || 0)} ${row.unit || ""}`.trim(),
+                ...Object.fromEntries(reportQuantityHeaders(lastReportType).map((heading,index) => [heading,reportQuantityCells(row,lastReportType)[index]])),
 
                 "Value":
                     Number(
@@ -2322,9 +2328,13 @@ function exportToExcel() {
             { wch: 28 }
         ];
 
+        if (lastReportType === 'REQUESTS') {
+            worksheet["!cols"].splice(9, 0, { wch: 18 }, { wch: 18 });
+        }
+
         worksheet["!autofilter"] = {
             ref:
-                `A1:K${rows.length + 1}`
+                `A1:${lastReportType === 'REQUESTS' ? 'M' : 'K'}${rows.length + 1}`
         };
 
         const workbook =
@@ -2654,11 +2664,7 @@ function exportToPDF() {
                 row.area ||
                 "-",
 
-                `${
-                    row.quantity ?? 0
-                } ${
-                    row.unit || ""
-                }`,
+                ...reportQuantityCells(row, lastReportType),
 
                 `Rs. ${
                     Number(
@@ -2695,7 +2701,7 @@ function exportToPDF() {
                 "Category",
                 "Department",
                 "Area Type",
-                "Qty / Unit",
+                ...reportQuantityHeaders(lastReportType),
                 "Value",
                 "Processed By"
 
@@ -2723,7 +2729,7 @@ function exportToPDF() {
                 fontSize: 7
             },
 
-            columnStyles: {
+            columnStyles: lastReportType === 'REQUESTS' ? {} : {
 
                 0: {
                     cellWidth: 19

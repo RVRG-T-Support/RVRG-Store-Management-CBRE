@@ -35,6 +35,7 @@ document.addEventListener("DOMContentLoaded", () => {
         "FM",
         "AFM",
         "STORE",
+        "STOREKEEPER",
         "TECH_SUPERVISOR"
     ]);
 
@@ -73,7 +74,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const excelButton = document.getElementById("btnExportReport");
 
     if (excelButton) {
-        if (user.role === "ADMIN") {
+        if (canExportReportExcel(user)) {
             excelButton.classList.remove("d-none");
             excelButton.addEventListener("click", exportToExcel);
         } else {
@@ -339,6 +340,19 @@ function getDepartmentName(
 }
 
 
+function canExportReportExcel(user) {
+    return ['ADMIN', 'STOREKEEPER', 'STORE'].includes(String(user?.role || '').trim().toUpperCase());
+}
+
+function filterReportByMaterial(rows, search) {
+    const terms = String(search || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
+    if (!terms.length) return rows;
+    return rows.filter(row => {
+        const text = `${row.materialCode || ''} ${row.material || ''}`.toLowerCase();
+        return terms.every(term => text.includes(term));
+    });
+}
+
 // ============================================================
 // REPORT GENERATION
 // ============================================================
@@ -391,6 +405,12 @@ async function generateReport(e) {
 
         return;
     }
+
+    const materialSearch = document.getElementById('filterMaterialSearch')?.value.trim() || '';
+    // Never export a previous report while a new query is loading or has failed.
+    lastReportData = [];
+    const summary = document.getElementById('reportMaterialSummary');
+    if (summary) summary.textContent = 'Generating report...';
 
     const tableBody =
         document.getElementById(
@@ -525,10 +545,9 @@ async function generateReport(e) {
                 );
         }
 
-        renderReportTable(
-            reportData,
-            recordType
-        );
+        const matchingData = filterReportByMaterial(reportData, materialSearch);
+        renderReportTable(matchingData, recordType);
+        if (summary) summary.textContent = `${materialSearch ? 'Material: ' + materialSearch : 'All materials'} — ${matchingData.length} record(s)`;
 
     }
     catch (error) {
@@ -537,6 +556,7 @@ async function generateReport(e) {
             "REPORT ERROR:",
             error
         );
+        if (summary) summary.textContent = 'Report could not be generated.';
 
         if (tableBody) {
 
@@ -2107,6 +2127,10 @@ function getTransactionRowClass(
 // ============================================================
 
 function exportToExcel() {
+    if (!canExportReportExcel(getCurrentUser())) {
+        showAlert('Excel export is available to Admin and Storekeeper users.', 'warning');
+        return;
+    }
 
     if (
         !lastReportData ||

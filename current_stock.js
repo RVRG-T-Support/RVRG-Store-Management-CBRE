@@ -15,6 +15,9 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     try {
 
+        if (new URLSearchParams(window.location.search).get('status') === 'REORDER') {
+            document.getElementById('stockStatus').value = 'REORDER';
+        }
         await loadCurrentStock();
 
         setupStockEvents();
@@ -212,11 +215,7 @@ async function loadCurrentStock() {
 
         populateDepartmentFilter();
 
-        renderStockTable();
-
-        updateStockSummary();
-
-        reconcileStockTotal();
+        applyStockFilters();
 
 
     }
@@ -445,7 +444,9 @@ function applyStockFilters() {
             let matchesStatus = true;
 
 
-            if (status === "OUT") {
+            if (status === "REORDER") {
+                matchesStatus = currentStock <= minimumStock;
+            } else if (status === "OUT") {
 
                 matchesStatus =
                     currentStock <= 0;

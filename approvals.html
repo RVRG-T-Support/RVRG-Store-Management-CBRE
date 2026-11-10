@@ -11,6 +11,14 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="theme.css">
     <link rel="stylesheet" href="typography.css">
+<style>
+.approvals-scroll { max-height:65dvh; overflow:auto; }
+.approvals-scroll thead th { position:sticky; top:0; z-index:2; background:#f4f6f9; }
+.approval-material-meta { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 8px; overflow-wrap:anywhere; }
+.approvals-scroll td { vertical-align:top; padding:8px; }
+.approvals-scroll .badge { font-size:11px; }
+@media(max-width:767px){ .approval-material-meta { grid-template-columns:1fr; } }
+</style>
 </head>
 <body class="bg-light">
 
@@ -21,7 +29,7 @@
 
 <<div class="main-content">
 
-    <div class="container-fluid px-4 my-4">
+    <div class="container-fluid px-2 my-2">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h3 class="fw-bold text-dark"><i class="fa-solid fa-clipboard-check me-2 text-primary"></i>Material Request Approvals</h3>
             <button class="btn btn-secondary btn-sm" id="btnRefreshApprovals">
@@ -36,7 +44,7 @@
     </div>
 
     <div class="card-body p-0">
-        <div class="table-responsive">
+        <div class="table-responsive approvals-scroll">
             <table class="table table-hover align-top mb-0">
                 <thead class="table-light">
                     <tr>
@@ -69,7 +77,7 @@
     </div>
 
     <div class="card-body p-0">
-        <div class="table-responsive">
+        <div class="table-responsive approvals-scroll">
             <table class="table table-hover align-top mb-0">
                 <thead class="table-light">
                     <tr>
@@ -129,6 +137,7 @@
 <script src="secure-auth.js"></script>
 <script src="common.js"></script>
 <script src="navigation.js"></script>
+<script src="operational-data.js"></script>
 <script src="approvals.js"></script>
 
 <!-- Page-specific JS -->

@@ -221,3 +221,12 @@ test('paginates purchase history to find an older price for another material', a
     assert.equal(app.run('stockData[1].unit_cost'), 20);
     assert.equal(app.element('totalInventoryValue').textContent, '₹180.00');
 });
+
+test('dashboard reorder filter includes low and zero stock, excludes healthy stock, and survives refresh', async () => {
+    const app = setup([stock(1, 10, 0),stock(2, 10, 1),stock(3, 10, 10)], []);
+    app.element('stockStatus').value = 'REORDER';
+    await app.run('loadCurrentStock()');
+    assert.equal(app.element('stockRecordCount').textContent, '2 Records');
+    await app.run('loadCurrentStock()');
+    assert.equal(app.element('stockRecordCount').textContent, '2 Records');
+});

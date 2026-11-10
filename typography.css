@@ -54,3 +54,9 @@ small, .small, .form-text { font-size: 11.5px; }
     .form-control, .form-select { font-size: 16px !important; }
     .btn:not(.btn-sm) { min-height: 40px; }
 }
+
+/* Consistent density and keyboard feedback for operational pages. */
+.metric-link { transition:box-shadow .15s ease; }
+.metric-link:hover, .metric-link:focus-visible { box-shadow:0 0 0 3px rgba(13,110,253,.25) !important; outline:2px solid #0d6efd; outline-offset:2px; }
+.main-content .card { border-radius:8px; }
+.main-content .table > :not(caption) > * > * { padding:0.45rem 0.5rem; }

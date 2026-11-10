@@ -93,6 +93,10 @@ async function loadPendingApprovals() {
             return;
         }
 
+        let pendingStock = null;
+        try { pendingStock = await window.RvrgOps.stockBalances(supabase, data.map(row=>row.material_id)); }
+        catch (error) { console.error('Approval stock lookup failed:', error); }
+
         tableBody.innerHTML = ''; // Clear table
         
 // ====================================================
@@ -231,7 +235,7 @@ ticket.items.forEach(
                     style="
                         width:100%;
                         line-height:18px;
-                        overflow:hidden;
+                        overflow:auto;
                     ">
 
                     <div
@@ -239,6 +243,9 @@ ticket.items.forEach(
 
                         ${materialCode}
 
+                    </div>
+                    <div class="fw-semibold ${pendingStock && (pendingStock.get(String(req.material_id)) || 0) > 0 ? 'text-success' : 'text-danger'}">
+                        Balance stock: ${pendingStock ? Number(pendingStock.get(String(req.material_id)) || 0).toLocaleString('en-IN') : 'Unavailable'} ${unit}
                     </div>
 
 
@@ -250,7 +257,7 @@ ticket.items.forEach(
                     </div>
 
 
-                    <div class="small text-muted">
+                    <div class="small text-muted approval-material-meta">
 
                         <div>
                             <strong>Brand:</strong>
@@ -1065,7 +1072,7 @@ const approvalDate =
                         ${materialName}
                     </div>
 
-                    <div class="small text-muted mt-1">
+                    <div class="small text-muted mt-1 approval-material-meta">
 
                         <div>
                             <strong>Brand:</strong>

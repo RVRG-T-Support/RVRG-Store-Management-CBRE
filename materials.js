@@ -11,7 +11,7 @@ document.addEventListener(
     "DOMContentLoaded",
     initializePage
 );
-document.addEventListener("DOMContentLoaded", initializePage);
+
 
 async function initializePage() {
     try {

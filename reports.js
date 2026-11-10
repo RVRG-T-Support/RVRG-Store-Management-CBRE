@@ -351,7 +351,7 @@ async function loadReportMaterialCatalog() {
             const materials = [];
             for (let offset = 0; ; offset += 1000) {
                 const { data, error } = await withReportTimeout(
-                    supabase.from('materials').select('id, material_code, material_name, department_id')
+                    supabase.from('materials').select('id, material_code, material_name, department_id, category, brand, item_type, item_size, specification, unit, unit_cost, gst_type, gst_percentage, rack_location, minimum_stock, status, manufacturer_part_no')
                         .order('id', { ascending: true }).range(offset, offset + 999),
                     'Material suggestions');
                 if (error) throw error;
@@ -359,17 +359,25 @@ async function loadReportMaterialCatalog() {
                 if ((data || []).length < 1000) break;
             }
             const departments = await loadDepartmentMap(materials.map(m => m.department_id));
-            return materials.map(m => ({ ...m, department_name: departments[String(m.department_id)] || '' }));
+            let balances = null;
+            try { balances = await window.RvrgOps.stockBalances(supabase, materials.map(m=>m.id)); }
+            catch (error) { console.error('Suggestion stock unavailable:', error); }
+            return materials.map(m => ({ ...m, department_name: departments[String(m.department_id)] || '', current_stock: balances ? (balances.get(String(m.id)) || 0) : null }));
         })().catch(error => { reportMaterialCatalogPromise = null; throw error; });
     }
     return reportMaterialCatalogPromise;
+}
+
+function reportMaterialDetails(m) {
+    return [['Stock',m.current_stock ?? 'Unavailable'],['Category',m.category],['Brand',m.brand],['Type',m.item_type],['Size',m.item_size],['Spec',m.specification],['Unit',m.unit],['Cost',m.unit_cost == null ? null : '₹'+Number(m.unit_cost).toFixed(2)],['GST',m.gst_type],['GST %',m.gst_percentage],['Rack',m.rack_location],['Minimum stock',m.minimum_stock],['Status',m.status],['Part no.',m.manufacturer_part_no]]
+        .map(([label,value])=>`${label}: ${value == null || value === '' ? '-' : value}`).join(' | ');
 }
 
 function matchReportMaterials(materials, search, department = 'ALL') {
     const terms = String(search || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
     if (!terms.length) return [];
     return materials.filter(m => (department === 'ALL' || m.department_name === department) &&
-        terms.every(term => `${m.material_code || ''} ${m.material_name || ''}`.toLowerCase().includes(term)));
+        terms.every(term => [m.material_code,m.material_name,m.category,m.brand,m.item_type,m.item_size,m.specification,m.manufacturer_part_no].join(' ').toLowerCase().includes(term)));
 }
 
 function initializeReportMaterialPicker() {
@@ -400,7 +408,9 @@ function initializeReportMaterialPicker() {
                 const code = document.createElement('strong'); code.textContent = material.material_code || '-';
                 const name = document.createElement('div'); name.textContent = material.material_name || '-';
                 const department = document.createElement('small'); department.textContent = material.department_name;
-                option.append(code, name, department);
+                const details = document.createElement('div'); details.className = 'small text-muted';
+                details.textContent = reportMaterialDetails(material);
+                option.append(code, name, department, details);
                 option.onclick = () => { selectedReportMaterialCode = material.material_code; input.value = material.material_code; close(); input.focus(); };
                 list.appendChild(option);
             });
@@ -1125,7 +1135,8 @@ async function fetchConsumptionData(
     fromDate,
     toDate,
     departmentName,
-    areaType
+    areaType,
+    netOfReturns = true
 ) {
 
     const {
@@ -1169,6 +1180,9 @@ async function fetchConsumptionData(
     }
 
     const rows = data || [];
+    const returnedQuantities = netOfReturns
+        ? await window.RvrgOps.returnedByIssue(supabase, rows.map(row=>row.id), toDate)
+        : new Map();
 
     const {
         materialsMap,
@@ -1224,10 +1238,7 @@ async function fetchConsumptionData(
         const ticketNo =
             row.ticket_no || "-";
 
-        const quantity =
-            Number(
-                row.issued_qty || 0
-            );
+        const quantity = window.RvrgOps.netIssued(row, returnedQuantities);
 
         const unitCost =
             Number(
@@ -1273,8 +1284,9 @@ async function fetchConsumptionData(
                 material.unit ||
                 "-",
 
-            quantity:
-                quantity,
+            quantity: quantity,
+            grossIssuedQuantity: Number(row.issued_qty || 0),
+            returnedQuantity: Number(row.issued_qty || 0) - quantity,
 
             value:
                 quantity * unitCost,
@@ -1807,11 +1819,13 @@ async function fetchAllTransactions(
             areaType
         ),
 
+        // The transaction ledger retains gross issues and separate return rows.
         fetchConsumptionData(
             fromDate,
             toDate,
             departmentName,
-            areaType
+            areaType,
+            false
         ),
 
         fetchReturnData(
@@ -1957,7 +1971,7 @@ function getProcessedBy(
 // ============================================================
 
 function reportQuantityHeaders(type) {
-    return type === 'REQUESTS' ? ['Requested Qty','Approved Qty','Issued Qty'] : ['Qty / Unit'];
+    return type === 'REQUESTS' ? ['Requested Qty','Approved Qty','Issued Qty'] : [type === 'CONSUMPTION' ? 'Net Qty / Unit' : 'Qty / Unit'];
 }
 function reportQuantityCells(row, type) {
     const values = type === 'REQUESTS' ? [row.quantity ?? 0, row.approvedQuantity, row.issuedQuantity ?? 0] : [row.quantity ?? 0];

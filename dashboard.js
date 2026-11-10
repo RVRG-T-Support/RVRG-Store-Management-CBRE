@@ -103,15 +103,10 @@ if(resetDepartmentConsumption){
 // Run these fetches in parallel to make the dashboard load instantly
 async function loadDashboardData() {
 
-await loadMetrics().catch(console.error);
-
-await loadRecentRequests().catch(console.error);
-
-await loadDepartmentConsumption()
-    .catch(console.error);
-
-await loadLowStockAlerts()
-    .catch(console.error);
+const results = await Promise.allSettled([
+    loadMetrics(), loadRecentRequests(), loadDepartmentConsumption(), loadLowStockAlerts()
+]);
+results.forEach(result => { if (result.status === 'rejected') console.error(result.reason); });
 
 }
 
@@ -709,7 +704,7 @@ async function loadDepartmentConsumption(){
             )
 
             .select(
-                "material_id, issued_qty, unit_cost, issued_date"
+                "id, material_id, issued_qty, unit_cost, issued_date"
             )
 
             .gte(
@@ -725,6 +720,8 @@ async function loadDepartmentConsumption(){
 
         if(issueError)
             throw issueError;
+
+        const returnedQuantities = await window.RvrgOps.returnedByIssue(supabase, (issues || []).map(issue=>issue.id), periodEnd.toISOString());
 
 
         // =================================================
@@ -791,10 +788,7 @@ async function loadDepartmentConsumption(){
                     return;
 
 
-                const quantity =
-                    Number(
-                        issue.issued_qty || 0
-                    );
+                const quantity = window.RvrgOps.netIssued(issue, returnedQuantities);
 
 
                 const unitCost =

@@ -141,7 +141,7 @@
         </option>
 
         <option value="CONSUMPTION">
-            Material Consumption / Issue
+            Net Material Consumption / Issue
         </option>
 
         <option value="RETURNS">
@@ -173,7 +173,7 @@
                         <label for="filterMaterialSearch" class="form-label fw-semibold small">Universal search</label>
                         <input id="filterMaterialSearch" type="search" class="form-control form-control-sm" placeholder="Ticket / invoice no., complaint no., material code or name" aria-describedby="materialSearchHelp" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="reportMaterialSuggestions" aria-expanded="false">
                         <div id="reportMaterialSuggestions" role="listbox" aria-label="Matching materials" class="list-group position-absolute shadow bg-white" style="z-index:1050;left:0.75rem;right:0.75rem;max-height:240px;overflow-y:auto" hidden></div>
-                        <div id="materialSearchHelp" class="form-text">Ticket, complaint, material code or name. Select a suggestion or click Generate. Blank = all records.</div>
+                        <div id="materialSearchHelp" class="form-text">Ticket, complaint, material code or name. Select a suggestion or click Generate. Blank = all records. Net consumption subtracts returns through the To Date.</div>
                     </div>
                     <!-- Generate Button -->
                     <div class="col-md-2">
@@ -380,6 +380,7 @@
 </div>
 
 <!-- Page-specific JS -->
+<script src="operational-data.js"></script>
 <script src="reports.js"></script>
 </body>
 </html>

@@ -58,9 +58,14 @@ test('request quantity columns distinguish requested, approved and issued values
  const a=setup();assert.equal(a.run("reportQuantityHeaders('REQUESTS').join('|')"),'Requested Qty|Approved Qty|Issued Qty');
  assert.equal(a.run("reportQuantityCells({quantity:10,approvedQuantity:6,issuedQuantity:4,unit:'NOS'},'REQUESTS').join('|')"),'10 NOS|6 NOS|4 NOS');
  assert.equal(a.run("reportQuantityCells({quantity:10,approvedQuantity:null,issuedQuantity:0,unit:'NOS'},'REQUESTS').join('|')"),'10 NOS|-|0 NOS');
- assert.equal(a.run("reportQuantityHeaders('CONSUMPTION').join('|')"),'Qty / Unit');
+ assert.equal(a.run("reportQuantityHeaders('CONSUMPTION').join('|')"),'Net Qty / Unit');
 });
 test('Excel request exports include all three quantity columns',()=>{
  const a=setup();a.run("lastReportType='REQUESTS';lastReportData=[{materialCode:'ELE-001',quantity:10,approvedQuantity:6,issuedQuantity:4,unit:'NOS'}];exportToExcel()");
  assert.equal(a.exports[0][0]['Requested Qty'],'10 NOS');assert.equal(a.exports[0][0]['Approved Qty'],'6 NOS');assert.equal(a.exports[0][0]['Issued Qty'],'4 NOS');
+});
+
+test('report material details include identifying fields, stock, cost and storage information',()=>{
+ const a=setup();const text=a.run("reportMaterialDetails({current_stock:7,category:'Lighting',brand:'Acme',item_type:'LED',item_size:'20mm',specification:'10W',unit:'NOS',unit_cost:100,gst_type:'INCLUDED',gst_percentage:18,rack_location:'A1',minimum_stock:2,status:'ACTIVE',manufacturer_part_no:'ABC'})");
+ for(const field of ['Stock: 7','Category: Lighting','Brand: Acme','Type: LED','Size: 20mm','Spec: 10W','Unit: NOS','Cost: ₹100.00','GST: INCLUDED','GST %: 18','Rack: A1','Minimum stock: 2','Status: ACTIVE','Part no.: ABC'])assert.ok(text.includes(field),field);
 });

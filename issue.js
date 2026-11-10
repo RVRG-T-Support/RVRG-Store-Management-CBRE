@@ -66,7 +66,7 @@ const supabaseClient =
 
 async function loadApprovedRequests() {
     const tableBody = document.getElementById('approvedRequestsTable');
-    tableBody.innerHTML = '<tr><td colspan="13" class="text-center text-muted py-4">Loading approved requests...</td></tr>';
+    tableBody.innerHTML = '<tr><td colspan="12" class="text-center text-muted py-4">Loading approved requests...</td></tr>';
 
     try {
         // Fetch APPROVED requests
@@ -90,7 +90,7 @@ async function loadApprovedRequests() {
         if (reqError) throw reqError;
 
         if (requests.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="13" class="text-center text-success py-4"><i class="fa-solid fa-check-circle me-2"></i>No materials pending issue!</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="12" class="text-center text-success py-4"><i class="fa-solid fa-check-circle me-2"></i>No materials pending issue!</td></tr>';
             return;
         }
 
@@ -265,7 +265,7 @@ tableBody.appendChild(tr);
 
     } catch (error) {
         console.error("Error loading issue desk:", error.message);
-        tableBody.innerHTML = '<tr><td colspan="13" class="text-center text-danger">Failed to load requests.</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="12" class="text-center text-danger">Failed to load requests.</td></tr>';
     }
 }
 

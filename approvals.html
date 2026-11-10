@@ -12,6 +12,20 @@
     <link rel="stylesheet" href="theme.css">
     <link rel="stylesheet" href="typography.css">
 <style>
+.approvals-page { margin-top:70px; padding:12px 14px; min-height:calc(100dvh - 70px); }
+.approvals-page h3 { margin-bottom:0; }
+.approvals-page .card-header { padding:10px 12px !important; }
+.approvals-page .card-title { margin:0; }
+.approvals-page table { width:100%; min-width:1000px; table-layout:fixed; }
+.approvals-page th { overflow-wrap:normal; }
+.approvals-page td { overflow-wrap:anywhere; }
+.approvals-page .approval-material-meta { grid-template-columns:repeat(2,minmax(0,1fr)); gap:3px 12px; line-height:1.4; }
+.approvals-page .approval-material-meta > div { min-width:0; }
+.approvals-page td .badge { white-space:normal; }
+.approvals-page #pendingApprovalsTable > tr:only-child > td[colspan] { padding:14px !important; }
+@media(max-width:991.98px) {
+ .approvals-page table { min-width:1000px; }
+}
 .approvals-scroll { max-height:65dvh; overflow:auto; }
 .approvals-scroll thead th { position:sticky; top:0; z-index:2; background:#f4f6f9; }
 .approval-material-meta { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 8px; overflow-wrap:anywhere; }
@@ -27,10 +41,10 @@
 
 <div id="globalSidebar"></div>
 
-<<div class="main-content">
+<div class="main-content approvals-page">
 
-    <div class="container-fluid px-2 my-2">
-        <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="container-fluid px-0 my-0">
+        <div class="d-flex justify-content-between align-items-center mb-3">
             <h3 class="fw-bold text-dark"><i class="fa-solid fa-clipboard-check me-2 text-primary"></i>Material Request Approvals</h3>
             <button class="btn btn-secondary btn-sm" id="btnRefreshApprovals">
                 <i class="fa-solid fa-rotate-right me-1"></i>Refresh List
@@ -38,7 +52,7 @@
         </div>
 
        <!-- Pending Approvals Table -->
-<div class="card shadow-sm border-0 mb-4">
+<div class="card shadow-sm border-0 mb-3">
     <div class="card-header bg-white border-bottom-0 pt-3 pb-0">
         <h5 class="card-title text-muted">Tickets Awaiting Approval</h5>
     </div>
@@ -46,6 +60,7 @@
     <div class="card-body p-0">
         <div class="table-responsive approvals-scroll">
             <table class="table table-hover align-top mb-0">
+<colgroup><col style="width:19%"><col style="width:13%"><col style="width:35%"><col style="width:10%"><col style="width:15%"><col style="width:8%"></colgroup>
                 <thead class="table-light">
                     <tr>
                         <th>Complaint Number / Request No.</th>
@@ -79,6 +94,7 @@
     <div class="card-body p-0">
         <div class="table-responsive approvals-scroll">
             <table class="table table-hover align-top mb-0">
+<colgroup><col style="width:15%"><col style="width:11%"><col style="width:31%"><col style="width:8%"><col style="width:7%"><col style="width:12%"><col style="width:7%"><col style="width:9%"></colgroup>
                 <thead class="table-light">
                     <tr>
                         <th>Complaint Number / Request No.</th>

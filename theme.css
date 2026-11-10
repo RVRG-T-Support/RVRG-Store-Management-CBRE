@@ -3,6 +3,7 @@
 ========================================= */
 
 :root{
+    --app-sidebar-width:205px;
 
     /* CBRE Dark Green */
     --header-bg:#012A2D;
@@ -162,12 +163,13 @@ body{
     top:70px;
     left:0;
     bottom:0;
-    width:250px;
+    width:var(--app-sidebar-width);
     background:#EFECD2;
     border-right:1px solid #dee2e6;
 
     display:flex;
     flex-direction:column;
+    overflow-y:auto;
 }
 
 .sidebar-title{
@@ -211,11 +213,11 @@ body{
 
     color:var(--text);
 
-    padding:14px 20px;
+    padding:11px 14px;
 
     display:flex;
 
-    gap:12px;
+    gap:10px;
 
     align-items:center;
 
@@ -249,7 +251,7 @@ body{
 
 .main-content{
 
-    margin-left:250px;
+    margin-left:var(--app-sidebar-width);
 
     margin-top:75px;
 

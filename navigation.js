@@ -209,10 +209,6 @@ async function renderSidebar() {
 
     let html = `
         <div class="sidebar">
-            <div class="sidebar-title">
-    
-            </div>
-
             <ul class="nav flex-column">
     `;
 

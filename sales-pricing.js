@@ -37,5 +37,7 @@ window.RvrgSales = {
     async requireInstalled(client) {
         const { error } = await client.from('material_sales_prices').select('material_id').limit(1);
         if (error) throw new Error('Sales pricing is not ready. Run 20261112_sales_pricing.sql in Supabase first. No invoice has been saved. ' + error.message);
+        const { error: gstError } = await client.from('stock_entry_details').select('sales_gst_type').limit(1);
+        if (gstError) throw new Error('Run 20261112170000_sales_gst_option.sql in Supabase before saving. No invoice has been saved. ' + gstError.message);
     }
 };

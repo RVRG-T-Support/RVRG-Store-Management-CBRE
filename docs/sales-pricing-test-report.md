@@ -75,3 +75,25 @@ Regression example: base 68, excluded GST 18%, quantity 1 => total 80.24.
 Included master price 80.24 => pre-GST stock-entry rate 68 and total 80.24.
 No new migration or historical-data rewrite is required. The expanded automated
 suite has 102 tests, with browser coverage for both exact GST cases.
+
+
+## Independent sales GST choice
+
+Stock-entry sales prices now have an Inclusive/Exclusive selector, defaulting to
+Inclusive. A manually entered 100 stays 100 in inclusive mode and becomes 118 in
+exclusive mode with 18% invoice GST. Unedited automatic sales pricing preserves
+the purchase gross amount: a 68 purchase with 18% GST defaults to an inclusive
+sales amount of 80.24, or a base amount of 68 when changed to Exclusive.
+
+The additive `20261112170000_sales_gst_option.sql` migration adds a nullable
+`sales_gst_type` snapshot to stock-entry details. New app entries explicitly save
+the chosen type; old app entries keep the prior purchase-GST interpretation when
+the column is omitted. The sales-price synchronization trigger uses the separate
+sales choice. No old price, invoice or issue rows are rewritten. Run this migration
+after the existing sales-pricing migration and before deploying the new app.
+
+104 automated tests passed. Browser checks covered default Inclusive mode,
+manual 100 inclusive => 100, changing to Exclusive => 118, separate saved purchase
+and sales types, invoice totals, and layouts at 1440/1024/768 pixels. Local database
+checks covered both types, old-app compatibility and repeat migration execution.
+The app checks for the new column before writing any invoice data.

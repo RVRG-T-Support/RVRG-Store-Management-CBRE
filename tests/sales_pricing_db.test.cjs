@@ -30,6 +30,18 @@ test('sales migration preserves history, defaults rates, supports overrides and 
         assert.equal(Number((await rows('SELECT sales_price FROM material_sales_prices WHERE material_id=2'))[0].sales_price),60);
         assert.deepEqual(await rows('SELECT * FROM material_issue_register'),[{id:1,unit_cost:'100',total_cost:'200'}]);
         await assert.rejects(() => db.exec(`INSERT INTO stock_entry_details(material_id,purchase_price,sales_price,gst_type,gst_percentage) VALUES(1,100,-1,'EXCLUDED',18)`),/Invalid material sales price/);
+        const gstMigration = fs.readFileSync(path.join(__dirname, '../supabase/migrations/20261112170000_sales_gst_option.sql'), 'utf8');
+        await db.exec(gstMigration);
+        // Old stock-entry code can continue during the deployment window.
+        await db.exec(`INSERT INTO stock_entry_details(material_id,purchase_price,sales_price,gst_type,gst_percentage) VALUES(1,68,100,'EXCLUDED',18)`);
+        assert.equal((await rows('SELECT gst_type FROM material_sales_prices WHERE material_id=1'))[0].gst_type,'EXCLUDED');
+        await db.exec(`INSERT INTO stock_entry_details(material_id,purchase_price,sales_price,sales_gst_type,gst_type,gst_percentage) VALUES(1,68,100,'INCLUDED','EXCLUDED',18)`);
+        assert.equal((await rows('SELECT gst_type FROM material_sales_prices WHERE material_id=1'))[0].gst_type,'INCLUDED');
+        assert.equal(Number((await rows('SELECT sales_price FROM material_sales_prices WHERE material_id=1'))[0].sales_price),100);
+        await db.exec(gstMigration);
+        assert.equal((await rows('SELECT gst_type FROM material_sales_prices WHERE material_id=1'))[0].gst_type,'INCLUDED');
+        await db.exec(`INSERT INTO stock_entry_details(material_id,purchase_price,sales_price,sales_gst_type,gst_type,gst_percentage) VALUES(1,68,100,'EXCLUDED','EXCLUDED',18)`);
+        assert.equal((await rows('SELECT gst_type FROM material_sales_prices WHERE material_id=1'))[0].gst_type,'EXCLUDED');
         await db.exec('SET ROLE anon');
         assert.equal((await rows('SELECT * FROM material_sales_prices')).length,3);
         await assert.rejects(() => db.exec('UPDATE material_sales_prices SET sales_price=1'),/permission denied/);

@@ -37,6 +37,7 @@ function setup(items, failure = '') {
                 error: failure === 'missing-schema' ? { code: 'PGRST205', message: 'Missing sales pricing table' } : null
             }) }) };
             return {
+            select: () => ({ limit: async () => ({ error: failure === 'missing-gst-schema' ? { message: 'Missing sales GST column' } : null }) }),
             insert(rows) {
                 calls.push({ table, action: 'insert', rows });
                 if (table === 'stock_entry_header') return { select: async () => ({ data: [{ id: 42 }], error: null }) };
@@ -215,7 +216,7 @@ test('separate sales override is saved without changing purchase or invoice tota
 test('sales defaults to purchase and invalid manual values write no invoice', async () => {
     const app = setup([item]);
     await app.run();
-    assert.equal(app.calls.find(c => c.table === 'stock_entry_details').rows[0].sales_price, 125.5);
+    assert.equal(app.calls.find(c => c.table === 'stock_entry_details').rows[0].sales_price, 148.09);
     for (const sales of [0, -1, 'NaN', 'Infinity', '12abc']) {
         const invalid = setup([{ ...item, sales }]);
         await invalid.run();
@@ -232,4 +233,27 @@ test('missing migration writes nothing; missing saved sales price prevents stock
     await altered.run();
     assert.equal(altered.calls.some(c => c.table === 'stock_ledger'), false);
     assert.equal(altered.alerts.some(a => a.type === 'success'), false);
+});
+
+
+test('sales GST defaults inclusive and an exclusive choice is saved separately from purchase GST', async () => {
+    for (const [type, expected] of [['INCLUDED',100],['EXCLUDED',118]]) {
+        const app = setup([{material:1,qty:1,price:68,gst:18,sales:100,'sales-gst-type':type}]);
+        await app.run();
+        const row = app.calls.find(c=>c.table==='stock_entry_details').rows[0];
+        assert.equal(row.sales_price,100);
+        assert.equal(row.sales_gst_type,type);
+        assert.equal(row.gst_type,'EXCLUDED');
+        assert.equal(row.line_total,80.24);
+        assert.equal(app.evaluate(`window.RvrgSales.gross(100,'${type}',18)`),expected);
+    }
+    const app = setup([{material:1,qty:1,price:68,gst:18,sales:100}]);
+    await app.run();
+    assert.equal(app.calls.find(c=>c.table==='stock_entry_details').rows[0].sales_gst_type,'INCLUDED');
+});
+test('missing sales GST migration prevents all invoice writes', async () => {
+    const app = setup([item], 'missing-gst-schema');
+    await app.run();
+    assert.equal(app.calls.length,0);
+    assert.match(app.alerts[0].message,/20261112170000_sales_gst_option.sql/);
 });

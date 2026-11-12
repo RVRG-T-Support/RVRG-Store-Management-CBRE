@@ -254,8 +254,13 @@ function addRow(prefillData = null) {
         <td>
             <input type="number" step="0.01" min="0.01"
                 class="form-control form-control-sm item-row-input mx-auto sales-input"
-                id="sales-${currentRow}" aria-label="Sales price per unit before GST"
+                id="sales-${currentRow}" aria-label="Sales price per unit"
                 oninput="this.dataset.manual = this.value === '' ? '' : 'true'; calculateRowTotal(${currentRow})">
+            <select id="sales-gst-type-${currentRow}" class="form-select form-select-sm mt-1"
+                aria-label="Sales GST type" onchange="calculateRowTotal(${currentRow})">
+                <option value="INCLUDED" selected>GST Inclusive</option>
+                <option value="EXCLUDED">GST Exclusive</option>
+            </select>
             <small class="text-muted d-block" id="sales-gross-${currentRow}">Incl. GST: ₹0.00 / unit</small>
         </td>
 
@@ -435,6 +440,7 @@ value="18"
         if (prefillData.GST_Percentage != null && prefillData.GST_Percentage !== '') {
             document.getElementById(`gst-${currentRow}`).value = prefillData.GST_Percentage;
         }
+        document.getElementById(`sales-gst-type-${currentRow}`).value = prefillData.Sales_GST_Type || 'INCLUDED';
         const sales = document.getElementById(`sales-${currentRow}`);
         if (prefillData.Sales_Price != null && prefillData.Sales_Price !== '') {
             sales.value = prefillData.Sales_Price;
@@ -697,8 +703,13 @@ function addRow(prefillData = null) {
         <td>
             <input type="number" step="0.01" min="0.01"
                 class="form-control form-control-sm item-row-input mx-auto sales-input"
-                id="sales-${currentRow}" aria-label="Sales price per unit before GST"
+                id="sales-${currentRow}" aria-label="Sales price per unit"
                 oninput="this.dataset.manual = this.value === '' ? '' : 'true'; calculateRowTotal(${currentRow})">
+            <select id="sales-gst-type-${currentRow}" class="form-select form-select-sm mt-1"
+                aria-label="Sales GST type" onchange="calculateRowTotal(${currentRow})">
+                <option value="INCLUDED" selected>GST Inclusive</option>
+                <option value="EXCLUDED">GST Exclusive</option>
+            </select>
             <small class="text-muted d-block" id="sales-gross-${currentRow}">Incl. GST: ₹0.00 / unit</small>
         </td>
 
@@ -863,6 +874,7 @@ function addRow(prefillData = null) {
         if (prefillData.GST_Percentage != null && prefillData.GST_Percentage !== '') {
             document.getElementById(`gst-${currentRow}`).value = prefillData.GST_Percentage;
         }
+        document.getElementById(`sales-gst-type-${currentRow}`).value = prefillData.Sales_GST_Type || 'INCLUDED';
         const sales = document.getElementById(`sales-${currentRow}`);
         if (prefillData.Sales_Price != null && prefillData.Sales_Price !== '') {
             sales.value = prefillData.Sales_Price;
@@ -1399,13 +1411,20 @@ function handleEnterKey(event, currentId) {
     }
 }
 
+function salesGstType(id) {
+    return document.getElementById(`sales-gst-type-${id}`).value || 'INCLUDED';
+}
+function defaultSalesPrice(price, gst, type) {
+    return type === 'INCLUDED' ? window.RvrgSales.gross(price, 'EXCLUDED', gst) : price;
+}
 function syncSalesPrice(id) {
     const purchase = document.getElementById(`price-${id}`);
     const sales = document.getElementById(`sales-${id}`);
     if (!sales) return;
-    if (!sales.dataset.manual) sales.value = purchase.value;
     const gst = Number(document.getElementById(`gst-${id}`).value) || 0;
-    const gross = Number(sales.value || 0) * (1 + gst / 100);
+    const type = salesGstType(id);
+    if (!sales.dataset.manual) sales.value = purchase.value === '' ? '' : defaultSalesPrice(Number(purchase.value), gst, type);
+    const gross = window.RvrgSales.gross(sales.value, type, gst);
     const preview = document.getElementById(`sales-gross-${id}`);
     if (preview) preview.textContent = `Incl. GST: ${formatCurrency(gross)} / unit`;
 }
@@ -1635,6 +1654,7 @@ function downloadExcelTemplate() {
 
             "Unit Price": "",
             "Sales Price": "",
+            "Sales GST Type": "INCLUDED",
             "GST %": 18
 
         }));
@@ -1901,6 +1921,11 @@ function processExcelUpload() {
 
                 const importedSales = row["Sales Price"];
                 const importedGst = row["GST %"];
+                const importedSalesGstType = String(row["Sales GST Type"] || 'INCLUDED').trim().toUpperCase();
+                if (!['INCLUDED','EXCLUDED'].includes(importedSalesGstType)) {
+                    errors.push(`Excel row ${excelLine}: Sales GST Type must be INCLUDED or EXCLUDED.`);
+                    return;
+                }
                 if (importedSales != null && importedSales !== '' && (!Number.isFinite(Number(importedSales)) || Number(importedSales) <= 0)) {
                     errors.push(`Excel row ${excelLine}: Sales Price must be greater than zero.`);
                     return;
@@ -1944,6 +1969,7 @@ function processExcelUpload() {
 
                     Unit_Price: unitPrice,
                     Sales_Price: row["Sales Price"],
+                    Sales_GST_Type: importedSalesGstType,
                     GST_Percentage: row["GST %"]
 
                 });
@@ -2053,8 +2079,10 @@ function openConfirmationModal(e) {
     const salesTotal = [...document.querySelectorAll('#stockEntryItems tr')].reduce((sum, row) => {
         const id = row.id.split('-')[1];
         const sales = document.getElementById(`sales-${id}`).value;
-        const base = Number(sales === '' ? document.getElementById(`price-${id}`).value : sales);
-        const grossUnit = Math.round((base * (1 + Number(document.getElementById(`gst-${id}`).value) / 100) + Number.EPSILON) * 100) / 100;
+        const gst = Number(document.getElementById(`gst-${id}`).value);
+        const type = salesGstType(id);
+        const base = sales === '' ? defaultSalesPrice(Number(document.getElementById(`price-${id}`).value), gst, type) : Number(sales);
+        const grossUnit = window.RvrgSales.gross(base, type, gst);
         return sum + grossUnit * Number(document.getElementById(`qty-${id}`).value);
     }, 0);
     document.getElementById('modalSalesTotal').textContent = formatCurrency(salesTotal);
@@ -2156,7 +2184,11 @@ const price =
     Number(document.getElementById(`price-${rowId}`).value);
 
 const salesInput = document.getElementById(`sales-${rowId}`);
-const salesPrice = salesInput.value === '' ? price : Number(salesInput.value);
+const salesType = salesGstType(rowId);
+if (!['INCLUDED','EXCLUDED'].includes(salesType)) throw new Error('Please select a valid sales GST type.');
+const salesPrice = salesInput.value === ''
+    ? defaultSalesPrice(price, Number(document.getElementById(`gst-${rowId}`).value), salesType)
+    : Number(salesInput.value);
 if (!Number.isFinite(salesPrice) || salesPrice <= 0) {
     throw new Error("Sales price must be greater than zero.");
 }
@@ -2210,6 +2242,7 @@ detailsArray.push({
     quantity: qty,
     purchase_price: price,
     sales_price: salesPrice,
+    sales_gst_type: salesType,
     gst_type: "EXCLUDED",
     gst_percentage: gstPercentage,
     line_total: Number(
@@ -2304,7 +2337,7 @@ if (updateNoError)
         const { data: savedDetails, error: detailsError } = await supabase
             .from('stock_entry_details')
             .insert(detailsArray.map(item => ({ ...item, stock_entry_id: entryId })))
-            .select("material_id, quantity, purchase_price, sales_price, gst_percentage, line_total");
+            .select("material_id, quantity, purchase_price, sales_price, sales_gst_type, gst_percentage, line_total");
         if (detailsError) throw detailsError;
 
         // Confirm the database returned the actual invoice amounts, rather than
@@ -2315,6 +2348,7 @@ if (updateNoError)
                 Number(saved.quantity) === item.quantity &&
                 Number(saved.purchase_price) === item.purchase_price &&
                 saved.sales_price != null && Number(saved.sales_price) === item.sales_price &&
+                saved.sales_gst_type === item.sales_gst_type &&
                 Number(saved.gst_percentage) === item.gst_percentage &&
                 Number(saved.line_total) === item.line_total))) {
             throw new Error("Saved item prices or totals could not be confirmed. Check Stock Entry Details.");

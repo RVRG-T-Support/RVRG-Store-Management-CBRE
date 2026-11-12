@@ -222,6 +222,7 @@ async function loadMaterialsMap(materialIds) {
         throw error;
     }
 
+    await window.RvrgSales.load(supabase, (data || []).map(m => m.id));
     const map = {};
 
     (data || []).forEach(material => {
@@ -362,6 +363,7 @@ async function loadReportMaterialCatalog() {
             let balances = null;
             try { balances = await window.RvrgOps.stockBalances(supabase, materials.map(m=>m.id)); }
             catch (error) { console.error('Suggestion stock unavailable:', error); }
+            await window.RvrgSales.load(supabase, materials.map(m => m.id));
             return materials.map(m => ({ ...m, department_name: departments[String(m.department_id)] || '', current_stock: balances ? (balances.get(String(m.id)) || 0) : null }));
         })().catch(error => { reportMaterialCatalogPromise = null; throw error; });
     }
@@ -369,7 +371,7 @@ async function loadReportMaterialCatalog() {
 }
 
 function reportMaterialDetails(m) {
-    return [['Stock',m.current_stock ?? 'Unavailable'],['Category',m.category],['Brand',m.brand],['Type',m.item_type],['Size',m.item_size],['Spec',m.specification],['Unit',m.unit],['Cost',m.unit_cost == null ? null : '₹'+Number(m.unit_cost).toFixed(2)],['GST',m.gst_type],['GST %',m.gst_percentage],['Rack',m.rack_location],['Minimum stock',m.minimum_stock],['Status',m.status],['Part no.',m.manufacturer_part_no]]
+    return [['Stock',m.current_stock ?? 'Unavailable'],['Category',m.category],['Brand',m.brand],['Type',m.item_type],['Size',m.item_size],['Spec',m.specification],['Unit',m.unit],['Sales / unit (incl. GST)','₹'+window.RvrgSales.unit(m).toFixed(2)],['Sales GST',window.RvrgSales.gstLabel(m)],['Rack',m.rack_location],['Minimum stock',m.minimum_stock],['Status',m.status],['Part no.',m.manufacturer_part_no]]
         .map(([label,value])=>`${label}: ${value == null || value === '' ? '-' : value}`).join(' | ');
 }
 
@@ -869,7 +871,7 @@ async function fetchRequestData(
                 approvedQuantity: row.approved_qty == null ? null : Number(row.approved_qty),
                 issuedQuantity: Number(row.issued_qty || 0),
                 value:
-                    0,
+                    Number(row.requested_qty || 0) * window.RvrgSales.unit(material),
 
                 requestedBy:
                     userName(row.requested_by),
@@ -1042,7 +1044,7 @@ async function fetchApprovalData(
                     ),
 
                 value:
-                    0,
+                    Number(row.approved_qty ?? row.requested_qty ?? 0) * window.RvrgSales.unit(material),
 
                 requestedBy:
                     userName(row.requested_by),
@@ -1386,6 +1388,7 @@ async function fetchReturnData(
                 .select(`
                     id,
                     ticket_no,
+                    unit_cost,
                     location_type,
                     location_name
                 `)
@@ -1485,9 +1488,7 @@ async function fetchReturnData(
             );
 
         const unitCost =
-            Number(
-                material.unit_cost || 0
-            );
+            Number(issue.unit_cost || 0);
 
         return {
 

@@ -5,6 +5,7 @@ function setup(role='STOREKEEPER'){
  for(const [id,val]of Object.entries({filterFromDate:'2026-11-01',filterToDate:'2026-11-09',filterDepartment:'ALL',filterRecordType:'REQUESTS',filterAreaType:'ALL'}))element(id).value=val;
  const context=vm.createContext({document:{addEventListener(type,fn){events.push({type,fn})},getElementById:element},window:{location:{replace(){}}},getCurrentUser:()=>({id:1,role,name:'Store'}),checkUserAccess:roles=>roles.includes(role),showAlert(){},console,setTimeout,
  formatDate:v=>v,XLSX:{utils:{json_to_sheet(rows){exports.push(rows);return{}},book_new:()=>({}),book_append_sheet(){}},writeFile(){}}});
+ vm.runInContext(fs.readFileSync(path.join(__dirname,'..','sales-pricing.js'),'utf8'),context);
  vm.runInContext(fs.readFileSync(path.join(__dirname,'..','reports.js'),'utf8'),context);
  vm.runInContext('saveReportDownloadHistory=()=>{};',context);
  return{run:s=>vm.runInContext(s,context),element,events,exports};
@@ -67,5 +68,5 @@ test('Excel request exports include all three quantity columns',()=>{
 
 test('report material details include identifying fields, stock, cost and storage information',()=>{
  const a=setup();const text=a.run("reportMaterialDetails({current_stock:7,category:'Lighting',brand:'Acme',item_type:'LED',item_size:'20mm',specification:'10W',unit:'NOS',unit_cost:100,gst_type:'INCLUDED',gst_percentage:18,rack_location:'A1',minimum_stock:2,status:'ACTIVE',manufacturer_part_no:'ABC'})");
- for(const field of ['Stock: 7','Category: Lighting','Brand: Acme','Type: LED','Size: 20mm','Spec: 10W','Unit: NOS','Cost: ₹100.00','GST: INCLUDED','GST %: 18','Rack: A1','Minimum stock: 2','Status: ACTIVE','Part no.: ABC'])assert.ok(text.includes(field),field);
+ for(const field of ['Stock: 7','Category: Lighting','Brand: Acme','Type: LED','Size: 20mm','Spec: 10W','Unit: NOS','Sales / unit (incl. GST): ₹100.00','Sales GST: INCLUDED','Rack: A1','Minimum stock: 2','Status: ACTIVE','Part no.: ABC'])assert.ok(text.includes(field),field);
 });

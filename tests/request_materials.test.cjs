@@ -13,8 +13,9 @@ function setup(materials=[material(1)], stockRows=[{material_id:1,current_stock:
   document:{getElementById:element,createElement:node,addEventListener(){},querySelector(){return null}},
   window:{location:{replace(){}}},getCurrentUser:()=>({id:6}),checkUserAccess:()=>true,
   showAlert:(...args)=>alerts.push(args),console:{error(){},warn(){}},
-  supabase:{from(table){queries.push(table);const q={select(){return q},eq(){return q},in(){return q},order(){return q},range:async(start,end)=>({data:stockRows.slice(start,end+1),error:fail?new Error('Read denied'):null}),then(resolve,reject){return Promise.resolve({data:materials,error:null}).then(resolve,reject)}};return q}}
+  supabase:{from(table){queries.push(table);const q={select(){return q},eq(){return q},in(){return q},order(){return q},range:async(start,end)=>({data:stockRows.slice(start,end+1),error:fail?new Error('Read denied'):null}),then(resolve,reject){return Promise.resolve({data:table==='material_sales_prices'?[]:materials,error:null}).then(resolve,reject)}};return q}}
  });
+ vm.runInContext(fs.readFileSync(path.join(__dirname,'..','sales-pricing.js'),'utf8'),context);
  vm.runInContext(source,context);context.window.currentMaterials=materials;
  vm.runInContext('renderRequestItems = () => {};',context);
  return {run:code=>vm.runInContext(code,context),element,alerts,queries,window:context.window};

@@ -5,7 +5,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '..', 'reports.js'), 'utf8');
 
-function setup(rows, users, failure = false) {
+function setup(rows, users, failure = false, sales = []) {
     const queries = [];
     const context = vm.createContext({
         document: { addEventListener() {} },
@@ -20,7 +20,7 @@ function setup(rows, users, failure = false) {
                 in(field, ids) { query.ids = ids; return chain; },
                 gte() { return chain; }, lte() { return chain; }, order() { return chain; },
                 then(resolve, reject) {
-                    const data = table === 'material_requests' ? rows : table === 'users_master'
+                    const data = table === 'material_sales_prices' ? sales : table === 'material_requests' ? rows : table === 'users_master'
                         ? users.filter(user => query.ids.includes(String(user.id)))
                         : table === 'materials' ? [{id:10, material_code:'ELE-032', material_name:'Combined box', department_id:2, unit:'NOS'}]
                         : [{ id: 2, department_name: 'Electrical' }];
@@ -30,7 +30,8 @@ function setup(rows, users, failure = false) {
             return chain;
         } }
     });
-    vm.runInContext(source, context);
+    vm.runInContext(fs.readFileSync(path.join(__dirname,'..','sales-pricing.js'),'utf8'),context);
+ vm.runInContext(source, context);
     vm.runInContext('withReportTimeout = async promise => promise;', context);
     return { run: code => vm.runInContext(code, context), queries };
 }
@@ -106,4 +107,13 @@ test('large reports load names in bounded batches', async () => {
     assert.equal(resolve(205), 'Person 205');
     assert.equal(app.queries.length, 3);
     assert.ok(app.queries.every(q => q.ids.length <= 100));
+});
+
+
+test('request and approval report values use sales including invoice GST', async () => {
+    const app = setup([request], users, false, [{ material_id:10, sales_price:120, gst_type:'EXCLUDED', gst_percentage:18 }]);
+    const requested = await app.run('fetchRequestData("a", "b", "ALL", "ALL")');
+    const approved = await app.run('fetchApprovalData("a", "b", "ALL", "ALL")');
+    assert.equal(requested[0].value, 283.2);
+    assert.equal(approved[0].value, 141.6);
 });

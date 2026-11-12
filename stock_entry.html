@@ -154,6 +154,7 @@
                         </div>
                         
                         <div class="card-body p-0">
+                            <div class="px-3 py-2 small text-muted">Sales price defaults to the purchase price before GST. Edit it to set a different rate. The invoice GST percentage also applies to sales. Invoice totals below use purchase prices only.</div>
                             <div class="table-responsive">
                                 <table class="table table-bordered align-middle mb-0 text-center" id="itemsTable">
                                     <thead class="table-light">
@@ -162,8 +163,9 @@
     <th width="30%">Department & Material *</th>
     <th width="12%">Quantity *</th>
     <th width="8%">Unit</th>
-<th width="15%">Item Price (₹) *</th>
-<th width="12%">GST (₹)</th>
+<th width="15%">Purchase / unit (₹) *</th>
+<th>Sales / unit (₹) *</th>
+<th width="12%">Purchase GST (₹)</th>
 <th width="15%">Total (₹)</th>
     <th width="5%">Action</th>
 </tr>
@@ -177,7 +179,7 @@
     <!-- ITEM TOTAL -->
     <tr>
 
-        <td colspan="5"
+        <td colspan="6"
             class="text-end fw-bold">
 
             Items Total (Items + GST):
@@ -202,7 +204,7 @@
     <!-- TRANSPORTATION -->
     <tr>
 
-        <td colspan="5"
+        <td colspan="6"
             class="text-end fw-bold">
 
             Transportation Fees (₹):
@@ -233,7 +235,7 @@
     <!-- ROUND OFF -->
     <tr>
 
-        <td colspan="5"
+        <td colspan="6"
             class="text-end fw-bold">
 
             Round Off (₹):
@@ -263,7 +265,7 @@
     <!-- FINAL TOTAL -->
     <tr>
 
-        <td colspan="5"
+        <td colspan="6"
             class="text-end fw-bold">
 
             Calculated Total
@@ -316,6 +318,7 @@
                             <tr><td class="text-muted fw-semibold">Total Unique Items:</td><td class="fw-bold text-end"><span class="badge bg-dark fs-6" id="modalItemCount">0</span></td></tr>
                             <tr class="border-bottom"><td class="text-muted fw-semibold pb-2">Billed Invoice Amount:</td><td class="fw-bold text-end pb-2" id="modalBilledAmount"></td></tr>
                             <tr><td class="text-muted fw-semibold pt-2">System Calculated Total:</td><td class="fw-bold text-end pt-2 text-primary fs-5" id="modalCalculatedTotal"></td></tr>
+                            <tr><td class="text-muted fw-semibold">Sales value (incl. GST, before transport):</td><td class="fw-bold text-end" id="modalSalesTotal"></td></tr>
                         </tbody>
                     </table>
                     <div id="mismatchWarning" class="alert alert-danger mt-3 d-none">
@@ -337,6 +340,7 @@
 <script src="secure-auth.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
     <script src="common.js"></script>
+<script src="sales-pricing.js"></script>
     <script src="navigation.js"></script>
     <script src="stock_entry.js"></script>
 </body>

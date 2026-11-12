@@ -251,6 +251,14 @@ function addRow(prefillData = null) {
             >
 
         </td>
+        <td>
+            <input type="number" step="0.01" min="0.01"
+                class="form-control form-control-sm item-row-input mx-auto sales-input"
+                id="sales-${currentRow}" aria-label="Sales price per unit before GST"
+                oninput="this.dataset.manual = this.value === '' ? '' : 'true'; calculateRowTotal(${currentRow})">
+            <small class="text-muted d-block" id="sales-gross-${currentRow}">Incl. GST: ₹0.00 / unit</small>
+        </td>
+
 
 <td class="align-middle">
 
@@ -424,12 +432,16 @@ value="18"
             prefillData.Unit_Price || 0;
 
 
-        calculateRowTotal(
-            currentRow
-        );
-
+        if (prefillData.GST_Percentage != null && prefillData.GST_Percentage !== '') {
+            document.getElementById(`gst-${currentRow}`).value = prefillData.GST_Percentage;
+        }
+        const sales = document.getElementById(`sales-${currentRow}`);
+        if (prefillData.Sales_Price != null && prefillData.Sales_Price !== '') {
+            sales.value = prefillData.Sales_Price;
+            sales.dataset.manual = 'true';
+        }
+        calculateRowTotal(currentRow);
     }
-
 }
 
 
@@ -682,6 +694,14 @@ function addRow(prefillData = null) {
             >
 
         </td>
+        <td>
+            <input type="number" step="0.01" min="0.01"
+                class="form-control form-control-sm item-row-input mx-auto sales-input"
+                id="sales-${currentRow}" aria-label="Sales price per unit before GST"
+                oninput="this.dataset.manual = this.value === '' ? '' : 'true'; calculateRowTotal(${currentRow})">
+            <small class="text-muted d-block" id="sales-gross-${currentRow}">Incl. GST: ₹0.00 / unit</small>
+        </td>
+
 
 
         <td class="align-middle">
@@ -840,12 +860,16 @@ function addRow(prefillData = null) {
             prefillData.Unit_Price || 0;
 
 
-        calculateRowTotal(
-            currentRow
-        );
-
+        if (prefillData.GST_Percentage != null && prefillData.GST_Percentage !== '') {
+            document.getElementById(`gst-${currentRow}`).value = prefillData.GST_Percentage;
+        }
+        const sales = document.getElementById(`sales-${currentRow}`);
+        if (prefillData.Sales_Price != null && prefillData.Sales_Price !== '') {
+            sales.value = prefillData.Sales_Price;
+            sales.dataset.manual = 'true';
+        }
+        calculateRowTotal(currentRow);
     }
-
 }
 
 
@@ -1363,7 +1387,20 @@ function handleEnterKey(event, currentId) {
     }
 }
 
+function syncSalesPrice(id) {
+    const purchase = document.getElementById(`price-${id}`);
+    const sales = document.getElementById(`sales-${id}`);
+    if (!sales) return;
+    if (!sales.dataset.manual) sales.value = purchase.value;
+    const gst = Number(document.getElementById(`gst-${id}`).value) || 0;
+    const gross = Number(sales.value || 0) * (1 + gst / 100);
+    const preview = document.getElementById(`sales-gross-${id}`);
+    if (preview) preview.textContent = `Incl. GST: ${formatCurrency(gross)} / unit`;
+}
+
 function calculateRowTotal(id) {
+    syncSalesPrice(id);
+
 
     const qty =
         parseFloat(
@@ -1584,7 +1621,9 @@ function downloadExcelTemplate() {
 
             "Unit": mat.unit || "",
 
-            "Unit Price": ""
+            "Unit Price": "",
+            "Sales Price": "",
+            "GST %": 18
 
         }));
 
@@ -1848,6 +1887,16 @@ function processExcelUpload() {
                 }
 
 
+                const importedSales = row["Sales Price"];
+                const importedGst = row["GST %"];
+                if (importedSales != null && importedSales !== '' && (!Number.isFinite(Number(importedSales)) || Number(importedSales) <= 0)) {
+                    errors.push(`Excel row ${excelLine}: Sales Price must be greater than zero.`);
+                    return;
+                }
+                if (importedGst != null && importedGst !== '' && (!Number.isFinite(Number(importedGst)) || Number(importedGst) < 0 || Number(importedGst) > 100)) {
+                    errors.push(`Excel row ${excelLine}: GST % must be between 0 and 100.`);
+                    return;
+                }
                 // Check duplicate material
 
                 const alreadyAdded =
@@ -1881,7 +1930,9 @@ function processExcelUpload() {
 
                     Quantity: quantity,
 
-                    Unit_Price: unitPrice
+                    Unit_Price: unitPrice,
+                    Sales_Price: row["Sales Price"],
+                    GST_Percentage: row["GST %"]
 
                 });
 
@@ -1987,6 +2038,14 @@ function openConfirmationModal(e) {
     document.getElementById('modalItemCount').innerText = itemCount;
     document.getElementById('modalBilledAmount').innerText = formatCurrency(billedAmount);
     document.getElementById('modalCalculatedTotal').innerText = formatCurrency(calculatedTotal);
+    const salesTotal = [...document.querySelectorAll('#stockEntryItems tr')].reduce((sum, row) => {
+        const id = row.id.split('-')[1];
+        const sales = document.getElementById(`sales-${id}`).value;
+        const base = Number(sales === '' ? document.getElementById(`price-${id}`).value : sales);
+        const grossUnit = Math.round((base * (1 + Number(document.getElementById(`gst-${id}`).value) / 100) + Number.EPSILON) * 100) / 100;
+        return sum + grossUnit * Number(document.getElementById(`qty-${id}`).value);
+    }, 0);
+    document.getElementById('modalSalesTotal').textContent = formatCurrency(salesTotal);
     
     const warningMsg = document.getElementById('mismatchWarning');
    const differenceInPaise =
@@ -2084,6 +2143,11 @@ const qty =
 const price =
     Number(document.getElementById(`price-${rowId}`).value);
 
+const salesInput = document.getElementById(`sales-${rowId}`);
+const salesPrice = salesInput.value === '' ? price : Number(salesInput.value);
+if (!Number.isFinite(salesPrice) || salesPrice <= 0) {
+    throw new Error("Sales price must be greater than zero.");
+}
 const gstPercentage =
     Number(document.getElementById(`gst-${rowId}`).value);
 
@@ -2091,6 +2155,9 @@ if (!Number.isFinite(gstPercentage) || gstPercentage < 0 || gstPercentage > 100)
     throw new Error("GST must be a number between 0 and 100.");
 }
 
+if (!Number.isFinite(salesPrice * (1 + gstPercentage / 100) * qty)) {
+    throw new Error("Sales amount is too large. Please check the sales price.");
+}
 if (!Number.isFinite(qty) || qty <= 0) {
     throw new Error("Quantity must be greater than zero.");
 }
@@ -2130,6 +2197,7 @@ detailsArray.push({
     material_id: Number(materialId),
     quantity: qty,
     purchase_price: price,
+    sales_price: salesPrice,
     gst_type: "EXCLUDED",
     gst_percentage: gstPercentage,
     line_total: Number(
@@ -2157,6 +2225,9 @@ detailsArray.push({
             
         });
 
+
+        // Check the migration before creating any part of the invoice.
+        await window.RvrgSales.requireInstalled(supabase);
 
         // Generate Stock Entry Number
 
@@ -2221,7 +2292,7 @@ if (updateNoError)
         const { data: savedDetails, error: detailsError } = await supabase
             .from('stock_entry_details')
             .insert(detailsArray.map(item => ({ ...item, stock_entry_id: entryId })))
-            .select("material_id, quantity, purchase_price, gst_percentage, line_total");
+            .select("material_id, quantity, purchase_price, sales_price, gst_percentage, line_total");
         if (detailsError) throw detailsError;
 
         // Confirm the database returned the actual invoice amounts, rather than
@@ -2231,6 +2302,7 @@ if (updateNoError)
                 String(saved.material_id) === String(item.material_id) &&
                 Number(saved.quantity) === item.quantity &&
                 Number(saved.purchase_price) === item.purchase_price &&
+                saved.sales_price != null && Number(saved.sales_price) === item.sales_price &&
                 Number(saved.gst_percentage) === item.gst_percentage &&
                 Number(saved.line_total) === item.line_total))) {
             throw new Error("Saved item prices or totals could not be confirmed. Check Stock Entry Details.");

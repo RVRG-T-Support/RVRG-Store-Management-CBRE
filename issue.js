@@ -88,6 +88,7 @@ async function loadApprovedRequests() {
             .order('created_at', { ascending: true });
 
         if (reqError) throw reqError;
+        await window.RvrgSales.load(supabaseClient, (requests || []).map(r => r.material_id));
 
         if (requests.length === 0) {
             tableBody.innerHTML = '<tr><td colspan="12" class="text-center text-success py-4"><i class="fa-solid fa-check-circle me-2"></i>No materials pending issue!</td></tr>';
@@ -112,7 +113,7 @@ async function loadApprovedRequests() {
 const deptName =
     material.departments?.department_name ||
     "-";
-            const unitCost = Number(material.unit_cost || 0);
+            const unitCost = window.RvrgSales.unit(material, req.material_id);
 
             const issuedQty = Number(req.issued_qty || 0);
 
@@ -597,12 +598,8 @@ window.processIssue = async function(
             throw requestInfoError;
 
 
-        const unitCost =
-            Number(
-                requestInfo
-                    .materials
-                    ?.unit_cost || 0
-            );
+        await window.RvrgSales.load(supabaseClient, [materialId]);
+        const unitCost = window.RvrgSales.unit(requestInfo.materials, materialId);
 
 
         const totalCost =

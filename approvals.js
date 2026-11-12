@@ -87,6 +87,7 @@ async function loadPendingApprovals() {
             .order('created_at', { ascending: true }); // Oldest first
 
         if (error) throw error;
+        await window.RvrgSales.load(supabase, (data || []).map(r => r.material_id));
 
         if (data.length === 0) {
             tableBody.innerHTML = '<tr><td colspan="6" class="text-center text-success py-4"><i class="fa-solid fa-check-circle me-2"></i>All caught up! No pending requests.</td></tr>';
@@ -221,9 +222,7 @@ ticket.items.forEach(
 
 
         const unitCost =
-            Number(
-                material.unit_cost || 0
-            );
+            window.RvrgSales.unit(material, req.material_id);
 
 
         materialHtml += `
@@ -285,7 +284,7 @@ ticket.items.forEach(
                         </div>
 
                         <div>
-                            <strong>Unit Cost:</strong>
+                            <strong>Sales / unit (incl. GST):</strong>
                             ₹${unitCost.toFixed(2)}
                         </div>
 
@@ -941,6 +940,7 @@ async function loadApprovedHistory() {
             );
 
         if (error) throw error;
+        await window.RvrgSales.load(supabase, (data || []).map(r => r.material_id));
 
         if (!data || data.length === 0) {
 
@@ -985,7 +985,7 @@ async function loadApprovedHistory() {
                 material.unit || "-";
 
             const unitCost =
-                Number(material.unit_cost || 0);
+                window.RvrgSales.unit(material, req.material_id);
 
             const deptName =
                 material.departments?.department_name || "-";
@@ -1100,7 +1100,7 @@ const approvalDate =
                         </div>
 
                         <div>
-                            <strong>Unit Cost:</strong>
+                            <strong>Sales / unit (incl. GST):</strong>
                             ₹${unitCost.toFixed(2)}
                         </div>
 

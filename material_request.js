@@ -216,6 +216,7 @@ async function loadMaterials(departmentId) {
 
 
         const materials = data || [];
+        await window.RvrgSales.load(supabase, materials.map(m => m.id));
         await refreshRequestMaterialStock(materials);
         window.currentMaterials = materials;
 
@@ -850,7 +851,7 @@ function renderMaterialSearchResults(
                 <div class="fw-bold">${escapeHtml(material.material_code || "-")} — ${escapeHtml(material.material_name || "-")}</div>
                 <div>Category: ${escapeHtml(material.category || "-")} | Brand: ${escapeHtml(material.brand || "-")} | Type: ${escapeHtml(material.item_type || "-")} | Size: ${escapeHtml(material.item_size || "-")}</div>
                 <div>Spec: ${escapeHtml(material.specification || "-")} | Unit: ${escapeHtml(material.unit || "-")}</div>
-                <div class="fw-bold">${escapeHtml(requestMaterialStockText(material))} | Cost: ₹${escapeHtml(Number(material.unit_cost || 0).toFixed(2))} | GST: ${escapeHtml(material.gst_type || "-")}</div>
+                <div class="fw-bold">${escapeHtml(requestMaterialStockText(material))} | Sales (incl. GST): ₹${escapeHtml(window.RvrgSales.unit(material).toFixed(2))} | GST: ${escapeHtml(window.RvrgSales.gstLabel(material))}</div>
                 ${alreadyUsed ? '<div>Already added to this request.</div>' : ""}
             `;
 
@@ -1112,16 +1113,14 @@ function buildMaterialDetails(
         ],
 
         [
-            "Unit Cost",
+            "Sales / unit (incl. GST)",
             "₹ " +
-            Number(
-                material.unit_cost || 0
-            ).toFixed(2)
+            window.RvrgSales.unit(material).toFixed(2)
         ],
 
         [
-            "GST",
-            material.gst_type
+            "Sales GST",
+            window.RvrgSales.gstLabel(material)
         ]
 
     ];

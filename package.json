@@ -7,7 +7,8 @@
   "scripts": {
     "test": "node tests/run-tests.cjs",
     "test:approval-db": "node tests/approval_db.test.cjs",
-    "test:approval-browser": "node tests/browser/approval-workflow.cjs"
+    "test:approval-browser": "node tests/browser/approval-workflow.cjs",
+    "test:sales-browser": "node tests/browser/sales-pricing.cjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.3.14",

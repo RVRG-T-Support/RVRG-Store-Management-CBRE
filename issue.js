@@ -78,6 +78,8 @@ async function loadApprovedRequests() {
     material_name,
     material_code,
     unit_cost,
+    gst_type,
+    gst_percentage,
     department_id,
     departments (
         department_name
@@ -582,7 +584,9 @@ window.processIssue = async function(
                 technician_name,
 
                 materials!material_requests_material_id_fkey (
-                    unit_cost
+                    unit_cost,
+                    gst_type,
+                    gst_percentage
                 )
             `)
 

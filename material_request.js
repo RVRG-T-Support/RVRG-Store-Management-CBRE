@@ -193,7 +193,8 @@ async function loadMaterials(departmentId) {
                 unit,
                 unit_cost,
                 price,
-                gst_type
+                gst_type,
+                gst_percentage
             `)
 
             .eq(

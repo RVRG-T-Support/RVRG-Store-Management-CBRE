@@ -40,11 +40,26 @@ process.chdir(path.join(__dirname, '../..'));
         await page.addScriptTag({ content: fs.readFileSync('sales-pricing.js', 'utf8') });
         await page.addScriptTag({ content: fs.readFileSync('stock_entry.js', 'utf8') });
         await page.evaluate(() => {
-            materialsData = [{ id: 1, material_code: 'TEST-001', material_name: 'Hose Clamp', unit: 'Nos', departments: {department_name:'Civil'} }];
+            materialsData = [{ id: 1, material_code: 'TEST-001', material_name: 'Hose Clamp', unit: 'Nos', unit_cost: 68, gst_type: 'EXCLUDED', gst_percentage: 18, departments: {department_name:'Civil'} }];
             confirmModalInstance = { hide() {}, show() {} };
             addRow();
             selectMaterial(1, materialsData[0]);
         });
+        assert.equal(await page.locator('#price-1').inputValue(), '68.00');
+        assert.equal(await page.locator('#sales-1').inputValue(), '68.00');
+        await page.locator('#qty-1').fill('1');
+        assert.match(await page.locator('#total-1').textContent(), /80.24/);
+        assert.match(await page.locator('#sales-gross-1').textContent(), /80.24/);
+        assert.equal(await page.evaluate(() => window.RvrgSales.unit(materialsData[0])), 80.24);
+        const gstArtifacts = process.env.ARTIFACT_DIR || 'test-results';
+        fs.mkdirSync(gstArtifacts, { recursive: true });
+        await page.screenshot({ path: path.join(gstArtifacts, 'gst-excluded-68.png'), fullPage: true });
+        // An inclusive master price must be converted to pre-GST for entry,
+        // without taxing the gross amount a second time.
+        await page.locator('#price-1').fill('');
+        await page.evaluate(() => selectMaterial(1, {...materialsData[0],unit_cost:80.24,gst_type:'INCLUDED'}));
+        assert.equal(await page.locator('#price-1').inputValue(), '68.00');
+        assert.match(await page.locator('#total-1').textContent(), /80.24/);
         await page.locator('#qty-1').fill('2');
         await page.locator('#price-1').fill('100');
         await page.locator('#gst-1').fill('18');

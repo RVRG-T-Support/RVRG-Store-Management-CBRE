@@ -919,6 +919,8 @@ async function loadMaterialList(){
                 brand,
                 unit,
                 unit_cost,
+                gst_type,
+                gst_percentage,
                 minimum_stock,
                 rack_location,
                 status
@@ -1004,7 +1006,10 @@ async function loadMaterialList(){
 
                     <td>${item.unit || "-"}</td>
 
-                    <td>₹${item.unit_cost ?? 0}</td>
+                    <td>
+                        ₹${window.RvrgSales.gross(item.unit_cost, item.gst_type, item.gst_percentage).toFixed(2)}
+                        <small class="d-block text-muted">Base: ₹${Number(item.unit_cost || 0).toFixed(2)} · GST ${Number(item.gst_percentage || 0)}% ${String(item.gst_type).toUpperCase() === 'EXCLUDED' ? 'excluded' : 'included'}</small>
+                    </td>
 
                     <td>${item.minimum_stock ?? 0}</td>
 

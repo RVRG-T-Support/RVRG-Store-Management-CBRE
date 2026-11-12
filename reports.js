@@ -211,7 +211,9 @@ async function loadMaterialsMap(materialIds) {
                 category,
                 unit,
                 department_id,
-                unit_cost
+                unit_cost,
+                gst_type,
+                gst_percentage
             `)
             .in("id", ids),
 

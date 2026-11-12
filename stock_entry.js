@@ -1359,6 +1359,18 @@ function selectMaterial(
         material.unit || "-";
 
 
+    // Stock entry uses pre-GST prices. Seed blank fields from the master and
+    // keep the invoice GST rate visible/editable for the vendor bill.
+    const gstInput = document.getElementById(`gst-${rowId}`);
+    if (material.gst_percentage != null) gstInput.value = material.gst_percentage;
+    const priceInput = document.getElementById(`price-${rowId}`);
+    if (priceInput.value === '' && Number(material.unit_cost) > 0) {
+        const divisor = String(material.gst_type).toUpperCase() === 'INCLUDED'
+            ? 1 + Number(gstInput.value || 0) / 100 : 1;
+        priceInput.value = (Number(material.unit_cost) / divisor).toFixed(2);
+    }
+    calculateRowTotal(rowId);
+
     // Hide results
 
     const results =
@@ -2319,10 +2331,8 @@ if (updateNoError)
                 const { data, error } = await supabase.from("materials")
                     .update({
                         unit_cost: item.purchase_price,
-                        ...(window.RvrgSecure?.enabled() ? {
-                            gst_type: item.gst_type,
-                            gst_percentage: item.gst_percentage
-                        } : {})
+                        gst_type: item.gst_type,
+                        gst_percentage: item.gst_percentage
                     })
                     .eq("id", item.material_id)
                     .select("id");

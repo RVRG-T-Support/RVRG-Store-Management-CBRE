@@ -32,3 +32,14 @@ test('pricing batches loads, replaces stale rates and fails visibly on access er
     const denied = { from() { return { select() { return { in: async () => ({ error: { code:'42501', message:'Denied' } }) }; } }; } };
     await assert.rejects(() => sales.load(denied, [1]), { message:'Denied' });
 });
+
+test('new master materials without invoice pricing apply excluded GST once', () => {
+    const sales = pricing();
+    const material = { id: 388, unit_cost: 68, gst_type: 'EXCLUDED', gst_percentage: 18 };
+    assert.equal(sales.unit(material), 80.24);
+    assert.equal(material.unit_cost, 68);
+    assert.equal(sales.unit({ ...material, unit_cost: 80.24, gst_type: 'INCLUDED' }), 80.24);
+    assert.equal(sales.unit({ ...material, gst_percentage: 0 }), 68);
+    sales.prices.set('388', { sales_price: 100, gst_type: 'EXCLUDED', gst_percentage: 5 });
+    assert.equal(sales.unit(material), 105);
+});

@@ -58,3 +58,20 @@ The new pricing table permits SELECT for the existing anon/authenticated API rol
 Direct writes to it are denied; stock-entry triggers synchronize rates. Existing
 login, table policies and privileges are unchanged. The wider authentication and
 security upgrade remains a separate, paused task.
+
+
+## New-material GST correction
+
+New materials created after installation have no invoice sales row yet. Their
+default sales rate now applies the Material Master GST type and percentage.
+Material, request, approval, issue and report lookups carry those GST fields.
+The Material Master list shows purchase cost including GST and the separate base
+price. Stock entry seeds a blank purchase rate and GST percentage from the master;
+an inclusive master rate is converted to the pre-GST input to prevent double tax.
+Saving a receipt synchronizes both purchase rate and GST metadata to the master.
+An explicit invoice sales-price override continues to take precedence.
+
+Regression example: base 68, excluded GST 18%, quantity 1 => total 80.24.
+Included master price 80.24 => pre-GST stock-entry rate 68 and total 80.24.
+No new migration or historical-data rewrite is required. The expanded automated
+suite has 102 tests, with browser coverage for both exact GST cases.

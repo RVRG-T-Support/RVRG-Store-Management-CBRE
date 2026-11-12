@@ -77,6 +77,8 @@ async function loadPendingApprovals() {
     specification,
     unit,
     unit_cost,
+    gst_type,
+    gst_percentage,
     department_id,
     departments (
     department_name
@@ -922,6 +924,8 @@ async function loadApprovedHistory() {
                     specification,
                     unit,
                     unit_cost,
+                    gst_type,
+                    gst_percentage,
                     department_id,
                     departments (
                         department_name

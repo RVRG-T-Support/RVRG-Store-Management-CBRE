@@ -17,14 +17,17 @@ window.RvrgSales = {
             for (const price of data || []) this.prices.set(String(price.material_id), price);
         }
     },
+    gross(base, gstType, percentage) {
+        const gst = String(gstType).toUpperCase() === 'EXCLUDED' ? Number(percentage || 0) : 0;
+        return Math.round((Number(base || 0) * (1 + gst / 100) + Number.EPSILON) * 100) / 100;
+    },
     unit(material, materialId = material?.id) {
         const price = this.prices.get(String(materialId));
-        // Preserve legacy behavior for items without a dedicated sales price.
-        if (!price) return Number(material?.unit_cost || 0);
-        const base = Number(price.sales_price);
-        const gst = String(price.gst_type).toUpperCase() === 'EXCLUDED'
-            ? Number(price.gst_percentage || 0) : 0;
-        return Math.round((base * (1 + gst / 100) + Number.EPSILON) * 100) / 100;
+        // New materials do not have an invoice sales row yet. Their master GST
+        // still applies to the default sales price; an invoice override wins.
+        return price
+            ? this.gross(price.sales_price, price.gst_type, price.gst_percentage)
+            : this.gross(material?.unit_cost, material?.gst_type, material?.gst_percentage);
     },
     gstLabel(material, materialId = material?.id) {
         const price = this.prices.get(String(materialId));

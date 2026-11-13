@@ -178,7 +178,7 @@
 
                         <label class="form-label fw-semibold">
 
-                            Password *
+                            Password
 
                         </label>
 
@@ -188,11 +188,12 @@
                                 type="password"
                                 class="form-control"
                                 id="password"
-                                placeholder="Enter password">
+                                placeholder="Enter password" autocomplete="new-password">
 
                             <button
                                 type="button"
                                 class="btn btn-outline-secondary"
+                                id="togglePasswordButton" aria-label="Show password" aria-pressed="false"
                                 onclick="togglePassword()">
 
                                 <i
@@ -202,6 +203,7 @@
                             </button>
 
                         </div>
+                        <small class="form-text">Required for new users. Leave blank when editing to keep the current password.</small>
 
                     </div>
 
@@ -233,6 +235,8 @@
                                 Facility Manager
                             </option>
 
+                            <option value="EXECUTIVE">Executive</option>
+                            <option value="SUPERVISOR">Supervisor</option>
                             <option value="ADMIN">
                                 Administrator
                             </option>
@@ -461,6 +465,8 @@
                                 Facility Manager
                             </option>
 
+                            <option value="EXECUTIVE">Executive</option>
+                            <option value="SUPERVISOR">Supervisor</option>
                             <option value="ADMIN">
                                 Administrator
                             </option>
@@ -588,11 +594,11 @@
 <script src="config.js"></script>
 <script src="secure-auth.js"></script>
 
-<script src="common.js"></script>
+<script src="common.js?v=20261113-users"></script>
 
-<script src="navigation.js"></script>
+<script src="navigation.js?v=20261113-profile"></script>
 
-<script src="users.js"></script>
+<script src="users.js?v=20261113-user-edit"></script>
 
 
 </body>

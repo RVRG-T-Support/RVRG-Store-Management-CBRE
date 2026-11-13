@@ -19,7 +19,7 @@ Deno.serve(async request => {
     if (!['create','update'].includes(body.action)) throw new Error('Invalid operation');
     const fields: Record<string, unknown> = {};
     for (const key of ['full_name','email','username','role','is_active']) if (body[key] !== undefined) fields[key] = body[key];
-    if (fields.role && !['ADMIN','FM','AFM','CRM','STORE','STOREKEEPER','TECH_SUPERVISOR','TECHNICIAN'].includes(String(fields.role))) throw new Error('Invalid role');
+    if (fields.role && !['ADMIN','FM','AFM','CRM','STORE','STOREKEEPER','TECH_SUPERVISOR','TECHNICIAN','EXECUTIVE','SUPERVISOR'].includes(String(fields.role))) throw new Error('Invalid role');
     if (body.password && (typeof body.password !== 'string' || body.password.length < 12)) throw new Error('Use a password of at least 12 characters');
     if (body.action === 'create') {
       if (!body.email || !body.password || !body.full_name || !body.username) throw new Error('Name, email, username and password required');

@@ -12,3 +12,9 @@ test('untrusted origin and short passwords are rejected',async()=>{const a=setup
 test('Admin can create an Auth user without storing the password in users_master',async()=>{const a=setup();const r=await a.request({action:'create',full_name:'New User',email:'new@example.test',username:'new',role:'AFM',password:'long-password-123',is_active:true});assert.equal(r.status,200);const profile=a.calls.find(c=>c[0]==='insert')[2];assert.equal(profile.password,null);assert.equal(profile.auth_user_id,'new-auth-id');assert.equal(a.calls.find(c=>c[0]==='createAuth')[1].password,'long-password-123')});
 test('Admin can set another user password through verified backend Auth API',async()=>{const a=setup();const r=await a.request({action:'update',id:8,password:'long-password-123'});assert.equal(r.status,200);assert.equal(a.calls.some(c=>c[0]==='updateAuth'),true);assert.ok(a.calls.filter(c=>c[0]==='update').every(c=>!('password'in c[2])))});
 test('Admin cannot disable or demote their own account',async()=>{const a=setup();assert.equal((await a.request({action:'update',id:4,is_active:false})).status,400);assert.equal((await a.request({action:'update',id:4,role:'AFM'})).status,400)});
+test('verified Admin endpoint accepts Executive and Supervisor role titles',async()=>{
+ for(const role of ['EXECUTIVE','SUPERVISOR']){
+  const a=setup();const r=await a.request({action:'create',full_name:'New User',email:'new@example.test',username:'new',role,password:'long-password-123',is_active:true});
+  assert.equal(r.status,200);assert.equal(a.calls.find(c=>c[0]==='insert')[2].role,role);
+ }
+});

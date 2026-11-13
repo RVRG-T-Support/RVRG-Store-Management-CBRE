@@ -2,6 +2,19 @@
 // USER MANAGEMENT
 //====================================================
 
+function setPasswordVisibility(visible) {
+    const input = document.getElementById('password');
+    input.type = visible ? 'text' : 'password';
+    const icon = document.getElementById('passwordIcon');
+    icon.className = visible ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye';
+    const button = document.getElementById('togglePasswordButton');
+    button.setAttribute('aria-label', visible ? 'Hide password' : 'Show password');
+    button.setAttribute('aria-pressed', String(visible));
+}
+function togglePassword() {
+    setPasswordVisibility(document.getElementById('password').type === 'password');
+}
+
 // Global user list
 let usersData = [];
 //====================================================
@@ -742,10 +755,6 @@ if (selectedPermissions.length > 0) {
 }
 
 
-        if (error)
-            throw error;
-
-
         showAlert(
             "User saved successfully.",
             "success"
@@ -840,9 +849,8 @@ async function editUser(id) {
             .style.display = "inline-block";
 
 
-        // Username should not be changed during edit
-        document.getElementById("username")
-            .disabled = true;
+        document.getElementById("username").disabled = false;
+        setPasswordVisibility(false);
         
         // Load saved section permissions
         await loadUserPermissions(data.id);
@@ -897,6 +905,7 @@ async function updateUser() {
             document.getElementById("email")
                 .value.trim();
 
+        const username = document.getElementById('username').value.trim();
         const password =
             document.getElementById("password")
                 .value;
@@ -924,7 +933,14 @@ async function updateUser() {
         }
 
 
+        if (!username) throw new Error('Username is required.');
+        const { data: duplicate, error: duplicateError } = await supabaseClient
+            .from('users_master').select('id').eq('username', username).maybeSingle();
+        if (duplicateError) throw duplicateError;
+        if (duplicate && String(duplicate.id) !== String(id)) throw new Error('Username already exists.');
+
         const updateData = {
+            username,
 
             full_name: fullName,
 
@@ -1036,6 +1052,7 @@ if (selectedPermissions.length > 0) {
 //====================================================
 
 function clearUserForm() {
+    setPasswordVisibility(false);
 
     document.getElementById("userId").value = "";
 

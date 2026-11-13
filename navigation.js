@@ -102,6 +102,9 @@ function getNavigationItems(role, permissions = {}) {
         if (window.RvrgSecure?.enabled() && item.section === 'approvals' &&
             permissions.approvals === true) return true;
 
+        if (['EXECUTIVE','SUPERVISOR'].includes(role)) {
+            return item.section !== 'user_management' && permissions[item.section] === true;
+        }
         // User must first belong to the role
         if (!item.roles.includes(role)) {
             return false;
@@ -495,9 +498,12 @@ function renderHeader() {
 
 </div>
 
-    <i class="fa-solid fa-circle-user"></i>
+    <button type="button" id="profilePhotoButton" class="profile-photo-button" aria-label="Change your profile photo" title="Your profile photo">
+        <img id="headerProfilePhoto" alt="Your profile photo" hidden>
+        <i id="headerProfilePhotoFallback" class="fa-solid fa-circle-user" aria-hidden="true"></i>
+    </button>
 
-    <strong>${user.name}</strong>
+    <strong>${escapeNotificationText(user.name)}</strong>
 
     <small>(${user.role})</small>
 
@@ -506,7 +512,14 @@ function renderHeader() {
 </div>
 
 `;
-
+    if (window.RvrgProfilePhoto) window.RvrgProfilePhoto.attach();
+    else if (!document.getElementById('profilePhotoScript')) {
+        const script = document.createElement('script');
+        script.id = 'profilePhotoScript';
+        script.src = 'profile-photo.js?v=20261113';
+        script.onload = () => window.RvrgProfilePhoto.attach();
+        document.head.appendChild(script);
+    }
 }
 
 function startClock() {

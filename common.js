@@ -172,8 +172,28 @@ function checkUserAccess(allowedRoles = []) {
     };
 
 
-    const requiredSection =
-        sectionMap[fileName];
+    const assignedRole = ['EXECUTIVE','SUPERVISOR'].includes(String(user.role || '').toUpperCase());
+    const requiredSection = sectionMap[fileName] || (assignedRole ? {
+        'dashboard.html': 'dashboard',
+        'material_categories.html': 'material_categories'
+    }[fileName] : undefined);
+    if (assignedRole && fileName === 'dashboard.html' && user.sectionPermissions?.dashboard !== true) {
+        const landing = Object.entries(sectionMap).find(([, section]) =>
+            section !== 'user_management' && user.sectionPermissions?.[section] === true);
+        if (landing) window.location.href = landing[0];
+        else if (user.sectionPermissions?.material_categories === true) window.location.href = 'material_categories.html';
+        else {
+            alert('No sections are assigned to your account. Please contact the administrator.');
+            localStorage.removeItem('RVRG_ACTIVE_USER');
+            window.location.href = 'index.html';
+        }
+        return false;
+    }
+    if (assignedRole && requiredSection === 'user_management') {
+        alert('Access Denied. Only administrators can manage users.');
+        window.location.href = 'dashboard.html';
+        return false;
+    }
 
 
     // ==================================================

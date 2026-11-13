@@ -97,3 +97,30 @@ manual 100 inclusive => 100, changing to Exclusive => 118, separate saved purcha
 and sales types, invoice totals, and layouts at 1440/1024/768 pixels. Local database
 checks covered both types, old-app compatibility and repeat migration execution.
 The app checks for the new column before writing any invoice data.
+
+
+## Stock-entry order and Excel redesign — 13 November 2026
+
+The purchase columns now precede sales: Department & Material, Quantity, Unit,
+Purchased Amount per unit, Purchased GST, Purchase Total, Sales Amount per unit,
+Action (with the existing row number retained). Summary values align under the
+purchase-total column. Reduced page padding gives more space to the table.
+
+The workbook has Department, Material Code, Material Name, Quantity, Unit,
+Purchased Amount, Purchased GST %, Purchased GST Amount, Purchase Total,
+Sales Amount, Sales GST Type. Every column has an explicit width; the styled
+header wraps, reference columns have alternating shading and input columns are
+yellow. Purchase GST and total formulas are provided for review. An Instructions
+sheet explains the per-unit rates, optional sales override and GST choices.
+The page uses pinned xlsx-js-style 1.2.0 for writing these Excel styles.
+
+Uploads accept both the redesigned headings and the old Unit Price/GST %/Sales
+Price headings. Untouched catalogue rows are skipped; entered values are
+validated and invoice totals are recalculated instead of trusting spreadsheet
+formula results. No database migration is required.
+
+Validation: 108 automated tests passed. Browser checks verified actual column
+positions, purchase/sales calculations, desktop/tablet layouts, a styled Excel
+file download and upload of that edited workbook. The template was roundtripped
+through the real Excel library to check widths, styles, formulas, filters and
+instructions. No production records were created by testing.

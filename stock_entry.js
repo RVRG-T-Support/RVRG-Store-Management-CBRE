@@ -251,18 +251,7 @@ function addRow(prefillData = null) {
             >
 
         </td>
-        <td>
-            <input type="number" step="0.01" min="0.01"
-                class="form-control form-control-sm item-row-input mx-auto sales-input"
-                id="sales-${currentRow}" aria-label="Sales price per unit"
-                oninput="this.dataset.manual = this.value === '' ? '' : 'true'; calculateRowTotal(${currentRow})">
-            <select id="sales-gst-type-${currentRow}" class="form-select form-select-sm mt-1"
-                aria-label="Sales GST type" onchange="calculateRowTotal(${currentRow})">
-                <option value="INCLUDED" selected>GST Inclusive</option>
-                <option value="EXCLUDED">GST Exclusive</option>
-            </select>
-            <small class="text-muted d-block" id="sales-gross-${currentRow}">Incl. GST: ₹0.00 / unit</small>
-        </td>
+
 
 
 <td class="align-middle">
@@ -297,6 +286,18 @@ value="18"
             data-value="0"
         >
             ₹ 0.00
+        </td>
+        <td>
+            <input type="number" step="0.01" min="0.01"
+                class="form-control form-control-sm item-row-input mx-auto sales-input"
+                id="sales-${currentRow}" aria-label="Sales price per unit"
+                oninput="this.dataset.manual = this.value === '' ? '' : 'true'; calculateRowTotal(${currentRow})">
+            <select id="sales-gst-type-${currentRow}" class="form-select form-select-sm mt-1"
+                aria-label="Sales GST type" onchange="calculateRowTotal(${currentRow})">
+                <option value="INCLUDED" selected>GST Inclusive</option>
+                <option value="EXCLUDED">GST Exclusive</option>
+            </select>
+            <small class="text-muted d-block" id="sales-gross-${currentRow}">Incl. GST: ₹0.00 / unit</small>
         </td>
 
 
@@ -700,18 +701,7 @@ function addRow(prefillData = null) {
             >
 
         </td>
-        <td>
-            <input type="number" step="0.01" min="0.01"
-                class="form-control form-control-sm item-row-input mx-auto sales-input"
-                id="sales-${currentRow}" aria-label="Sales price per unit"
-                oninput="this.dataset.manual = this.value === '' ? '' : 'true'; calculateRowTotal(${currentRow})">
-            <select id="sales-gst-type-${currentRow}" class="form-select form-select-sm mt-1"
-                aria-label="Sales GST type" onchange="calculateRowTotal(${currentRow})">
-                <option value="INCLUDED" selected>GST Inclusive</option>
-                <option value="EXCLUDED">GST Exclusive</option>
-            </select>
-            <small class="text-muted d-block" id="sales-gross-${currentRow}">Incl. GST: ₹0.00 / unit</small>
-        </td>
+
 
 
 
@@ -752,6 +742,18 @@ function addRow(prefillData = null) {
             data-value="0"
         >
             ₹ 0.00
+        </td>
+        <td>
+            <input type="number" step="0.01" min="0.01"
+                class="form-control form-control-sm item-row-input mx-auto sales-input"
+                id="sales-${currentRow}" aria-label="Sales price per unit"
+                oninput="this.dataset.manual = this.value === '' ? '' : 'true'; calculateRowTotal(${currentRow})">
+            <select id="sales-gst-type-${currentRow}" class="form-select form-select-sm mt-1"
+                aria-label="Sales GST type" onchange="calculateRowTotal(${currentRow})">
+                <option value="INCLUDED" selected>GST Inclusive</option>
+                <option value="EXCLUDED">GST Exclusive</option>
+            </select>
+            <small class="text-muted d-block" id="sales-gross-${currentRow}">Incl. GST: ₹0.00 / unit</small>
         </td>
 
 
@@ -1633,91 +1635,65 @@ function calculateGrandTotal(){
 
 // --- EXCEL BULK UPLOAD LOGIC ---
 function downloadExcelTemplate() {
-
     try {
-
-        if (typeof XLSX === "undefined") {
-            throw new Error("SheetJS library is not loaded.");
-        }
-
-
-        // Create template rows from current Material Master
-        const templateData = materialsData.map(mat => ({
-
-            "Material Code": mat.material_code || "",
-
-            "Material Name": mat.material_name || "",
-
-            "Quantity": "",
-
-            "Unit": mat.unit || "",
-
-            "Unit Price": "",
-            "Sales Price": "",
-            "Sales GST Type": "INCLUDED",
-            "GST %": 18
-
-        }));
-
-
-        if (templateData.length === 0) {
-
-            showAlert(
-                "No materials found. Please add materials in Material Master first.",
-                "warning"
-            );
-
+        if (typeof XLSX === 'undefined') throw new Error('Excel library is not loaded.');
+        if (!materialsData.length) {
+            showAlert('No materials found. Please add materials in Material Master first.', 'warning');
             return;
         }
-
-
-        const ws =
-            XLSX.utils.json_to_sheet(templateData);
-
-
-        // Set column widths
-
-        ws["!cols"] = [
-            { wch: 18 },
-            { wch: 30 },
-            { wch: 12 },
-            { wch: 12 },
-            { wch: 15 }
-        ];
-
-
-        const wb =
-            XLSX.utils.book_new();
-
-
-        XLSX.utils.book_append_sheet(
-            wb,
-            ws,
-            "Stock_Entry"
-        );
-
-
-        XLSX.writeFile(
-            wb,
-            "RVRG_Stock_Entry_Template.xlsx"
-        );
-
-
-    } catch (err) {
-
-        console.error(
-            "Excel Template Error:",
-            err
-        );
-
-        showAlert(
-            "Failed to download template: " +
-            err.message,
-            "error"
-        );
-
+        const headers = ['Department','Material Code','Material Name','Quantity','Unit',
+            'Purchased Amount','Purchased GST %','Purchased GST Amount','Purchase Total','Sales Amount','Sales GST Type'];
+        const rows = materialsData.map(mat => [mat.departments?.department_name || '', mat.material_code || '',
+            mat.material_name || '', '', mat.unit || '', '', mat.gst_percentage ?? 18, '', '', '', 'INCLUDED']);
+        const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+        const border = {style:'thin',color:{rgb:'D5DFE8'}};
+        for (let r=0;r<=rows.length;r++) {
+            for (let c=0;c<headers.length;c++) {
+                const address = XLSX.utils.encode_cell({r,c});
+                const cell = ws[address] ||= {t:'s',v:''};
+                const editable = [3,5,6,9,10].includes(c);
+                cell.s = {
+                    font:{name:'Calibri',sz:11,bold:r===0,color:{rgb:r===0?'FFFFFF':'243746'}},
+                    fill:{fgColor:{rgb:r===0?'143D52':editable?'FFF3CD':r%2?'F0F5F9':'FFFFFF'}},
+                    alignment:{vertical:'center',horizontal:c>=3?'center':'left',wrapText:r===0},
+                    border:{top:border,bottom:border,left:border,right:border}
+                };
+                if (r>0 && [5,7,8,9].includes(c)) cell.z='#,##0.00';
+                if (r>0 && c===6) cell.z='0.##"%"';
+            }
+            if (r>0) {
+                const line=r+1;
+                ws[`H${line}`]={...ws[`H${line}`],t:'n',f:`IF(AND(ISNUMBER(D${line}),ISNUMBER(F${line})),ROUND(D${line}*F${line}*G${line}/100,2),"")`};
+                ws[`I${line}`]={...ws[`I${line}`],t:'n',f:`IF(AND(ISNUMBER(D${line}),ISNUMBER(F${line})),ROUND(D${line}*F${line}+H${line},2),"")`};
+            }
+        }
+        ws['!cols']=[24,20,38,12,12,22,20,23,23,22,22].map(wch=>({wch}));
+        ws['!rows']=[{hpt:34},...rows.map(()=>({hpt:22}))];
+        ws['!autofilter']={ref:`A1:K${rows.length+1}`};
+        const guide = XLSX.utils.aoa_to_sheet([
+            ['STOCK ENTRY — HOW TO USE',''],
+            ['1. Select materials','Use the Department/Material filters; fill only the rows being purchased. Unfilled catalogue rows are ignored.'],
+            ['2. Yellow input columns','Enter Quantity and Purchased Amount per unit BEFORE GST. Check Purchased GST %.'],
+            ['3. Purchase calculations','Purchased GST Amount and Purchase Total are calculated for reference. The app recalculates them during upload.'],
+            ['4. Sales pricing','Sales Amount is per unit. Leave blank to match the purchase total including GST automatically.'],
+            ['5. Sales GST Type','Use INCLUDED (default) or EXCLUDED. Exclusive sales use the Purchased GST % rate.'],
+            ['6. Upload','Save as .xlsx. Upload the Stock_Entry sheet and review all rows and invoice totals before saving.'],
+            ['Existing templates','Old Unit Price, GST % and Sales Price headings are still accepted.'],
+            ['Reference columns','Department, Material Code, Material Name and Unit identify the material. Material Code is used for matching.']
+        ]);
+        guide['!cols']=[{wch:26},{wch:115}];
+        guide['!rows']=[{hpt:32},...Array(8).fill({hpt:34})];
+        for (const address of Object.keys(guide).filter(key=>!key.startsWith('!'))) {
+            guide[address].s={font:{name:'Calibri',sz:11,bold:address.endsWith('1')},alignment:{vertical:'center',wrapText:true}};
+        }
+        const wb=XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb,ws,'Stock_Entry');
+        XLSX.utils.book_append_sheet(wb,guide,'Instructions');
+        XLSX.writeFile(wb,'RVRG_Stock_Entry_Template.xlsx');
+    } catch(err) {
+        console.error('Excel Template Error:',err);
+        showAlert('Failed to download template: '+err.message,'error');
     }
-
 }
 
 //====================================================
@@ -1770,8 +1746,7 @@ function processExcelUpload() {
                 );
 
 
-            const sheetName =
-                workbook.SheetNames[0];
+            const sheetName = workbook.Sheets.Stock_Entry ? 'Stock_Entry' : workbook.SheetNames[0];
 
 
             const sheet =
@@ -1830,28 +1805,17 @@ function processExcelUpload() {
                     ).trim();
 
 
-                const quantity =
-                    parseFloat(
-                        row["Quantity"]
-                    );
+                const quantity = Number(row['Quantity']);
 
 
-                const unitPrice =
-                    parseFloat(
-                        row["Unit Price"]
-                    );
-
-
-                // Skip completely blank rows
-
-                if (
-                    !materialCode &&
-                    !materialName &&
-                    !row["Quantity"] &&
-                    !row["Unit Price"]
-                ) {
-                    return;
-                }
+                const purchaseInput = row['Purchased Amount'] ?? row['Unit Price'];
+                const salesInput = row['Sales Amount'] ?? row['Sales Price'];
+                const gstInput = row['Purchased GST %'] ?? row['GST %'];
+                const unitPrice = Number(purchaseInput);
+                // The template is a material catalogue: untouched rows are not
+                // failed purchases, even though their reference columns are filled.
+                const entered = value => value != null && String(value).trim() !== '';
+                if (![row['Quantity'],purchaseInput,salesInput].some(entered)) return;
 
 
                 // Material Code required
@@ -1919,8 +1883,8 @@ function processExcelUpload() {
                 }
 
 
-                const importedSales = row["Sales Price"];
-                const importedGst = row["GST %"];
+                const importedSales = salesInput;
+                const importedGst = gstInput;
                 const importedSalesGstType = String(row["Sales GST Type"] || 'INCLUDED').trim().toUpperCase();
                 if (!['INCLUDED','EXCLUDED'].includes(importedSalesGstType)) {
                     errors.push(`Excel row ${excelLine}: Sales GST Type must be INCLUDED or EXCLUDED.`);
@@ -1968,9 +1932,9 @@ function processExcelUpload() {
                     Quantity: quantity,
 
                     Unit_Price: unitPrice,
-                    Sales_Price: row["Sales Price"],
+                    Sales_Price: salesInput,
                     Sales_GST_Type: importedSalesGstType,
-                    GST_Percentage: row["GST %"]
+                    GST_Percentage: gstInput
 
                 });
 

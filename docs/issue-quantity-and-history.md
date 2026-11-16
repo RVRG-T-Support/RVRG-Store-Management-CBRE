@@ -1,0 +1,31 @@
+Material issue limits and record browsing
+========================================
+
+The legacy Issue Desk validated stock availability but did not reject a quantity above the remaining approval. It also calculated completion using requested quantity or exhausted stock, and excluded partially approved/partially issued requests from its queue.
+
+The Issue Desk now shows Requested and Approved separately, caps input by remaining approval and stock, rejects excessive quantities before confirmation, includes partial requests, and prevents double taps. Completion uses approved quantity; exhausted stock leaves any unfulfilled approved quantity pending. The server operation snapshots the current gross sales rate and saves the issue register, stock movement, and request total in one transaction. UUID retries return the saved result without another stock deduction. Existing issue-history values above approval remain visible with a red review warning.
+
+Deployment
+----------
+
+Run `supabase/migrations/20261116_issue_quantity_guard.sql` as postgres in the MAIN Supabase project. The new frontend requires this RPC for issuing; a missing installation displays an Admin setup message instead of falling back to separate writes. The migration adds retry columns/indexes and quantity guards; it does not rewrite existing rows, change prices/stock, enable Auth/RLS, or activate amount-based approval.
+
+This is compatible with the current legacy login. It uses caller table permissions (SECURITY INVOKER), and accepts a legacy actor ID. It does not replace the paused Auth migration or solve legacy identity spoofing. A verified Auth session must match `app_user_id()` when present; a future Auth cutover must adapt remaining grants and use verified identity throughout. Both raw issue-register inserts and request issued-total updates receive database quantity checks. Historical discrepancies between the request total and actual register total block additional checked issues until reconciled.
+
+Run the read-only `supabase/check_ticket_issue_totals.sql` against MAIN to investigate MR-2026-0363. It compares requested/approved quantities, stored issued total, register entries, returns, and ISSUE ledger quantity. Do not rewrite 11 to 1 or add stock before confirming which records are wrong and what was physically issued. The development workspace cannot reach the live Supabase host (network proxy returns 403), so this ticket has not been queried or corrected remotely.
+
+Browsing
+--------
+
+Raise Request, Approvals, Issue Materials and Returns now have Complaint/MR search and 10/20/50 page sizes, default 10, with Previous/Next and totals. Each queue/history table can be searched independently. Search applies before pagination, supports partial/case-insensitive matches and the `MR:` prefix, and searches historical records rather than just the displayed page. Raise Request and pending approval paginate complete tickets; their page sizes explicitly count tickets. Other tables paginate material/issue/return records. Return search resolves complaint numbers to their MR tickets for both issued records and return history. Recent returns now load automatically.
+
+Full detail queries for ordinary tables use counted server ranges. Grouped ticket tables fetch bounded batches of lightweight ticket metadata, then fetch full details only for the selected tickets, including all their material lines. All batch queries use a stable ID tie-breaker; old search responses cannot overwrite newer results. This avoids the old 20/50-row hard limits and the default 1,000-row response truncation.
+
+Validation
+----------
+
+- `npm test`: repository regression suite passed.
+- `node --test tests/issue_quantity_db.test.cjs tests/issue_sales.test.cjs`: locally tested SQL installation/reinstallation, approval caps, cumulative/raw-write guards, partial/completed status, duplicate UUIDs, double taps, lost responses, sales GST snapshots, denied section access, mismatched totals, and atomic rollback after a ledger failure.
+- `BOOTSTRAP_CSS=/path/to/bootstrap.css node tests/browser/record-browser.cjs`: local Chromium with mocked backend across all four pages, over 1,000 seeded material lines, Complaint/MR search, whole tickets, 10/20/50, Previous/Next, clear/no-match behavior.
+
+No live data was modified and no production database migration was executed from this workspace. Real simultaneous sessions and Supabase deployment still require live validation after the SQL installation.

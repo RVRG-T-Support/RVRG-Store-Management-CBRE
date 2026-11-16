@@ -1,0 +1,83 @@
+const {chromium}=require('playwright');
+const fs=require('node:fs');const path=require('node:path');const assert=require('node:assert/strict');
+process.chdir(path.join(__dirname,'../..'));
+(async()=>{
+const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||'/usr/bin/chromium',headless:true,args:['--no-sandbox']});
+try{
+ for(const [name,tables] of [
+  ['material_request',[['recentRequestsTable','loadRecentRequests',true]]],
+  ['approvals',[['pendingApprovalsTable','loadPendingApprovals',true],['approvedHistoryTable','loadApprovedHistory',false]]],
+  ['issue',[['approvedRequestsTable','loadApprovedRequests',false],['issuedHistoryTable','loadIssuedHistory',false]]],
+  ['return',[['returnTableBody','loadRecentIssues',false],['returnHistoryTable','loadReturnHistory',false]]]
+ ]){
+ const page=await browser.newPage({viewport:{width:1366,height:1000}});const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')console.error(name,m.text());});
+ await page.route('**/*',route=>route.abort());
+ let html=fs.readFileSync(name+'.html','utf8').replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,'').replace(/<link\b[^>]*>/gi,tag=>{
+ const href=tag.match(/href="([^"]+)"/)?.[1];return href?.includes('bootstrap')?'<style>'+(process.env.BOOTSTRAP_CSS ? fs.readFileSync(process.env.BOOTSTRAP_CSS,'utf8') : '')+'</style>':href&&fs.existsSync(href)?'<style>'+fs.readFileSync(href,'utf8')+'</style>':'';});
+ await page.setContent(html);
+ await page.evaluate(()=>{
+ window.getCurrentUser=()=>({id:6,name:'Admin'});window.checkUserAccess=()=>true;
+ window.formatDate=d=>new Date(d).toLocaleDateString('en-IN');window.getStatusBadge=s=>'<span>'+s+'</span>';window.formatCurrency=n=>'₹'+Number(n).toFixed(2);window.showAlert=(...a)=>(window.alerts||=[]).push(a);
+ window.RvrgOps={stockBalances:async()=>new Map([[1,30]])};window.confirm=()=>true;
+ const requests=Array.from({length:365*3},(_,n)=>({id:n+1,material_id:1,ticket_no:'MR-2026-'+String(Math.floor(n/3)+1).padStart(4,'0'),anacity_complaint_no:String(197000+Math.floor(n/3)),requested_qty:2,approved_qty:2,issued_qty:1,request_status:Math.floor(n/3)%2?'PENDING':'APPROVED',created_at:new Date(2026,10,Math.floor(n/3)+1).toISOString(),approval_date:new Date(2026,10,Math.floor(n/3)+1).toISOString(),location_name:'Test location',location_type:'Common Area / Free',technician_name:'Test Tech',materials:{id:1,material_code:'PLB-179',material_name:'SOLVENT',unit:'Nos',unit_cost:100,departments:{department_name:'Plumbing'}}}));
+ const issued=requests.map(r=>({...r,request_status:'ISSUED'}));
+ window.requestRows=requests;window.historyRows=issued;
+ window.queryLog=[];
+ window.supabase=window.supabaseClient={from(table){
+ let select='',filters=[],orders=[],start=0,end=999,count=false;
+ const q={select(s,opt){select=s;count=!!opt?.count;return q;},eq(k,v){filters.push(r=>r[k]===v);return q;},in(k,values){filters.push(r=>values.includes(k.includes('.')?r.material_issue_register?.ticket_no:r[k]));return q;},or(s){const term=s.match(/ilike\."%([\s\S]*?)%"/)?.[1].toLowerCase().replace(/\\(.)/g,'$1')||'';filters.push(r=>[r.ticket_no,r.anacity_complaint_no].some(v=>String(v||'').toLowerCase().includes(term)));return q;},order(k,opt={}){orders.push([k,opt.ascending!==false]);return q;},range(a,b){start=a;end=b;return q;},then(resolve,reject){
+ let data;
+ if(table==='material_requests')data=select.includes('*,')&&name==='issue'&&filters.length?issued:requests;
+ else if(table==='material_issue_register')data=requests.map(r=>({...r,issued_date:r.created_at}));
+ else if(table==='material_returns')data=requests.map(r=>({id:r.id,returned_qty:1,return_condition:'GOOD',return_date:r.created_at,material_issue_register:{...r,issued_qty:2}}));
+ else if(table==='current_stock')data=[{material_id:1,current_stock:30}];
+ else data=[];
+ // History status sets must have available seeded data regardless of page fixture.
+ if(table==='material_requests'&&select.includes('*,')&&select.includes('department_id')&&filters.length){
+ const combined=[...requests,...issued].filter(r=>filters.every(f=>f(r)));data=[...new Map(combined.map(r=>[r.id,r])).values()];
+ }else data=data.filter(r=>filters.every(f=>f(r)));
+ data.sort((a,b)=>{for(const [key,asc]of orders){if(a[key]!==b[key])return(a[key]>b[key]?1:-1)*(asc?1:-1);}return 0;});
+ const total=data.length;window.queryLog.push({table,start,end,count,select});
+ return Promise.resolve({data:data.slice(start,end+1),count:count?total:null,error:null}).then(resolve,reject);
+ }};return q;}};
+ });
+ // Pass page name explicitly into mock global.
+ await page.evaluate(n=>window.name=n,name);
+ for(const script of ['sales-pricing.js','record-browser.js',name+'.js'])await page.addScriptTag({content:fs.readFileSync(script,'utf8')});
+ await page.evaluate(async tables=>{for(const[id,fn,group]of tables){RvrgRecords.mount(id,()=>window[fn](),group);await window[fn]();}},tables);
+ for(const[id,fn,group]of tables){
+ const count=async()=>page.locator('#'+id+' > tr').count();
+ const initial=await count();assert.ok(initial>=10,`${name}/${id}: initial ${initial}; ${await page.locator('#'+id).innerText()}`);
+ const target=name==='issue'?'MR-2026-0031':'MR-2026-0032';
+ const complaint=name==='issue'?'197030':'197031';
+ const field=page.locator('#'+id+'-search');const toolbar=page.locator('.record-browser').filter({has:field});
+ const panel=page.locator('.record-pagination').nth(tables.findIndex(t=>t[0]===id));
+ assert.match(await panel.innerText(),/1–10 of/);
+ await page.locator('#'+id+'-size').selectOption('20');await page.waitForFunction(id=>document.querySelector('#'+id+' > tr')&&!document.getElementById(id).innerText.includes('Loading'),id);
+ await page.waitForTimeout(50);assert.match(await panel.innerText(),/1–20 of/);
+ await page.locator('#'+id+'-size').selectOption('50');await page.waitForTimeout(80);assert.equal(await count(),50,`${name}/${id} size50`);
+ await field.fill("MR: "+target);await toolbar.getByRole('button',{name:'Search',exact:true}).click();await page.waitForTimeout(80);
+ assert.match(await page.locator('#'+id).innerText(),new RegExp(target));
+ assert.equal(await count(),group?1:3,`${name}/${id}: whole ticket/three material rows`);
+ await field.fill(complaint);await field.press('Enter');await page.waitForTimeout(80);assert.match(await page.locator('#'+id).innerText(),new RegExp(target));
+ await field.fill('NOT-FOUND');await field.press('Enter');await page.waitForTimeout(80);assert.match(await panel.innerText(),/0–0 of 0/);
+ await toolbar.getByRole('button',{name:'Clear',exact:true}).click();await page.waitForTimeout(80);
+ await page.locator('#'+id+'-size').selectOption('10');await page.waitForTimeout(80);
+ await panel.getByRole('button',{name:'Next',exact:true}).click();await page.waitForTimeout(80);assert.match(await panel.innerText(),/11–20 of/);
+ await panel.getByRole('button',{name:'Previous',exact:true}).click();await page.waitForTimeout(80);assert.match(await panel.innerText(),/1–10 of/);
+ }
+ assert.deepEqual(errors,[],name+' browser errors');
+ if(name==='issue'){
+ const input=page.locator('#approvedRequestsTable input').first();
+ const requestId=(await input.getAttribute('id')).split('-')[1];
+ await input.fill('11');assert.equal(await page.locator('#btnIssue-'+requestId).isDisabled(),true);
+ await input.fill('1');assert.equal(await page.locator('#btnIssue-'+requestId).isDisabled(),false);
+ assert.match(await page.locator('#amount-'+requestId).innerText(),/100.00/);
+ assert.deepEqual(errors,[], 'issue quantity input preview errors');
+ fs.mkdirSync('test-results',{recursive:true});await page.screenshot({path:'test-results/issue-record-browser.png',fullPage:true});
+ }
+ console.log('PASS '+name+': complaint/MR search, 10/20/50, next/previous, clear/no-match, complete ticket lines');
+ await page.close();
+ }
+}finally{await browser.close();}
+})().catch(e=>{console.error(e);process.exit(1)});

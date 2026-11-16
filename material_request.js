@@ -18,6 +18,7 @@ async function initializePage(){
 
         registerEvents();
 
+        window.RvrgRecords.mount('recentRequestsTable', loadRecentRequests, true);
         await loadRecentRequests();
 
     }
@@ -1770,11 +1771,8 @@ async function loadRecentRequests(){
         const {
             data,
             error
-        } = await supabase
-
-            .from("material_requests")
-
-            .select(`
+        } = await window.RvrgRecords.load('recentRequestsTable', supabase, {
+            table:'material_requests', select:`
                 id,
                 ticket_no,
                 anacity_complaint_no,
@@ -1791,14 +1789,9 @@ async function loadRecentRequests(){
                     unit,
                     department_id
                 )
-            `)
-
-            .order(
-                "created_at",
-                {
-                    ascending: false
-                }
-            );
+            `, order:'created_at', ascending:false
+        });
+        if (!data && !error) return;
 
 
         if(error)
@@ -1900,41 +1893,8 @@ async function loadRecentRequests(){
     Object.values(ticketGroups);
 
 
-// -------------------------------------------------
-// Always show ALL pending tickets
-// Plus latest 20 non-pending tickets
-// -------------------------------------------------
-
-const pendingTickets =
-    allTickets.filter(
-        ticket =>
-            ticket.items.some(
-                item =>
-                    item.request_status ===
-                    "PENDING"
-            )
-    );
-
-
-const nonPendingTickets =
-    allTickets
-        .filter(
-            ticket =>
-                !ticket.items.some(
-                    item =>
-                        item.request_status ===
-                        "PENDING"
-                )
-        )
-        .slice(0, 20);
-
-
-// Remove duplicates and preserve latest order
-const ticketsToDisplay = [
-    ...pendingTickets,
-    ...nonPendingTickets
-];
-
+// The record browser already selected complete tickets in date order.
+const ticketsToDisplay = allTickets;
 
 ticketsToDisplay.forEach(
     ticket => {

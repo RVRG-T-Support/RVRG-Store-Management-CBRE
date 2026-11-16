@@ -17,6 +17,8 @@ document.addEventListener('DOMContentLoaded', () => {
 // User information is handled by navigation.js
     
 // Load initial data
+window.RvrgRecords.mount('approvedRequestsTable', loadApprovedRequests, false);
+window.RvrgRecords.mount('issuedHistoryTable', loadIssuedHistory, false);
 loadApprovedRequests();
 loadIssuedHistory();
 
@@ -66,17 +68,17 @@ const supabaseClient =
 
 async function loadApprovedRequests() {
     const tableBody = document.getElementById('approvedRequestsTable');
-    tableBody.innerHTML = '<tr><td colspan="12" class="text-center text-muted py-4">Loading approved requests...</td></tr>';
+    tableBody.innerHTML = '<tr><td colspan="13" class="text-center text-muted py-4">Loading approved requests...</td></tr>';
 
     try {
         // Fetch APPROVED requests
-        const { data: requests, error: reqError } = await supabaseClient
-            .from('material_requests')
-            .select(`
+        const { data: requests, error: reqError } = await window.RvrgRecords.load('approvedRequestsTable', supabaseClient, {
+            table:'material_requests', select:`
                 *,
     materials!material_requests_material_id_fkey (
     material_name,
     material_code,
+    unit,
     unit_cost,
     gst_type,
     gst_percentage,
@@ -85,15 +87,15 @@ async function loadApprovedRequests() {
         department_name
     )
 )
-        `)
-        .eq('request_status', 'APPROVED')
-            .order('created_at', { ascending: true });
+        `, order:'created_at', ascending:true, filter:q=>q.in('request_status',['APPROVED','PARTIALLY_APPROVED','PARTIALLY_ISSUED'])
+        });
+        if (!requests && !reqError) return;
 
         if (reqError) throw reqError;
         await window.RvrgSales.load(supabaseClient, (requests || []).map(r => r.material_id));
 
         if (requests.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="12" class="text-center text-success py-4"><i class="fa-solid fa-check-circle me-2"></i>No materials pending issue!</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="13" class="text-center text-success py-4"><i class="fa-solid fa-check-circle me-2"></i>No materials pending issue!</td></tr>';
             return;
         }
 
@@ -107,6 +109,7 @@ async function loadApprovedRequests() {
 
         if (stockError) throw stockError;
 
+        if (!window.RvrgRecords.isCurrent('approvedRequestsTable', requests)) return;
         tableBody.innerHTML = ''; // Clear table
         
         requests.forEach(req => {
@@ -119,7 +122,8 @@ const deptName =
 
             const issuedQty = Number(req.issued_qty || 0);
 
-            const balance = Number(req.requested_qty) - issuedQty;
+            const approvedQty = Math.min(Number(req.requested_qty), Number(req.approved_qty ?? req.requested_qty));
+            const balance = Math.max(0, approvedQty - issuedQty);
 
             // Find current stock for this material
             const stockRecord = stockData.find(
@@ -174,6 +178,8 @@ ${req.anacity_complaint_no || "N/A"}
         ${req.requested_qty}
     </td>
 
+    <td>${approvedQty}</td>
+
     <!-- CURRENT STOCK -->
     <td
         class="table-info fw-bold ${
@@ -208,10 +214,11 @@ ${req.anacity_complaint_no || "N/A"}
             class="form-control form-control-sm issue-input mx-auto"
             id="issueInput-${req.id}"
 
-            min="1"
+            min="0.01"
+            step="0.01"
 
             max="${Math.min(
-                Number(req.requested_qty) - issuedQty,
+                balance,
                 currentStock
             )}"
 
@@ -221,7 +228,7 @@ ${req.anacity_complaint_no || "N/A"}
                 ${req.id},
                 ${unitCost},
                 ${Math.min(
-                    Number(req.requested_qty) - issuedQty,
+                    balance,
                     currentStock
                 )}
             )"
@@ -239,7 +246,7 @@ ${req.anacity_complaint_no || "N/A"}
                 ${req.id},
                 ${req.material_id}
             )"
-            id="btnIssue-${req.id}">
+            id="btnIssue-${req.id}" ${balance <= 0 || currentStock <= 0 ? 'disabled' : ''}>
 
             <i class="fa-solid fa-box-arrow-up me-1"></i>
             Issue
@@ -268,9 +275,21 @@ tableBody.appendChild(tr);
 
     } catch (error) {
         console.error("Error loading issue desk:", error.message);
-        tableBody.innerHTML = '<tr><td colspan="12" class="text-center text-danger">Failed to load requests.</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="13" class="text-center text-danger">Failed to load requests.</td></tr>';
     }
 }
+
+// Live amount preview and validity feedback; server validation remains authoritative.
+window.calculateAmount = function(requestId, unitCost, maximum) {
+    const input = document.getElementById(`issueInput-${requestId}`);
+    const quantity = Number(input.value);
+    const valid = Number.isFinite(quantity) && quantity > 0 && quantity <= maximum
+        && quantity === Math.round(quantity * 100) / 100;
+    input.setCustomValidity(valid || input.value === '' ? '' : `Enter a quantity up to ${maximum}.`);
+    input.classList.toggle('is-invalid', input.value !== '' && !valid);
+    document.getElementById(`amount-${requestId}`).textContent = formatCurrency(valid ? quantity * unitCost : 0);
+    document.getElementById(`btnIssue-${requestId}`).disabled = !valid;
+};
 
 // --- ISSUE PROCESS WORKFLOW ---
 
@@ -278,10 +297,33 @@ tableBody.appendChild(tr);
 // MANUAL MATERIAL ISSUE
 // ====================================================
 
-window.processIssue = async function(
-    requestId,
-    materialId
-){
+const issueInFlight = new Set();
+const issueRetryKeys = new Map();
+window.processIssue = async function(requestId, materialId) {
+    if (issueInFlight.has(requestId)) return;
+    issueInFlight.add(requestId);
+    const button = document.getElementById(`btnIssue-${requestId}`);
+    if (button) button.disabled = true;
+    try { await issueRequest(requestId, materialId); }
+    catch (error) { showAlert(error.message, 'danger'); }
+    finally { issueInFlight.delete(requestId); if (button) button.disabled = false; }
+};
+async function submitCheckedIssue(requestId, issueQty, user) {
+    const previous = issueRetryKeys.get(requestId);
+    const retry = previous?.quantity === issueQty ? previous : {quantity:issueQty, id:crypto.randomUUID()};
+    issueRetryKeys.set(requestId, retry);
+    const {error} = await supabaseClient.rpc('issue_material_checked', {
+        p_request:requestId, p_quantity:issueQty, p_actor:user.id, p_client_id:retry.id
+    });
+    if(error) {
+        if(['PGRST202','42883'].includes(error.code))
+            throw new Error('The issue quantity database update is required. Ask Admin to run the supplied SQL, then retry.');
+        throw error;
+    }
+    issueRetryKeys.delete(requestId);
+    showAlert(`Successfully issued ${issueQty} item(s).`, 'success');
+}
+async function issueRequest(requestId, materialId) {
 
     const inputEl =
         document.getElementById(
@@ -302,8 +344,8 @@ window.processIssue = async function(
     // ------------------------------------------------
 
     if(
-        !issueQty ||
-        issueQty <= 0
+        !Number.isFinite(issueQty) ||
+        issueQty <= 0 || issueQty !== Math.round(issueQty * 100) / 100
     ){
 
         showAlert(
@@ -315,6 +357,15 @@ window.processIssue = async function(
 
     }
 
+
+    // Check an uncertain previous response with its original key before a stale
+    // remaining-quantity check. The database returns the original issue once.
+    if (!window.RvrgSecure?.enabled() && issueRetryKeys.get(requestId)?.quantity === issueQty) {
+        await submitCheckedIssue(requestId, issueQty, user);
+        await loadApprovedRequests();
+        await loadIssuedHistory();
+        return;
+    }
 
     // ------------------------------------------------
     // GET LATEST REQUEST DATA
@@ -328,7 +379,7 @@ window.processIssue = async function(
         .from("material_requests")
 
         .select(
-            "requested_qty, issued_qty, ticket_no"
+            "requested_qty, approved_qty, issued_qty, ticket_no, material_id, request_status"
         )
 
         .eq(
@@ -361,9 +412,17 @@ window.processIssue = async function(
             requestData.issued_qty || 0
         );
 
-    const remainingQty =
-        requestedQty -
-        alreadyIssued;
+    const approvedQty = Math.min(requestedQty, Number(requestData.approved_qty ?? requestedQty));
+    const remainingQty = approvedQty - alreadyIssued;
+    if (Number(requestData.material_id) !== Number(materialId) ||
+        !['APPROVED','PARTIALLY_APPROVED','PARTIALLY_ISSUED'].includes(requestData.request_status)) {
+        showAlert('This request is no longer available for issue. Refresh the list.', 'warning');
+        return;
+    }
+    if (!Number.isFinite(approvedQty) || issueQty > remainingQty) {
+        showAlert(`Issued quantity cannot exceed the remaining approved quantity (${Math.max(0, remainingQty)}).`, 'warning');
+        return;
+    }
 
 
     // ------------------------------------------------
@@ -439,77 +498,8 @@ window.processIssue = async function(
     }
 
 
-    // ------------------------------------------------
-    // VALIDATE AGAINST STOCK
-    // ------------------------------------------------
-
-    if(
-        issueQty > currentStock
-    ){
-
-        showAlert(
-            "Issued quantity cannot be greater than current stock.\n\n" +
-            "Current stock: " +
-            currentStock +
-            "\nEntered issue quantity: " +
-            issueQty,
-            "danger"
-        );
-
-        return;
-
-    }
-
-
-    // ------------------------------------------------
-    // CALCULATE NEW TOTAL ISSUED
-    // ------------------------------------------------
-
-    const newTotalIssued =
-        alreadyIssued +
-        issueQty;
-
-
-    // ------------------------------------------------
-    // REQUEST COMPLETION RULE
-    // ------------------------------------------------
-    //
-    // Request is complete when:
-    //
-    // A) requested quantity has been fulfilled
-    // OR
-    // B) current stock becomes zero after this issue
-    //
-    // Example:
-    // Requested = 5
-    // Already Issued = 0
-    // Current Stock = 4
-    // Issue Now = 4
-    //
-    // Result:
-    // Issued Total = 4
-    // Stock = 0
-    // Request = ISSUED / CLOSED
-    // ------------------------------------------------
-
-    let newStatus;
-
-    if(
-        newTotalIssued >= requestedQty ||
-        issueQty >= currentStock
-    ){
-
-        newStatus =
-            "ISSUED";
-
-    }
-    else{
-
-        newStatus =
-            "PARTIALLY_ISSUED";
-
-    }
-
+    const newTotalIssued = alreadyIssued + issueQty;
+    const newStatus = newTotalIssued >= approvedQty ? 'ISSUED' : 'PARTIALLY_ISSUED';
 
     // ------------------------------------------------
     // CONFIRMATION MESSAGE
@@ -523,6 +513,7 @@ window.processIssue = async function(
         requestedQty +
         "\n" +
 
+        "Approved: " + approvedQty + "\n" +
         "Previously Issued: " +
         alreadyIssued +
         "\n" +
@@ -570,227 +561,7 @@ window.processIssue = async function(
             return;
         }
 
-        const {
-            data: requestInfo,
-            error: requestInfoError
-        } = await supabaseClient
-
-            .from("material_requests")
-
-            .select(`
-                ticket_no,
-                location_name,
-                location_type,
-                technician_name,
-
-                materials!material_requests_material_id_fkey (
-                    unit_cost,
-                    gst_type,
-                    gst_percentage
-                )
-            `)
-
-            .eq(
-                "id",
-                requestId
-            )
-
-            .single();
-
-
-        if(requestInfoError)
-            throw requestInfoError;
-
-
-        await window.RvrgSales.load(supabaseClient, [materialId]);
-        const unitCost = window.RvrgSales.unit(requestInfo.materials, materialId);
-
-
-        const totalCost =
-            unitCost *
-            issueQty;
-
-
-        // ------------------------------------------------
-        // INSERT ISSUE REGISTER
-        // ------------------------------------------------
-
-        const {
-            data: issueData,
-            error: issueError
-        } = await supabaseClient
-
-            .from(
-                "material_issue_register"
-            )
-
-            .insert([{
-
-                request_id:
-                    requestId,
-
-                material_id:
-                    materialId,
-
-                ticket_no:
-                    requestInfo.ticket_no,
-
-                location_name:
-                    requestInfo.location_name,
-
-                location_type:
-                    requestInfo.location_type,
-
-                technician_name:
-                    requestInfo.technician_name,
-
-                issued_qty:
-                    issueQty,
-
-                unit_cost:
-                    unitCost,
-
-                total_cost:
-                    totalCost,
-
-                remarks:
-                    "Material issued manually",
-
-                issued_by:
-                    user.name
-
-            }])
-
-            .select();
-
-
-        if(issueError)
-            throw issueError;
-
-
-        const newIssueId =
-            issueData[0].id;
-
-
-        // ------------------------------------------------
-        // REDUCE STOCK
-        // ------------------------------------------------
-
-        const {
-            error: ledgerError
-        } = await supabaseClient
-
-            .from(
-                "stock_ledger"
-            )
-
-            .insert([{
-
-                material_id:
-                    materialId,
-
-                transaction_type:
-                    "ISSUE",
-
-                // IMPORTANT:
-                // ISSUE reduces stock
-
-                quantity:
-    Math.abs(
-        issueQty
-    ),
-                reference_no:
-                    newIssueId.toString(),
-
-                request_id:
-                    requestId,
-
-                remarks:
-                    `Issued against ticket ${requestInfo.ticket_no}`,
-
-                created_by:
-                    user.id,
-
-                transaction_date:
-                    new Date()
-                        .toISOString()
-
-            }]);
-
-
-        if(ledgerError)
-            throw ledgerError;
-
-
-        // ------------------------------------------------
-        // UPDATE REQUEST
-        // ------------------------------------------------
-
-        const {
-            error: updateError
-        } = await supabaseClient
-
-            .from(
-                "material_requests"
-            )
-
-            .update({
-
-                issued_qty:
-                    newTotalIssued,
-
-                request_status:
-                    newStatus
-
-            })
-
-            .eq(
-                "id",
-                requestId
-            );
-
-
-        if(updateError)
-            throw updateError;
-
-
-        // ------------------------------------------------
-        // SUCCESS MESSAGE
-        // ------------------------------------------------
-
-        if(
-            newStatus === "ISSUED" &&
-            newTotalIssued < requestedQty
-        ){
-
-            showAlert(
-
-                "Issued " +
-                issueQty +
-                " item(s).\n\n" +
-
-                "Current stock has been exhausted, " +
-                "so this request has been completed.",
-
-                "success"
-
-            );
-
-        }
-        else{
-
-            showAlert(
-
-                "Successfully issued " +
-                issueQty +
-                " item(s).",
-
-                "success"
-
-            );
-
-        }
-
+        await submitCheckedIssue(requestId, issueQty, user);
 
         loadApprovedRequests();
         loadIssuedHistory();
@@ -905,11 +676,8 @@ async function loadIssuedHistory() {
         const {
             data: requests,
             error: requestError
-        } = await supabaseClient
-
-            .from("material_requests")
-
-            .select(`
+        } = await window.RvrgRecords.load('issuedHistoryTable', supabaseClient, {
+            table:'material_requests', select:`
                 *,
                 materials!material_requests_material_id_fkey (
                     material_code,
@@ -920,22 +688,9 @@ async function loadIssuedHistory() {
                         department_name
                     )
                 )
-            `)
-
-            .in(
-                "request_status",
-                [
-                    "ISSUED",
-                    "PARTIALLY_ISSUED"
-                ]
-            )
-
-            .order(
-                "created_at",
-                {
-                    ascending: false
-                }
-            );
+            `, order:'created_at', ascending:false, filter:q=>q.in('request_status',['ISSUED','PARTIALLY_ISSUED'])
+        });
+        if (!requests && !requestError) return;
 
 
         if (requestError)
@@ -1115,7 +870,7 @@ async function loadIssuedHistory() {
                 <td>
 
                     <span class="badge ${
-                        issuedQty < approvedQty
+                        issuedQty > approvedQty ? "bg-danger" : issuedQty < approvedQty
                             ? "bg-warning text-dark"
                             : "bg-success"
                     }">
@@ -1124,6 +879,7 @@ async function loadIssuedHistory() {
 
                     </span>
 
+                    ${issuedQty > approvedQty ? '<div class="small text-danger">Exceeds approval — review required</div>' : ''}
                     ${
                         issuedQty < approvedQty
 

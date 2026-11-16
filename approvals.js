@@ -44,6 +44,8 @@ document.addEventListener('DOMContentLoaded', () => {
     rejectModalInstance = new bootstrap.Modal(document.getElementById('rejectModal'));
 
     // Load initial data
+window.RvrgRecords.mount('pendingApprovalsTable', loadPendingApprovals, true);
+window.RvrgRecords.mount('approvedHistoryTable', loadApprovedHistory, false);
 loadPendingApprovals();
 loadApprovedHistory();
 
@@ -64,9 +66,8 @@ async function loadPendingApprovals() {
 
     try {
         // Fetch requests with PENDING status, joining related tables
-        const { data, error } = await supabase
-            .from('material_requests')
-            .select(`
+        const { data, error } = await window.RvrgRecords.load('pendingApprovalsTable', supabase, {
+            table:'material_requests', select:`
                 *,
     materials!material_requests_material_id_fkey (
     material_code,
@@ -84,9 +85,9 @@ async function loadPendingApprovals() {
     department_name
     )
 )
-`)
-        .eq('request_status', 'PENDING')
-            .order('created_at', { ascending: true }); // Oldest first
+`, order:'created_at', ascending:true, filter:q=>q.eq('request_status','PENDING')
+        });
+        if (!data && !error) return;
 
         if (error) throw error;
         await window.RvrgSales.load(supabase, (data || []).map(r => r.material_id));
@@ -100,6 +101,7 @@ async function loadPendingApprovals() {
         try { pendingStock = await window.RvrgOps.stockBalances(supabase, data.map(row=>row.material_id)); }
         catch (error) { console.error('Approval stock lookup failed:', error); }
 
+        if (!window.RvrgRecords.isCurrent('pendingApprovalsTable', data)) return;
         tableBody.innerHTML = ''; // Clear table
         
 // ====================================================
@@ -911,9 +913,8 @@ async function loadApprovedHistory() {
 
     try {
 
-        const { data, error } = await supabase
-            .from('material_requests')
-            .select(`
+        const { data, error } = await window.RvrgRecords.load('approvedHistoryTable', supabase, {
+            table:'material_requests', select:`
                 *,
                 materials!material_requests_material_id_fkey (
                     material_code,
@@ -931,20 +932,13 @@ async function loadApprovedHistory() {
                         department_name
                     )
                 )
-            `)
-
-.in(
-    'request_status',
-    ['APPROVED', 'PARTIALLY_APPROVED', 'ISSUED']
-)
-
-            .order(
-                'approval_date',
-                { ascending: false }
-            );
+            `, order:'approval_date', ascending:false, filter:q=>q.in('request_status',['APPROVED','PARTIALLY_APPROVED','PARTIALLY_ISSUED','ISSUED'])
+        });
+        if (!data && !error) return;
 
         if (error) throw error;
         await window.RvrgSales.load(supabase, (data || []).map(r => r.material_id));
+        if (!window.RvrgRecords.isCurrent('approvedHistoryTable', data)) return;
 
         if (!data || data.length === 0) {
 

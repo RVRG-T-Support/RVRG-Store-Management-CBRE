@@ -12,9 +12,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // User information is handled by navigation.js
 
-    // Event Listeners
-    document.getElementById('btnSearchTicket').addEventListener('click', searchTicket);
-    document.getElementById('btnLoadRecent').addEventListener('click', loadRecentIssues);
+    window.RvrgRecords.mount('returnTableBody', loadRecentIssues);
+    window.RvrgRecords.mount('returnHistoryTable', loadReturnHistory);
+    loadRecentIssues();
 
     // Load return history
     loadReturnHistory();
@@ -22,68 +22,17 @@ document.addEventListener('DOMContentLoaded', () => {
 // --- DATA LOADING LOGIC ---
 
 async function loadRecentIssues() {
-    fetchIssues(null); // Pass null to load latest without ticket filter
+    return fetchIssues();
 }
 
-async function searchTicket() {
-    const searchValue = document.getElementById('searchTicketNo').value.trim();
-
-    if (!searchValue) {
-        showAlert(
-            "Please enter a Complaint Number or MR Ticket Number to search.",
-            "warning"
-        );
-        return;
-    }
-
-    try {
-        // First check whether the entered value is an Anacity complaint number.
-        const { data: requestRows, error: requestError } = await supabase
-            .from('material_requests')
-            .select('ticket_no')
-            .eq('anacity_complaint_no', searchValue);
-
-        if (requestError) throw requestError;
-
-        // Complaint number found -> get all MR ticket numbers linked to it.
-        if (requestRows && requestRows.length > 0) {
-
-            const ticketNumbers = [
-                ...new Set(
-                    requestRows
-                        .map(row => row.ticket_no)
-                        .filter(Boolean)
-                )
-            ];
-
-            if (ticketNumbers.length > 0) {
-                fetchIssues(ticketNumbers);
-                return;
-            }
-        }
-
-        // If complaint number was not found, treat the value as the
-        // generated MR ticket number.
-        fetchIssues(searchValue);
-
-    } catch (error) {
-        console.error("Search Error:", error.message);
-        showAlert(
-            "Failed to search issued materials.",
-            "error"
-        );
-    }
-}
-
-async function fetchIssues(ticketFilter) {
+async function fetchIssues() {
     const tableBody = document.getElementById('returnTableBody');
     tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">Loading issued materials...</td></tr>';
 
     try {
         // Start building the query on material_issue_register
-let query = supabase
-    .from('material_issue_register')
-    .select(`
+const {data:issues,error:issueError} = await window.RvrgRecords.load('returnTableBody',supabase, {
+            table:'material_issue_register', select:`
         id,
         ticket_no,
         material_id,
@@ -101,30 +50,14 @@ let query = supabase
             specification,
             unit
         )
-    `)
-    .order('issued_date', { ascending: false });
-
-        // Apply ticket filter if provided
-        if (ticketFilter) {
-
-            if (Array.isArray(ticketFilter)) {
-                // Anacity complaint number may be linked to multiple MR tickets
-                query = query.in('ticket_no', ticketFilter);
-            } else {
-                // Direct MR ticket search
-                query = query.eq('ticket_no', ticketFilter);
-            }
-
-        } else {
-            query = query.limit(20); // Just load last 20 issues if no filter
-        }
-
-        const { data: issues, error: issueError } = await query;
+    `,order:'issued_date'
+        });
+        if(!issues && !issueError) return;
 
         if (issueError) throw issueError;
 
         if (issues.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="7" class="text-center text-warning py-4"><i class="fa-solid fa-triangle-exclamation me-2"></i>No issued materials found ${ticketFilter ? 'for this ticket' : ''}.</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="7" class="text-center text-warning py-4"><i class="fa-solid fa-triangle-exclamation me-2"></i>No matching issued materials found.</td></tr>`;
             return;
         }
 
@@ -288,19 +221,8 @@ remarks: remarks || "Unused material returned"
 // Success!
 showAlert(`Successfully returned ${returnQty} items to inventory!`, 'success');
 
-// Refresh the current view
-const ticketSearchValue =
-    document.getElementById('searchTicketNo').value.trim();
-
-if (ticketSearchValue) {
-
-    fetchIssues(ticketSearchValue);
-
-} else {
-
-    loadRecentIssues();
-
-}
+// Refresh the current page while retaining its Complaint/MR filter.
+loadRecentIssues();
 
 // Refresh return history
 loadReturnHistory();
@@ -341,11 +263,8 @@ async function loadReturnHistory() {
         const {
             data: returns,
             error
-        } = await supabase
-
-            .from("material_returns")
-
-            .select(`
+        } = await window.RvrgRecords.load('returnHistoryTable', supabase, {
+            table:'material_returns', select:`
                 id,
                 returned_qty,
                 return_condition,
@@ -353,7 +272,7 @@ async function loadReturnHistory() {
                 remarks,
                 issue_id,
 
-                material_issue_register!material_returns_issue_id_fkey (
+                material_issue_register!material_returns_issue_id_fkey!inner (
                     ticket_no,
                     issued_qty,
                     technician_name,
@@ -369,16 +288,9 @@ async function loadReturnHistory() {
                         unit
                     )
                 )
-            `)
-
-            .order(
-                "return_date",
-                {
-                    ascending: false
-                }
-            )
-
-            .limit(50);
+            `, order:'return_date', ascending:false, ticketPath:"material_issue_register.ticket_no"
+        });
+        if (!returns && !error) return;
 
 
         if (error)
@@ -463,6 +375,7 @@ async function loadReturnHistory() {
         // 4. Render history
         // --------------------------------------------------
 
+        if (!window.RvrgRecords.isCurrent('returnHistoryTable', returns)) return;
         tableBody.innerHTML = "";
 
 

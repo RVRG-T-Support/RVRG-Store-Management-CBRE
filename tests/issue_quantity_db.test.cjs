@@ -37,3 +37,22 @@ test('checked issue caps cumulative approval, retries once and rolls back failur
  assert.equal((await rows('SELECT issued_qty FROM material_requests WHERE id=3'))[0].issued_qty,'0');
  }finally{await db.close();}
 });
+test('incremental update allows manual litre fractions and rejects all other fractional units',async()=>{
+ const db=new PGlite();try{
+ await db.exec(fixture);await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261116_issue_quantity_guard.sql'),'utf8'));
+ const update=fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261116_issue_quantity_units.sql'),'utf8');await db.exec(update);await db.exec(update);
+ let n=10;
+ for(const unit of ['Nos','KG','Mtr','Roll','L','Ltr.',' ltrs ','Liter','Litres']){
+  n++;await db.query('UPDATE materials SET unit=$1 WHERE id=1',[unit]);
+  await db.query("INSERT INTO material_requests VALUES($1,1,$2,1,1,0,'APPROVED','Test','COMMON_AREA','Tech')",[n,'MR-UNIT-'+n]);
+  const params=[n,0.5,6,`20000000-0000-4000-8000-${String(n).padStart(12,'0')}`];
+  if(['Nos','KG','Mtr','Roll'].includes(unit)){
+   await assert.rejects(()=>db.query('SELECT issue_material_checked($1,$2,$3,$4::uuid)',params),/Whole units only/);
+   await assert.rejects(()=>db.query('INSERT INTO material_issue_register(request_id,material_id,ticket_no,issued_qty) VALUES($1,1,$2,0.5)',[n,'MR-UNIT-'+n]),/Whole units only/);
+  }else{
+   await db.query('SELECT issue_material_checked($1,$2,$3,$4::uuid)',params);
+   assert.equal((await db.query('SELECT issued_qty FROM material_requests WHERE id=$1',[n])).rows[0].issued_qty,'0.5');
+  }
+ }
+ }finally{await db.close();}
+});

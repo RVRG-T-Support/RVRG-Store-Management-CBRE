@@ -74,6 +74,35 @@ try{
  await input.fill('1');assert.equal(await page.locator('#btnIssue-'+requestId).isDisabled(),false);
  assert.match(await page.locator('#amount-'+requestId).innerText(),/100.00/);
  assert.deepEqual(errors,[], 'issue quantity input preview errors');
+ await page.evaluate(()=>{
+  const template=window.requestRows[0];
+  for(const [id,unit,approved,issued,label] of [[9001,'Nos',2,1,'PARTIAL'],[9002,'Ltr',5,0,'PAINT'],[9003,'Nos',10,0,'COUNT']])
+   window.requestRows.push({...template,id,ticket_no:'MR-UNIT-'+label,created_at:'2026-01-01T00:00:00Z',requested_qty:approved,approved_qty:approved,issued_qty:issued,request_status:issued?'PARTIALLY_ISSUED':'APPROVED',materials:{...template.materials,unit}});
+ });
+ const unitSearch=page.locator('#approvedRequestsTable-search');
+ await unitSearch.fill('MR-UNIT-');await unitSearch.press('Enter');await page.waitForTimeout(80);
+ const partial=page.locator('#issueInput-9001');await partial.fill('2');
+ assert.equal(await page.locator('#btnIssue-9001').isDisabled(),true);
+ assert.match(await page.locator('#issueError-9001').innerText(),/Maximum available to issue: 1/);
+ assert.match(await partial.locator('xpath=ancestor::tr').innerText(),/Issued: 1[\s\S]*Remaining: 1/);
+ await partial.fill('1');assert.equal(await partial.evaluate(el=>el.checkValidity()),true);
+ const countInput=page.locator('#issueInput-9003');assert.equal(await countInput.getAttribute('step'),'1');
+ await countInput.fill('3');await page.locator('#issuePlus-9003').click();assert.equal(await countInput.inputValue(),'4');
+ await page.locator('#issueMinus-9003').click();assert.equal(await countInput.inputValue(),'3');
+ await countInput.press('ArrowUp');assert.equal(await countInput.inputValue(),'4');
+ await countInput.press('ArrowDown');assert.equal(await countInput.inputValue(),'3');
+ await countInput.fill('0.5');assert.equal(await countInput.evaluate(el=>el.checkValidity()),false);assert.equal(await page.locator('#btnIssue-9003').isDisabled(),true);
+ await countInput.fill('1');
+ const litre=page.locator('#issueInput-9002');assert.equal(await litre.getAttribute('step'),'any');
+ await page.locator('#issuePlus-9002').click();assert.equal(await litre.inputValue(),'1');
+ await litre.fill('0.5');assert.equal(await litre.evaluate(el=>el.checkValidity()),true);assert.equal(await page.locator('#btnIssue-9002').isDisabled(),false);
+ await page.locator('#issuePlus-9002').click();assert.equal(await litre.inputValue(),'1.5');
+ await page.locator('#issueMinus-9002').click();assert.equal(await litre.inputValue(),'0.5');
+ await litre.press('ArrowUp');assert.equal(await litre.inputValue(),'1.5');await litre.press('ArrowDown');assert.equal(await litre.inputValue(),'0.5');
+ await litre.fill('0.125');assert.equal(await litre.evaluate(el=>el.checkValidity()),false);await litre.fill('0.5');
+ assert.deepEqual(errors,[], 'whole-unit buttons and manual litre fractions');
+ console.log('PASS issue quantity controls: +/- and keyboard step 1; manual 0.5 L valid; fractions on counts rejected; 2 approved minus 1 issued leaves 1.');
+
  fs.mkdirSync('test-results',{recursive:true});await page.screenshot({path:'test-results/issue-record-browser.png',fullPage:true});
  }
  console.log('PASS '+name+': complaint/MR search, 10/20/50, next/previous, clear/no-match, complete ticket lines');

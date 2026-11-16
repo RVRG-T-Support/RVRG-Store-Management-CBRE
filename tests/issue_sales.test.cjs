@@ -12,9 +12,9 @@ function setup(request,qty='1',rpcHandler){
  vm.runInContext('loadApprovedRequests=async()=>{};loadIssuedHistory=async()=>{};',context);
  return {context,calls,alerts,get reads(){return reads;},run:()=>vm.runInContext('window.processIssue(7,1)',context)};
 }
-const base={requested_qty:5,approved_qty:2,issued_qty:1,material_id:1,request_status:'PARTIALLY_ISSUED',ticket_no:'MR-TEST'};
+const base={requested_qty:5,approved_qty:2,issued_qty:1,material_id:1,request_status:'PARTIALLY_ISSUED',ticket_no:'MR-TEST',materials:{unit:'Nos'}};
 test('browser rejects over-approval even with ample stock',async()=>{
- const s=setup(base,'11');await s.run();assert.equal(s.calls.length,0);assert.match(s.alerts[0].message,/remaining approved quantity \(1\)/);
+ const s=setup(base,'11');await s.run();assert.equal(s.calls.length,0);assert.match(s.alerts[0].message,/Remaining to issue: 1/);
 });
 test('issue goes through checked atomic RPC and double tap is ignored',async()=>{
  const s=setup(base);await Promise.all([s.run(),s.run()]);assert.equal(s.calls.length,1);assert.equal(s.calls[0].name,'issue_material_checked');assert.equal(s.calls[0].args.p_quantity,1);assert.equal(s.calls[0].args.p_actor,6);assert.ok(s.alerts.some(a=>a.type==='success'));
@@ -24,4 +24,16 @@ test('lost-response retry reuses UUID before stale preflight',async()=>{
 });
 test('missing migration fails closed without raw writes',async()=>{
  const s=setup(base,'1',()=>({error:{code:'PGRST202',message:'function missing'}}));await s.run();assert.match(s.alerts[0].message,/database update is required/);
+});
+
+test('manual fractions pass only for litre aliases and never for count, KG or metre items',async()=>{
+ for(const unit of ['L','LTR','Ltr.',' ltrs ','Liter','Litres']){
+  const s=setup({...base,materials:{unit}},'0.5');await s.run();assert.equal(s.calls.length,1,unit);assert.equal(s.calls[0].args.p_quantity,0.5);
+ }
+ for(const unit of ['Nos','KG','Mtr','Roll','unknown']){
+  const s=setup({...base,materials:{unit}},'0.5');await s.run();assert.equal(s.calls.length,0,unit);assert.match(s.alerts[0].message,/Whole units only/);
+ }
+});
+test('MR-2026-0421 partial issue clearly explains that only one remains',async()=>{
+ const s=setup({...base,ticket_no:'MR-2026-0421',requested_qty:2,approved_qty:2,issued_qty:1},'2');await s.run();assert.equal(s.calls.length,0);assert.match(s.alerts[0].message,/Approved: 2. Already issued: 1. Remaining to issue: 1/);
 });

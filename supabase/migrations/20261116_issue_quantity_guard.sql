@@ -10,7 +10,7 @@ CREATE INDEX IF NOT EXISTS rvrg_request_ticket_browse_idx ON public.material_req
 
 CREATE OR REPLACE FUNCTION public.rvrg_guard_issue_quantity()
 RETURNS trigger LANGUAGE plpgsql SET search_path=pg_catalog AS $$
-DECLARE r public.material_requests%ROWTYPE; other_issued numeric; cap numeric;
+DECLARE r public.material_requests%ROWTYPE; other_issued numeric; cap numeric; unit_value text;
 BEGIN
  IF NEW.request_id IS NULL THEN RAISE EXCEPTION 'An approved request is required for material issue'; END IF;
  IF TG_OP='UPDATE' AND (NEW.request_id IS DISTINCT FROM OLD.request_id OR NEW.material_id IS DISTINCT FROM OLD.material_id) THEN
@@ -24,6 +24,12 @@ BEGIN
  END IF;
  IF TG_OP='INSERT' AND coalesce(r.request_status,'') NOT IN ('APPROVED','PARTIALLY_APPROVED','PARTIALLY_ISSUED') THEN
   RAISE EXCEPTION 'Request is not approved for issue';
+ END IF;
+ SELECT unit INTO unit_value FROM public.materials WHERE id=r.material_id FOR SHARE;
+ IF NEW.issued_qty<>trunc(NEW.issued_qty) AND
+  regexp_replace(lower(btrim(coalesce(unit_value,''))),'[.[:space:]]','','g')
+  NOT IN ('l','ltr','ltrs','liter','liters','litre','litres') THEN
+  RAISE EXCEPTION 'Whole units only. Fractions are allowed only for litre items';
  END IF;
  cap := least(r.requested_qty,coalesce(r.approved_qty,r.requested_qty));
  IF cap IS NULL OR cap::text IN ('NaN','Infinity','-Infinity') OR cap<=0 THEN RAISE EXCEPTION 'Invalid approved quantity'; END IF;
@@ -102,9 +108,9 @@ BEGIN
  IF cap IS NULL OR cap::text IN ('NaN','Infinity','-Infinity') OR p_quantity>cap-already THEN
   RAISE EXCEPTION 'Issued quantity cannot exceed remaining approved quantity (%)',greatest(0,cap-already);
  END IF;
- IF lower(btrim(coalesce(m.unit,''))) NOT IN ('kg','kgs','kilogram','kilograms','g','gram','grams',
-  'l','ltr','ltrs','liter','liters','litre','litres','m','mtr','meter','meters','metre','metres')
-  AND p_quantity<>trunc(p_quantity) THEN RAISE EXCEPTION 'Whole-number quantity required for this unit'; END IF;
+ IF regexp_replace(lower(btrim(coalesce(m.unit,''))),'[.[:space:]]','','g')
+  NOT IN ('l','ltr','ltrs','liter','liters','litre','litres')
+  AND p_quantity<>trunc(p_quantity) THEN RAISE EXCEPTION 'Whole units only. Fractions are allowed only for litre items'; END IF;
  SELECT current_stock INTO available FROM public.current_stock WHERE material_id=m.id;
  IF available IS NULL OR p_quantity>available THEN RAISE EXCEPTION 'Insufficient available stock'; END IF;
  SELECT * INTO sales FROM public.material_sales_prices WHERE material_id=m.id;

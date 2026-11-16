@@ -64,6 +64,13 @@ const supabaseClient =
         SUPABASE_ANON_KEY
 );
 
+// Fractions are accepted only for litre units; all quantity buttons move by 1.
+function issueAllowsFraction(unit) {
+    return ['l','ltr','ltrs','liter','liters','litre','litres'].includes(
+        String(unit || '').trim().toLowerCase().replace(/[.\s]/g, '')
+    );
+}
+
 // --- DATA LOADING LOGIC ---
 
 async function loadApprovedRequests() {
@@ -123,7 +130,9 @@ const deptName =
             const issuedQty = Number(req.issued_qty || 0);
 
             const approvedQty = Math.min(Number(req.requested_qty), Number(req.approved_qty ?? req.requested_qty));
-            const balance = Math.max(0, approvedQty - issuedQty);
+            const balance = Math.max(0, Math.round((approvedQty - issuedQty) * 100) / 100);
+            const litre = issueAllowsFraction(material.unit);
+            const unitLabel = window.RvrgRecords.escape(material.unit || '-');
 
             // Find current stock for this material
             const stockRecord = stockData.find(
@@ -171,6 +180,7 @@ ${req.anacity_complaint_no || "N/A"}
         <strong>
             ${material.material_name || 'N/A'}
         </strong>
+        <div class="small text-muted">Unit: ${unitLabel}</div>
     </td>
 
     <!-- REQUESTED -->
@@ -178,7 +188,11 @@ ${req.anacity_complaint_no || "N/A"}
         ${req.requested_qty}
     </td>
 
-    <td>${approvedQty}</td>
+    <td>
+        <div class="fw-bold">${approvedQty}</div>
+        <div class="small text-muted">Issued: ${issuedQty}</div>
+        <div class="small fw-bold text-success">Remaining: ${balance}</div>
+    </td>
 
     <!-- CURRENT STOCK -->
     <td
@@ -209,31 +223,22 @@ ${req.anacity_complaint_no || "N/A"}
     <!-- MANUAL ISSUE QUANTITY -->
     <td class="bg-primary-subtle">
 
-        <input
-            type="number"
-            class="form-control form-control-sm issue-input mx-auto"
-            id="issueInput-${req.id}"
-
-            min="0.01"
-            step="0.01"
-
-            max="${Math.min(
-                balance,
-                currentStock
-            )}"
-
-            placeholder="Qty"
-
-            oninput="calculateAmount(
-                ${req.id},
-                ${unitCost},
-                ${Math.min(
-                    balance,
-                    currentStock
-                )}
-            )"
-
-        >
+        <div class="issue-quantity-control">
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="issueMinus-${req.id}"
+                aria-label="Decrease issued quantity by 1" onclick="adjustIssueQuantity(${req.id}, -1)" disabled>−</button>
+            <input type="number" class="form-control form-control-sm issue-input" id="issueInput-${req.id}"
+                min="${litre ? '0.01' : '1'}" step="${litre ? 'any' : '1'}" data-litre="${litre}"
+                max="${Math.min(balance, currentStock)}" placeholder="Qty"
+                aria-label="Issue quantity for ${material.material_code || req.id}"
+                aria-describedby="issueHelp-${req.id} issueError-${req.id}"
+                oninput="calculateAmount(${req.id}, ${unitCost}, ${Math.min(balance, currentStock)})"
+                onkeydown="if(event.key==='ArrowUp'||event.key==='ArrowDown'){event.preventDefault();adjustIssueQuantity(${req.id}, event.key==='ArrowUp'?1:-1)}">
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="issuePlus-${req.id}"
+                aria-label="Increase issued quantity by 1" onclick="adjustIssueQuantity(${req.id}, 1)"
+                ${Math.min(balance, currentStock) < 1 ? 'disabled' : ''}>+</button>
+        </div>
+        <div id="issueHelp-${req.id}" class="small text-muted mt-1">${litre ? 'Litre: fractions allowed' : 'Whole units only'}</div>
+        <div id="issueError-${req.id}" class="small text-danger" aria-live="polite"></div>
 
     </td>
 
@@ -279,16 +284,36 @@ tableBody.appendChild(tr);
     }
 }
 
-// Live amount preview and validity feedback; server validation remains authoritative.
+// A custom +/- control allows a one-unit step without making typed 0.5 L invalid.
+window.adjustIssueQuantity = function(requestId, direction) {
+    const input = document.getElementById(`issueInput-${requestId}`);
+    const current = input.value === '' ? 0 : Number(input.value);
+    const next = Math.round((current + direction) * 100) / 100;
+    if (!Number.isFinite(next) || next <= 0 || next > Number(input.max)) return;
+    input.value = String(next);
+    input.dispatchEvent(new Event('input', {bubbles:true}));
+};
+
+// Live feedback explains the remaining approval instead of just marking the field red.
 window.calculateAmount = function(requestId, unitCost, maximum) {
     const input = document.getElementById(`issueInput-${requestId}`);
     const quantity = Number(input.value);
-    const valid = Number.isFinite(quantity) && quantity > 0 && quantity <= maximum
-        && quantity === Math.round(quantity * 100) / 100;
-    input.setCustomValidity(valid || input.value === '' ? '' : `Enter a quantity up to ${maximum}.`);
-    input.classList.toggle('is-invalid', input.value !== '' && !valid);
+    let error = '';
+    if (input.value !== '') {
+        if (!Number.isFinite(quantity) || quantity <= 0) error = 'Enter a positive quantity.';
+        else if (quantity !== Math.round(quantity * 100) / 100) error = 'Use at most 2 decimal places.';
+        else if (input.dataset.litre !== 'true' && !Number.isInteger(quantity)) error = 'Whole units only. Fractions are allowed for litres.';
+        else if (quantity > maximum) error = `Maximum available to issue: ${maximum}.`;
+    }
+    const valid = input.value !== '' && !error;
+    input.setCustomValidity(error);
+    input.classList.toggle('is-invalid', !!error);
+    input.setAttribute('aria-invalid', String(!!error));
+    document.getElementById(`issueError-${requestId}`).textContent = error;
     document.getElementById(`amount-${requestId}`).textContent = formatCurrency(valid ? quantity * unitCost : 0);
     document.getElementById(`btnIssue-${requestId}`).disabled = !valid;
+    document.getElementById(`issueMinus-${requestId}`).disabled = !Number.isFinite(quantity) || quantity - 1 <= 0 || quantity - 1 > maximum;
+    document.getElementById(`issuePlus-${requestId}`).disabled = !Number.isFinite(quantity) || quantity + 1 > maximum || maximum <= 0;
 };
 
 // --- ISSUE PROCESS WORKFLOW ---
@@ -303,10 +328,11 @@ window.processIssue = async function(requestId, materialId) {
     if (issueInFlight.has(requestId)) return;
     issueInFlight.add(requestId);
     const button = document.getElementById(`btnIssue-${requestId}`);
+    const wasDisabled = button?.disabled;
     if (button) button.disabled = true;
     try { await issueRequest(requestId, materialId); }
     catch (error) { showAlert(error.message, 'danger'); }
-    finally { issueInFlight.delete(requestId); if (button) button.disabled = false; }
+    finally { issueInFlight.delete(requestId); if (button) button.disabled = wasDisabled; }
 };
 async function submitCheckedIssue(requestId, issueQty, user) {
     const previous = issueRetryKeys.get(requestId);
@@ -379,7 +405,7 @@ async function issueRequest(requestId, materialId) {
         .from("material_requests")
 
         .select(
-            "requested_qty, approved_qty, issued_qty, ticket_no, material_id, request_status"
+            "requested_qty, approved_qty, issued_qty, ticket_no, material_id, request_status, materials!material_requests_material_id_fkey(unit)"
         )
 
         .eq(
@@ -402,6 +428,15 @@ async function issueRequest(requestId, materialId) {
     }
 
 
+    if (!requestData.materials?.unit) {
+        showAlert('Material unit is unavailable. Refresh the issue list.', 'warning');
+        return;
+    }
+    if (!issueAllowsFraction(requestData.materials.unit) && !Number.isInteger(issueQty)) {
+        showAlert('Whole units only. Fractional quantities are allowed only for litre items.', 'warning');
+        return;
+    }
+
     const requestedQty =
         Number(
             requestData.requested_qty || 0
@@ -413,14 +448,14 @@ async function issueRequest(requestId, materialId) {
         );
 
     const approvedQty = Math.min(requestedQty, Number(requestData.approved_qty ?? requestedQty));
-    const remainingQty = approvedQty - alreadyIssued;
+    const remainingQty = Math.round((approvedQty - alreadyIssued) * 100) / 100;
     if (Number(requestData.material_id) !== Number(materialId) ||
         !['APPROVED','PARTIALLY_APPROVED','PARTIALLY_ISSUED'].includes(requestData.request_status)) {
         showAlert('This request is no longer available for issue. Refresh the list.', 'warning');
         return;
     }
     if (!Number.isFinite(approvedQty) || issueQty > remainingQty) {
-        showAlert(`Issued quantity cannot exceed the remaining approved quantity (${Math.max(0, remainingQty)}).`, 'warning');
+        showAlert(`Approved: ${approvedQty}. Already issued: ${alreadyIssued}. Remaining to issue: ${Math.max(0, remainingQty)}. Enter no more than the remaining quantity.`, 'warning');
         return;
     }
 

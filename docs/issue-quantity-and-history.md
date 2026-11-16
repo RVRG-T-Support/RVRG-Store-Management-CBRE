@@ -29,3 +29,12 @@ Validation
 - `BOOTSTRAP_CSS=/path/to/bootstrap.css node tests/browser/record-browser.cjs`: local Chromium with mocked backend across all four pages, over 1,000 seeded material lines, Complaint/MR search, whole tickets, 10/20/50, Previous/Next, clear/no-match behavior.
 
 No live data was modified and no production database migration was executed from this workspace. Real simultaneous sessions and Supabase deployment still require live validation after the SQL installation.
+
+Confirmed typing-error correction
+--------------------------------
+
+The supplied MAIN audit showed request1022 / PLB-179 / issue630 had approved1, requested1, and issued11 consistently in request, register and ledger. The user subsequently confirmed only1 was physically issued;11 was a storekeeper typing error.
+
+`supabase/repairs/20261116_MR-2026-0363.sql` is a manual MAIN-only repair, not an automatic migration. It locks and validates the exact request, material code, issue and original ledger link; refuses changed records, returns, extra issue records, legacy issues or missing historical rates; then changes all three issued quantities to1 and recalculates total cost using the unchanged saved unit rate. Correcting the original deduction increases stock by10 and corrects issue-based consumption without creating a fictitious return. Original dates are preserved. Old rows are saved as JSON in an owner-only RLS-protected correction log. A repeated run restores no additional stock. Any validation failure rolls back the transaction.
+
+`node --test tests/issue_correction.test.cjs tests/issue_quantity_db.test.cjs` passed with the installed quantity guards, including exact stock/consumption/amount corrections, preserved dates and other requests, repeat safety, audit privacy and rollback on unexpected records. Live execution still belongs to the user via MAIN SQL Editor as postgres; the assistant has not applied it to production.

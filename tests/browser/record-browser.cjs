@@ -79,11 +79,26 @@ try{
   if(name==='material_request'){
    const firstValues=await history.locator('[data-request-id]').first().locator('td').allTextContents();assert.equal(firstValues[2].trim(),'0','pending line is not displayed as approved');
    await page.evaluate(()=>{
-    window.currentMaterials=[{...window.requestRows[0].materials,id:1,current_stock:30}];
+    window.currentMaterials=[{...window.requestRows[0].materials,id:1,material_code:'ELE-198',material_name:'2 PIN PLUG',category:'Plug & Socket',unit:'NOS',unit_cost:0,gst_type:'INCLUDED',gst_percentage:18,current_stock:3}];
     window.requestItems=[{id:1,materialId:'1',quantity:1},{id:2,materialId:'',quantity:''}];
     renderRequestItems();
    });
    assert.equal(await page.locator('#requestItemsContainer > div').count(),2);
+   const entry=page.locator('#requestItemsContainer > div').first();
+   const entryBox=await entry.boundingBox(),containerBox=await page.locator('#requestItemsContainer').boundingBox();
+   assert.ok(entryBox.width>=containerBox.width-2,'material card spans full container width');
+   assert.ok((await page.locator('#requestItemsContainer > div').nth(1).boundingBox()).y>=entryBox.y+entryBox.height,'materials stack in full-width rows');
+   assert.ok(entryBox.height<350,'selected material remains compact');
+   for(const label of ['Category','Brand','Type','Size','Specification','Unit','Available Stock','Sales / unit (incl. GST)'])assert.ok((await entry.innerText()).includes(label),label);
+   await entry.getByRole('button',{name:'Change material',exact:true}).click();
+   assert.equal(await page.locator('#materialDetails-1').isVisible(),false);
+   await page.locator('#materialSearch-1').fill('2 PIN');
+   await page.locator('#materialSearchResults-1 button').first().click();
+   assert.equal(await page.locator('#materialDetails-1').isVisible(),true);
+   assert.equal(await page.evaluate(()=>document.activeElement.id),'requestQty-1');
+   await page.locator('#requestQty-1').fill('2');
+   assert.equal(await page.evaluate(()=>window.requestItems[0].quantity),'2');
+
    await history.getByRole('button',{name:'Edit request',exact:true}).click();await history.getByRole('button',{name:'Delete request',exact:true}).click();
    assert.equal(await page.evaluate(()=>window.editedTicket),'MR-2026-0478');assert.equal(await page.evaluate(()=>window.deletedTicket),'MR-2026-0478');
    const formBox=await page.locator('#materialRequestForm').boundingBox();const historyBox=await page.locator('#recentRequestsTable').boundingBox();

@@ -379,257 +379,37 @@ function getQuantitySettings(unit){
 // ====================================================
 
 function renderRequestItems(){
-
-    const container =
-        document.getElementById(
-            "requestItemsContainer"
-        );
-
-
-    if(!container)
-        return;
-
-
-    container.innerHTML = "";
-
-
-    window.requestItems.forEach(
-        (item,index) => {
-
-            const card =
-                document.createElement(
-                    "div"
-                );
-
-
-            card.className =
-                "border rounded p-3 mb-3 bg-light";
-
-
-            const selectedMaterial =
-                (window.currentMaterials || [])
-                .find(
-                    material =>
-                        String(material.id) ===
-                        String(item.materialId)
-                );
-
-
-            card.innerHTML = `
-
-                <div class="d-flex justify-content-between align-items-center mb-2">
-
-                    <strong>
-                        Item ${index + 1}
-                    </strong>
-
-                    ${
-                        window.requestItems.length > 1
-                        ? `
-                            <button
-                                type="button"
-                                class="btn btn-outline-danger btn-sm"
-                                onclick="removeRequestItem(${item.id})">
-
-                                <i class="fa-solid fa-trash"></i>
-
-                            </button>
-                          `
-                        : ""
-                    }
-
-                </div>
-
-
-                <!-- MATERIAL SEARCH -->
-
-                <div class="mb-2 position-relative">
-
-                    <label
-                        class="form-label small fw-semibold"
-                        for="materialSearch-${item.id}">
-
-                        Search Material
-
-                    </label>
-
-
-                    <input
-                        type="text"
-                        class="form-control"
-                        id="materialSearch-${item.id}"
-                        data-item-id="${item.id}"
-                        value="${
-                            selectedMaterial
-                                ? escapeHtml(buildMaterialSearchText(
-                                    selectedMaterial
-                                ))
-                                : ""
-                        }"
-                        placeholder="Search code / material / brand / type / size / specification..."
-                        autocomplete="off"
-                        oninput="handleRequestItemSearch(this)"
-                        onfocus="handleRequestItemSearch(this)"
-                        required>
-
-
-                    <div
-                        id="materialSearchResults-${item.id}"
-                        class="list-group position-absolute w-100 shadow-sm"
-                        style="
-                            z-index:1050;
-                            display:none;
-                            max-height:260px;
-                            overflow-y:auto;
-                        ">
+    const container=document.getElementById('requestItemsContainer');
+    if(!container) return;
+    container.innerHTML='';
+    window.requestItems.forEach((item,index)=>{
+        const material=(window.currentMaterials || []).find(row=>String(row.id)===String(item.materialId));
+        const settings=getQuantitySettings(material?.unit);
+        const card=document.createElement('div');
+        card.className='request-material-card';
+        card.innerHTML=`
+            <div class="request-item-header"><strong>Material ${index+1}</strong>
+                ${window.requestItems.length>1?`<button type="button" class="btn btn-outline-danger btn-sm" onclick="removeRequestItem(${item.id})" aria-label="Remove material ${index+1}">Remove</button>`:''}
+            </div>
+            <div class="request-item-body">
+                <div class="request-item-entry">
+                    <div class="position-relative">
+                        <label class="form-label" for="materialSearch-${item.id}">Search material</label>
+                        <input type="text" class="form-control" id="materialSearch-${item.id}" data-item-id="${item.id}" value="${material?escapeHtml(buildMaterialSearchText(material)):''}" placeholder="Search code, name, brand, type, size or specification" autocomplete="off" oninput="handleRequestItemSearch(this)" onfocus="handleRequestItemSearch(this)" required>
+                        <div id="materialSearchResults-${item.id}" class="list-group position-absolute w-100 shadow-sm request-material-results" style="display:none;"></div>
                     </div>
-
+                    <div class="request-item-quantity">
+                        <label class="form-label" for="requestQty-${item.id}">Requested quantity${material?.unit?' ('+escapeHtml(material.unit)+')':''}</label>
+                        <input type="number" class="form-control" id="requestQty-${item.id}" min="${settings.min}" step="${settings.step}" value="${escapeHtml(item.quantity || '')}" data-item-id="${item.id}" onchange="handleRequestItemQuantityChange(this)" oninput="handleRequestItemQuantityChange(this)" placeholder="Qty" required>
+                    </div>
                 </div>
-
-
-                <!-- SELECTED MATERIAL -->
-
-                <div
-                    id="selectedMaterial-${item.id}"
-                    class="border rounded bg-white p-2 mb-2 small">
-
-                    ${
-                        selectedMaterial
-
-                        ? `
-
-                            <div class="d-flex justify-content-between align-items-start">
-
-                                <div>
-
-                                    <div class="fw-bold ${requestMaterialAvailable(selectedMaterial) ? "text-primary" : "text-danger"}">
-
-                                        ${escapeHtml(
-                                            buildMaterialSearchText(
-                                                selectedMaterial
-                                            )
-                                        )}
-
-                                    </div>
-
-                                </div>
-
-
-                                <button
-                                    type="button"
-                                    class="btn btn-sm btn-outline-danger"
-                                    onclick="clearRequestItemMaterial(${item.id})"
-                                    title="Change Material">
-
-                                    <i class="fa-solid fa-xmark"></i>
-
-                                </button>
-
-                            </div>
-
-                        `
-
-                        : `
-
-                            <span class="text-muted">
-
-                                Search and select a material.
-
-                            </span>
-
-                        `
-
-                    }
-
+                <div id="selectedMaterial-${item.id}" class="request-selected-material">
+                    ${material?`<div class="request-selected-title ${requestMaterialAvailable(material)?'':'request-selection-unavailable'}"><span class="approval-material-code">${escapeHtml(material.material_code || '-')}</span><strong>${escapeHtml(material.material_name || '-')}</strong></div><button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearRequestItemMaterial(${item.id})">Change material</button>`:'<span class="text-muted">Search and select a material to see its specifications, stock and price.</span>'}
                 </div>
-
-
-                <!-- MATERIAL DETAILS -->
-
-                <div
-                    id="materialDetails-${item.id}"
-                    class="border rounded bg-white p-2 mb-2 small">
-
-                    ${
-                        item.materialId
-
-                        ? buildMaterialDetails(
-                            item.materialId
-                        )
-
-                        : `
-
-                            <span class="text-muted">
-
-                                Select a material to view full details.
-
-                            </span>
-
-                          `
-                    }
-
-                </div>
-
-
-                <!-- QUANTITY -->
-
-                <div>
-
-                    <label
-                        class="form-label small fw-semibold">
-
-                        Requested Quantity
-
-                    </label>
-
-
-${(() => {
-
-    const quantitySettings =
-        getQuantitySettings(
-            selectedMaterial?.unit
-        );
-
-
-    return `
-
-        <input
-            type="number"
-            class="form-control"
-            min="${quantitySettings.min}"
-            step="${quantitySettings.step}"
-            value="${item.quantity || ""}"
-            data-item-id="${item.id}"
-            onchange="handleRequestItemQuantityChange(this)"
-            oninput="handleRequestItemQuantityChange(this)"
-            placeholder="Enter quantity"
-            required>
-
-    `;
-
-})()}
-
-                </div>
-
-            `;
-
-
-            container.appendChild(card);
-
-        }
-    );
-
-
-    // Close search result lists when clicking elsewhere
-
-    document.addEventListener(
-        "click",
-        closeAllMaterialSearchResults,
-        {
-            once: true
-        }
-    );
-
+                <div id="materialDetails-${item.id}" class="request-material-detail-panel" ${material?'':'hidden'}>${material?buildMaterialDetails(item.materialId):''}</div>
+            </div>`;
+        container.appendChild(card);
+    });
 }
 
 // ====================================================
@@ -1075,95 +855,14 @@ function buildMaterialDetails(
     }
 
 
-    const detailRows = [
-
-        [
-            "Material Code",
-            material.material_code
-        ],
-
-        [
-            "Material Name",
-            material.material_name
-        ],
-
-        ["Category", material.category],
-        ["Available Stock", requestMaterialStockText(material)],
-        [
-            "Brand",
-            material.brand
-        ],
-
-        [
-            "Item Type",
-            material.item_type
-        ],
-
-        [
-            "Item Size",
-            material.item_size
-        ],
-
-        [
-            "Specification",
-            material.specification
-        ],
-
-        [
-            "Unit",
-            material.unit
-        ],
-
-        [
-            "Sales / unit (incl. GST)",
-            "₹ " +
-            window.RvrgSales.unit(material).toFixed(2)
-        ],
-
-        [
-            "Sales GST",
-            window.RvrgSales.gstLabel(material)
-        ]
-
-    ];
-
-
-    return `
-
-        <div class="row g-2">
-
-            ${
-
-                detailRows
-                    .map(
-                        ([label,value]) => `
-
-                            <div class="col-md-6">
-
-                                <span class="text-muted">
-                                    ${label}:
-                                </span>
-
-                                <strong>
-                                    ${escapeHtml(
-                                        value || "-"
-                                    )}
-                                </strong>
-
-                            </div>
-
-                        `
-                    )
-                    .join("")
-
-            }
-
-        </div>
-
-    `;
-
+    const fields=[['Category',material.category],['Brand',material.brand],['Type',material.item_type],['Size',material.item_size],['Specification',material.specification],['Unit',material.unit]];
+    const available=requestMaterialAvailable(material);
+    return `<div class="request-material-details">
+        <dl class="request-specifications">${fields.map(([label,value])=>`<div><dt>${label}</dt><dd>${escapeHtml(value || '-')}</dd></div>`).join('')}</dl>
+        <div class="request-stock-summary ${available?'stock-available':'stock-empty'}"><div class="request-stat-label">Available Stock</div><strong>${escapeHtml(requestMaterialStockText(material))}</strong></div>
+        <div class="request-price-summary"><div class="request-stat-label">Sales / unit (incl. GST)</div><strong>₹${escapeHtml(window.RvrgSales.unit(material).toFixed(2))}</strong><div class="request-gst-note">Sales GST: ${escapeHtml(window.RvrgSales.gstLabel(material))}</div></div>
+    </div>`;
 }
-
 
 // ====================================================
 // MATERIAL CHANGE

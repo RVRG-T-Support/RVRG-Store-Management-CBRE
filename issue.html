@@ -4,42 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Issue Materials - RVRG Store Management</title>
-    
+
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- FontAwesome Icons -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="theme.css" rel="stylesheet">
-    <style>
-        /* Small adjustment to make the table input fields fit neatly */
-        .issue-input {
-            width: 80px;
-            text-align: center;
-        }
-        .table-vertical-middle td, .table-vertical-middle th {
-            vertical-align: middle;
-        }
-    </style>
     <link rel="stylesheet" href="typography.css">
-<style>
-.issue-page { margin-top:70px; padding:12px 14px; min-width:0; }
-.issue-page .card,.issue-page .card-body { min-width:0; max-width:100%; }
-.issue-table-scroll { width:100%; max-width:100%; max-height:62dvh; overflow:auto; overscroll-behavior-x:contain; -webkit-overflow-scrolling:touch; scrollbar-width:auto; scrollbar-color:#607d8b #edf1f3; }
-.issue-table-scroll::-webkit-scrollbar { height:12px; width:12px; }
-.issue-table-scroll::-webkit-scrollbar-thumb { background:#607d8b; border-radius:6px; border:2px solid #edf1f3; }
-.issue-table-scroll table { width:100%; border-collapse:separate; border-spacing:0; table-layout:fixed; }
-.issue-pending-table { min-width:1560px; }
-.issue-history-table { min-width:1000px; }
-.issue-table-scroll th { position:sticky; top:0; z-index:2; background:#f4f6f9; }
-.issue-table-scroll td { white-space:normal; overflow-wrap:anywhere; }
-.issue-table-scroll .issue-input { width:56px; min-width:0; max-width:100%; appearance:textfield; -moz-appearance:textfield; }
-.issue-input::-webkit-inner-spin-button,.issue-input::-webkit-outer-spin-button { -webkit-appearance:none; margin:0; }
-.issue-quantity-control { display:flex; align-items:center; justify-content:center; gap:3px; }
-.issue-quantity-control .btn { min-width:26px; width:26px; padding:3px; }
-.table-scroll-controls { display:flex; align-items:center; gap:10px; padding:8px 10px; border-bottom:1px solid #dfe6e9; background:#f8fafb; }
-.table-scroll-controls input[type=range] { flex:1; min-width:60px; accent-color:#087f5b; height:24px; cursor:ew-resize; }
-.table-scroll-hint { display:block; padding:0 10px 6px; background:#f8fafb; }
-</style>
+    <link rel="stylesheet" href="ticket-layout.css?v=20261117-tickets">
+
     </head>
     <body class="bg-light">
 
@@ -50,7 +23,7 @@
 <!-- Global Sidebar -->
 <div id="globalSidebar"></div>
 
-    <div class="main-content issue-page">
+    <div class="main-content issue-page ticket-page">
 
     <div class="container-fluid px-0 my-0">
         <div class="d-flex justify-content-between align-items-center mb-3">
@@ -62,35 +35,11 @@
 
        <!-- Issue Table Card -->
 <div class="card shadow-sm border-0 mb-4">
-    <div class="card-body p-0" data-scroll-panel>
-        <div class="table-scroll-controls" role="group" aria-label="Approved requests horizontal scrolling">
-            <button type="button" class="btn btn-outline-secondary btn-sm" data-scroll-left aria-label="Scroll approved requests left">◀</button>
-            <input type="range" min="0" max="0" value="0" step="1" data-scroll-range aria-label="Scroll approved requests columns horizontally" aria-controls="issueScroll0">
-            <button type="button" class="btn btn-outline-secondary btn-sm" data-scroll-right aria-label="Scroll approved requests right">▶</button>
-        </div>
-        <small data-scroll-hint class="table-scroll-hint text-muted"></small>
-        <div id="issueScroll0" class="table-responsive issue-table-scroll" data-scroll-table tabindex="0" aria-label="Approved requests scrollable table">
-            <table class="table table-bordered table-hover table-vertical-middle mb-0 text-center issue-pending-table">
-                <colgroup><col style="width:125px"><col style="width:180px"><col style="width:210px"><col style="width:110px"><col style="width:170px"><col style="width:85px"><col style="width:85px"><col style="width:95px"><col style="width:100px"><col style="width:95px"><col style="width:140px"><col style="width:80px"><col style="width:85px"></colgroup>
-                <thead class="table-light">
-                    <tr>
-                        <th>Date</th>
-                        <th>Complaint Number / Request No.</th>
-                        <th>Location</th>
-                        <th>Department</th>
-                        <th>Material</th>
-                        <th>Requested</th>
-                        <th>Approved</th>
-                        <th class="table-info">Current Stock</th>
-                        <th>Sales / unit<br>(incl. GST)</th>
-                        <th>Amount</th>
-                        <th class="bg-success text-white">Issued Qty</th>
-                        <th>Issue</th>
-                        <th>Reject</th>
-                    </tr>
-                </thead>
+    <div class="card-body p-0">
 
-                <tbody id="approvedRequestsTable">
+        <div id="issueScroll0" class="table-responsive ticket-list-scroll" tabindex="0" aria-label="Approved requests scrollable table">
+            <table class="approval-ticket-list" aria-label="Material request tickets">
+<tbody id="approvedRequestsTable">
                     <tr>
                         <td colspan="13" class="text-center text-muted py-4">
                             Loading approved requests...
@@ -104,36 +53,16 @@
 
 <!-- Issued History -->
 <div class="card shadow-sm border-0">
-    <div class="card-header bg-success text-white fw-bold">
+    <div class="card-header bg-white fw-bold">
         <i class="fa-solid fa-clock-rotate-left me-2"></i>
         Issued History
     </div>
 
-    <div class="card-body p-0" data-scroll-panel>
-        <div class="table-scroll-controls" role="group" aria-label="Issued history horizontal scrolling">
-            <button type="button" class="btn btn-outline-secondary btn-sm" data-scroll-left aria-label="Scroll issued history left">◀</button>
-            <input type="range" min="0" max="0" value="0" step="1" data-scroll-range aria-label="Scroll issued history columns horizontally" aria-controls="issueScroll1">
-            <button type="button" class="btn btn-outline-secondary btn-sm" data-scroll-right aria-label="Scroll issued history right">▶</button>
-        </div>
-        <small data-scroll-hint class="table-scroll-hint text-muted"></small>
-        <div id="issueScroll1" class="table-responsive issue-table-scroll" data-scroll-table tabindex="0" aria-label="Issued history scrollable table">
-            <table class="table table-bordered table-hover table-vertical-middle mb-0 text-center issue-history-table">
+    <div class="card-body p-0">
 
-                <colgroup><col style="width:18%"><col style="width:14%"><col style="width:22%"><col style="width:8%"><col style="width:8%"><col style="width:8%"><col style="width:15%"><col style="width:7%"></colgroup>
-                <thead class="table-light">
-                    <tr>
-                        <th>Complaint Number / Request No.</th>
-                        <th>Department & Tech</th>
-                        <th>Material</th>
-                        <th>Requested</th>
-                        <th>Approved</th>
-                        <th>Issued</th>
-                        <th>Location & Type</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-
-                <tbody id="issuedHistoryTable">
+        <div id="issueScroll1" class="table-responsive ticket-list-scroll" tabindex="0" aria-label="Issued history scrollable table">
+            <table class="approval-ticket-list" aria-label="Material request tickets">
+<tbody id="issuedHistoryTable">
                     <tr>
                         <td colspan="8" class="text-center text-muted py-4">
                             Loading issued history...
@@ -158,8 +87,9 @@
     <script src="navigation.js?v=20261113-profile"></script>
 
 <!-- Logic script for this module -->
-    <script src="table-scroll.js"></script>
-    <script src="record-browser.js?v=20261116"></script>
-<script src="issue.js?v=20261116-litre-step"></script>
+
+    <script src="record-browser.js?v=20261117-tickets"></script>
+<script src="ticket-view.js?v=20261117-tickets"></script>
+<script src="issue.js?v=20261117-tickets"></script>
 </body>
 </html>

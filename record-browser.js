@@ -57,9 +57,9 @@ window.RvrgRecords = (() => {
             if(term && options.table!=='material_requests') {
                 tickets=[...new Set((await all(()=>search(client.from('material_requests').select('id,ticket_no'),term).order('id'))).map(row=>row.ticket_no))];
             }
-            const build=(select,count=false)=>{
+            const build=(select,count=false,wholeTicket=false)=>{
                 let q=client.from(options.table).select(select,count?{count:'exact'}:undefined);
-                if(options.filter) q=options.filter(q);
+                if(options.filter && !wholeTicket) q=options.filter(q);
                 if(options.table==='material_requests') q=search(q,term);
                 else if(tickets) q=q.in(options.ticketPath||'ticket_no',tickets);
                 return q;
@@ -72,7 +72,9 @@ window.RvrgRecords = (() => {
                 total=groups.length;
                 currentPage=Math.min(currentPage,Math.max(0,Math.ceil(total/size)-1));
                 const pageTickets=groups.slice(currentPage*size,(currentPage+1)*size);
-                if(pageTickets.length) data=await all(()=>build(options.select).in('ticket_no',pageTickets).order(options.order,{ascending:!!options.ascending}).order('id',{ascending:!!options.ascending}));
+                if(pageTickets.length) data=await all(()=>build(options.select,false,!!options.wholeTicket).in('ticket_no',pageTickets).order(options.order,{ascending:!!options.ascending}).order('id',{ascending:!!options.ascending}));
+                const rank=new Map(pageTickets.map((ticket,index)=>[ticket,index]));
+                data.sort((a,b)=>rank.get(a.ticket_no)-rank.get(b.ticket_no)||Number(a.id)-Number(b.id));
             } else {
                 const query=()=>build(options.select,true).order(options.order,{ascending:!!options.ascending}).order('id',{ascending:!!options.ascending}).range(currentPage*size,(currentPage+1)*size-1);
                 let result=await query(); if(result.error) throw result.error;

@@ -17,8 +17,8 @@ document.addEventListener('DOMContentLoaded', () => {
 // User information is handled by navigation.js
     
 // Load initial data
-window.RvrgRecords.mount('approvedRequestsTable', loadApprovedRequests, false);
-window.RvrgRecords.mount('issuedHistoryTable', loadIssuedHistory, false);
+window.RvrgRecords.mount('approvedRequestsTable', loadApprovedRequests, true);
+window.RvrgRecords.mount('issuedHistoryTable', loadIssuedHistory, true);
 loadApprovedRequests();
 loadIssuedHistory();
 
@@ -71,6 +71,27 @@ function issueAllowsFraction(unit) {
     );
 }
 
+function issueQuantityMarkup(req, maximum, unitCost) {
+    const litre=issueAllowsFraction(req.materials?.unit);
+    return `        <div class="issue-quantity-control">
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="issueMinus-${req.id}"
+                aria-label="Decrease issued quantity by 1" onclick="adjustIssueQuantity(${req.id}, -1)" disabled>−</button>
+            <input type="number" class="form-control form-control-sm issue-input" id="issueInput-${req.id}"
+                min="${litre ? '0.01' : '1'}" step="${litre ? 'any' : '1'}" data-litre="${litre}"
+                max="${maximum}" placeholder="Qty"
+                aria-label="Issue quantity for ${window.RvrgTickets.esc(req.materials?.material_code || req.id)}"
+                aria-describedby="issueHelp-${req.id} issueError-${req.id}"
+                oninput="calculateAmount(${req.id}, ${unitCost}, ${maximum})"
+                onkeydown="if(event.key==='ArrowUp'||event.key==='ArrowDown'){event.preventDefault();adjustIssueQuantity(${req.id}, event.key==='ArrowUp'?1:-1)}">
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="issuePlus-${req.id}"
+                aria-label="Increase issued quantity by 1" onclick="adjustIssueQuantity(${req.id}, 1)"
+                ${maximum < 1 ? 'disabled' : ''}>+</button>
+        </div>
+        <div id="issueHelp-${req.id}" class="small text-muted mt-1">${litre ? 'Litre: fractions allowed' : 'Whole units only'}</div>
+        <div id="issueError-${req.id}" class="small text-danger" aria-live="polite"></div>
+`;
+}
+
 // --- DATA LOADING LOGIC ---
 
 async function loadApprovedRequests() {
@@ -85,6 +106,7 @@ async function loadApprovedRequests() {
     materials!material_requests_material_id_fkey (
     material_name,
     material_code,
+    brand, item_type, item_size, specification,
     unit,
     unit_cost,
     gst_type,
@@ -119,164 +141,20 @@ async function loadApprovedRequests() {
         if (!window.RvrgRecords.isCurrent('approvedRequestsTable', requests)) return;
         tableBody.innerHTML = ''; // Clear table
         
-        requests.forEach(req => {
-            const material = req.materials || {};
-
-const deptName =
-    material.departments?.department_name ||
-    "-";
-            const unitCost = window.RvrgSales.unit(material, req.material_id);
-
-            const issuedQty = Number(req.issued_qty || 0);
-
-            const approvedQty = Math.min(Number(req.requested_qty), Number(req.approved_qty ?? req.requested_qty));
-            const balance = Math.max(0, Math.round((approvedQty - issuedQty) * 100) / 100);
-            const litre = issueAllowsFraction(material.unit);
-            const unitLabel = window.RvrgRecords.escape(material.unit || '-');
-
-            // Find current stock for this material
-            const stockRecord = stockData.find(
-                s => s.material_id === req.material_id
-            );
-
-            const currentStock = Number(
-                stockRecord?.current_stock || 0
-            );
-
-const tr = document.createElement('tr');
-
-tr.innerHTML = `
-    <td>
-        ${formatDateTime(req.created_at)}
-    </td>
-
-    <td>
-
-    <div class="fw-bold text-success">
-        Complaint Number:
-${req.anacity_complaint_no || "N/A"}
-    </div>
-
-    <div class="fw-bold text-primary">
-        MR:
-        ${req.ticket_no || "N/A"}
-    </div>
-
-</td>
-
-    <td>
-        <small>
-            ${req.location_name || 'N/A'}
-        </small>
-    </td>
-
-    <td>
-        ${deptName}
-    </td>
-
-    <td>
-        ${material.material_code || ''}
-        <br>
-        <strong>
-            ${material.material_name || 'N/A'}
-        </strong>
-        <div class="small text-muted">Unit: ${unitLabel}</div>
-    </td>
-
-    <!-- REQUESTED -->
-    <td>
-        ${req.requested_qty}
-    </td>
-
-    <td>
-        <div class="fw-bold">${approvedQty}</div>
-        <div class="small text-muted">Issued: ${issuedQty}</div>
-        <div class="small fw-bold text-success">Remaining: ${balance}</div>
-    </td>
-
-    <!-- CURRENT STOCK -->
-    <td
-        class="table-info fw-bold ${
-            currentStock <= 0
-                ? 'text-danger'
-                : 'text-dark'
-        }">
-
-        ${currentStock}
-
-    </td>
-
-    <!-- UNIT COST -->
-    <td>
-        ${formatCurrency(unitCost)}
-    </td>
-
-    <!-- AMOUNT -->
-    <td
-        class="fw-bold text-success"
-        id="amount-${req.id}">
-
-        ₹ 0.00
-
-    </td>
-
-    <!-- MANUAL ISSUE QUANTITY -->
-    <td class="bg-primary-subtle">
-
-        <div class="issue-quantity-control">
-            <button type="button" class="btn btn-outline-secondary btn-sm" id="issueMinus-${req.id}"
-                aria-label="Decrease issued quantity by 1" onclick="adjustIssueQuantity(${req.id}, -1)" disabled>−</button>
-            <input type="number" class="form-control form-control-sm issue-input" id="issueInput-${req.id}"
-                min="${litre ? '0.01' : '1'}" step="${litre ? 'any' : '1'}" data-litre="${litre}"
-                max="${Math.min(balance, currentStock)}" placeholder="Qty"
-                aria-label="Issue quantity for ${material.material_code || req.id}"
-                aria-describedby="issueHelp-${req.id} issueError-${req.id}"
-                oninput="calculateAmount(${req.id}, ${unitCost}, ${Math.min(balance, currentStock)})"
-                onkeydown="if(event.key==='ArrowUp'||event.key==='ArrowDown'){event.preventDefault();adjustIssueQuantity(${req.id}, event.key==='ArrowUp'?1:-1)}">
-            <button type="button" class="btn btn-outline-secondary btn-sm" id="issuePlus-${req.id}"
-                aria-label="Increase issued quantity by 1" onclick="adjustIssueQuantity(${req.id}, 1)"
-                ${Math.min(balance, currentStock) < 1 ? 'disabled' : ''}>+</button>
-        </div>
-        <div id="issueHelp-${req.id}" class="small text-muted mt-1">${litre ? 'Litre: fractions allowed' : 'Whole units only'}</div>
-        <div id="issueError-${req.id}" class="small text-danger" aria-live="polite"></div>
-
-    </td>
-
-       <!-- ISSUE ACTION -->
-    <td class="text-center">
-
-        <button
-            class="btn btn-primary btn-sm fw-bold shadow-sm"
-            onclick="processIssue(
-                ${req.id},
-                ${req.material_id}
-            )"
-            id="btnIssue-${req.id}" ${balance <= 0 || currentStock <= 0 ? 'disabled' : ''}>
-
-            <i class="fa-solid fa-box-arrow-up me-1"></i>
-            Issue
-        </button>
-
-    </td>
-
-    <!-- REJECT ACTION -->
-    <td class="text-center">
-
-        <button
-            class="btn btn-danger btn-sm fw-bold shadow-sm"
-            onclick="rejectRequest(
-                ${req.id}
-            )">
-
-            <i class="fa-solid fa-xmark me-1"></i>
-            Reject
-        </button>
-
-    </td>
-`;
-
-tableBody.appendChild(tr);
-});
+        const stockMap=new Map((stockData || []).map(row=>[String(row.material_id),Number(row.current_stock || 0)]));
+        const context=new Map(requests.map(req=>{
+            const approved=Math.min(Number(req.requested_qty),Number(req.approved_qty ?? req.requested_qty));
+            const issued=Number(req.issued_qty || 0),remaining=Math.max(0,Math.round((approved-issued)*100)/100);
+            return [req.id,{approved,issued,remaining,stock:stockMap.get(String(req.material_id)) || 0,price:window.RvrgSales.unit(req.materials,req.material_id)}];
+        }));
+        window.RvrgTickets.render(tableBody,requests,{colspan:13,tableClass:'ticket-issue-items',columns:[
+            {label:'Material details',width:'37%',render:req=>window.RvrgTickets.material(req)},
+            {label:'Available stock',width:'9%',render:req=>{const c=context.get(req.id);return `<span class="approval-stock ${c.stock>0?'stock-available':'stock-empty'}">${c.stock}</span><div class="approval-muted">${window.RvrgTickets.esc(req.materials?.unit || '-')}</div>`;}},
+            {label:'Sales / unit (incl. GST)',width:'12%',render:req=>`<strong>${formatCurrency(context.get(req.id).price)}</strong><div class="approval-muted">Issue amount</div><div class="approval-price" id="amount-${req.id}">${formatCurrency(0)}</div>`},
+            {label:'Quantities',width:'13%',render:req=>{const c=context.get(req.id);return `<dl class="ticket-qty-summary"><dt>Requested</dt><dd>${req.requested_qty}</dd><dt>Approved</dt><dd>${c.approved}</dd><dt>Issued</dt><dd>${c.issued}</dd><dt>Remaining</dt><dd class="text-success">${c.remaining}</dd></dl>`;}},
+            {label:'Issue quantity',width:'19%',render:req=>{const c=context.get(req.id);return issueQuantityMarkup(req,Math.min(c.remaining,c.stock),c.price);}},
+            {label:'Actions',width:'10%',render:req=>{const c=context.get(req.id);return `<div class="ticket-line-actions"><button type="button" class="btn btn-primary btn-sm" id="btnIssue-${req.id}" onclick="processIssue(${req.id},${req.material_id})" ${c.remaining<=0 || c.stock<=0?'disabled':''}>Issue</button><button type="button" class="btn btn-outline-danger btn-sm" onclick="rejectRequest(${req.id})">Reject</button></div>`;}}
+        ]});
 
     } catch (error) {
         console.error("Error loading issue desk:", error.message);
@@ -717,13 +595,14 @@ async function loadIssuedHistory() {
                 materials!material_requests_material_id_fkey (
                     material_code,
                     material_name,
+                    brand, item_type, item_size, specification, unit,
                     department_id,
                     unit_cost,
                     departments (
                         department_name
                     )
                 )
-            `, order:'created_at', ascending:false, filter:q=>q.in('request_status',['ISSUED','PARTIALLY_ISSUED'])
+            `, wholeTicket:true, order:'created_at', ascending:false, filter:q=>q.in('request_status',['ISSUED','PARTIALLY_ISSUED'])
         });
         if (!requests && !requestError) return;
 
@@ -756,212 +635,7 @@ async function loadIssuedHistory() {
         tableBody.innerHTML = "";
 
 
-        requests.forEach(req => {
-
-            const material =
-                req.materials || {};
-
-
-            const deptName =
-                material.departments
-                    ?.department_name || "-";
-
-
-            const requestedQty =
-                Number(
-                    req.requested_qty || 0
-                );
-
-
-            const approvedQty =
-                Number(
-                    req.approved_qty ??
-                    requestedQty
-                );
-
-
-            const issuedQty =
-                Number(
-                    req.issued_qty || 0
-                );
-
-
-            const isPartial =
-                req.request_status ===
-                "PARTIALLY_ISSUED";
-
-
-            const statusBadge =
-                isPartial
-
-                    ? `
-                        <span class="badge bg-warning text-dark">
-                            Partially Issued
-                        </span>
-                    `
-
-                    : `
-                        <span class="badge bg-success">
-                            Issued
-                        </span>
-                    `;
-
-
-            const tr =
-                document.createElement("tr");
-
-
-            tr.innerHTML = `
-
-                <!-- COMPLAINT / REQUEST -->
-
-                <td>
-
-                    <div class="fw-bold text-success">
-
-                        Complaint Number:
-                        ${req.anacity_complaint_no || "N/A"}
-
-                    </div>
-
-                    <div class="fw-bold text-primary">
-
-                        MR:
-                        ${req.ticket_no || "N/A"}
-
-                    </div>
-
-                </td>
-
-
-                <!-- DEPARTMENT / TECH -->
-
-                <td>
-
-                    <strong>
-                        ${deptName}
-                    </strong>
-
-                    <br>
-
-                    <small class="text-muted">
-
-                        <i class="fa-solid fa-user-wrench me-1"></i>
-
-                        ${req.technician_name || "N/A"}
-
-                    </small>
-
-                </td>
-
-
-                <!-- MATERIAL -->
-
-                <td>
-
-                    <div class="fw-bold text-primary">
-
-                        ${material.material_code || "N/A"}
-
-                    </div>
-
-                    <div class="fw-semibold">
-
-                        ${material.material_name || "N/A"}
-
-                    </div>
-
-                </td>
-
-
-                <!-- REQUESTED -->
-
-                <td>
-
-                    <span class="badge bg-secondary">
-
-                        ${requestedQty}
-
-                    </span>
-
-                </td>
-
-
-                <!-- APPROVED -->
-
-                <td>
-
-                    <span class="badge bg-info text-dark">
-
-                        ${approvedQty}
-
-                    </span>
-
-                </td>
-
-
-                <!-- ISSUED -->
-
-                <td>
-
-                    <span class="badge ${
-                        issuedQty > approvedQty ? "bg-danger" : issuedQty < approvedQty
-                            ? "bg-warning text-dark"
-                            : "bg-success"
-                    }">
-
-                        ${issuedQty}
-
-                    </span>
-
-                    ${issuedQty > approvedQty ? '<div class="small text-danger">Exceeds approval — review required</div>' : ''}
-                    ${
-                        issuedQty < approvedQty
-
-                        ? `
-                            <div class="small text-muted mt-1">
-                                of ${approvedQty}
-                            </div>
-                        `
-
-                        : ""
-                    }
-
-                </td>
-
-
-                <!-- LOCATION -->
-
-                <td>
-
-                    ${req.location_type || "N/A"}
-
-                    <br>
-
-                    <small class="text-muted">
-
-                        ${req.location_name || "N/A"}
-
-                    </small>
-
-                </td>
-
-
-                <!-- STATUS -->
-
-                <td>
-
-                    ${statusBadge}
-
-                </td>
-
-            `;
-
-
-            tableBody.appendChild(tr);
-
-        });
-
+        window.RvrgTickets.history(tableBody, requests, 'issue');
 
     }
     catch(error){

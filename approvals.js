@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Load initial data
 window.RvrgRecords.mount('pendingApprovalsTable', loadPendingApprovals, true);
-window.RvrgRecords.mount('approvedHistoryTable', loadApprovedHistory, false);
+window.RvrgRecords.mount('approvedHistoryTable', loadApprovedHistory, true);
 loadPendingApprovals();
 loadApprovedHistory();
 
@@ -63,11 +63,7 @@ function approvalEscape(value) {
 }
 
 function approvalMaterialDetails(req, includePrice = false) {
-    const material = req.materials || {};
-    const fields = [['Brand', material.brand], ['Type', material.item_type], ['Size', material.item_size], ['Specification', material.specification], ['Unit', material.unit]];
-    return `<div class="approval-material-heading"><span class="approval-material-code">${approvalEscape(material.material_code || '-')}</span><strong>${approvalEscape(material.material_name || '-')}</strong></div>
-        <div class="approval-material-meta">${fields.map(([label, value]) => `<span><span class="approval-meta-label">${label}:</span> ${approvalEscape(value || '-')}</span>`).join('')}</div>
-        ${includePrice ? `<div class="approval-history-price">Sales / unit (incl. GST) <strong>${formatCurrency(window.RvrgSales.unit(material, req.material_id))}</strong></div>` : ''}`;
+    return window.RvrgTickets.material(req, includePrice);
 }
 
 // --- DATA LOADING LOGIC ---
@@ -628,7 +624,7 @@ async function loadApprovedHistory() {
                         department_name
                     )
                 )
-            `, order:'approval_date', ascending:false, filter:q=>q.in('request_status',['APPROVED','PARTIALLY_APPROVED','PARTIALLY_ISSUED','ISSUED'])
+            `, wholeTicket:true, order:'approval_date', ascending:false, filter:q=>q.in('request_status',['APPROVED','PARTIALLY_APPROVED','PARTIALLY_ISSUED','ISSUED'])
         });
         if (!data && !error) return;
 
@@ -652,26 +648,7 @@ async function loadApprovedHistory() {
 
         tableBody.innerHTML = '';
 
-        data.forEach(req => {
-            const requested = Number(req.requested_qty || 0);
-            const approved = Number(req.approved_qty ?? requested);
-            const statuses = {
-                APPROVED:['Approved','approved'], PARTIALLY_APPROVED:['Partially approved','partial'],
-                ISSUED:['Issued','issued'], PARTIALLY_ISSUED:['Partially issued','partial']
-            };
-            const [status, statusClass] = statuses[req.request_status] || ['Approved','approved'];
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td><div class="approval-history-ticket">${approvalEscape(req.ticket_no || 'N/A')}</div><div class="approval-muted">Complaint <strong>${approvalEscape(req.anacity_complaint_no || 'N/A')}</strong></div></td>
-                <td><strong>${approvalEscape(req.materials?.departments?.department_name || '-')}</strong><div class="approval-muted">${approvalEscape(req.technician_name || '-')}</div></td>
-                <td>${approvalMaterialDetails(req, true)}</td>
-                <td class="text-center"><span class="approval-quantity">${requested}</span></td>
-                <td class="text-center"><span class="approval-quantity approval-quantity-approved">${approved}</span></td>
-                <td><div>${approvalEscape(req.location_type || 'N/A')}</div><div class="approval-muted">${approvalEscape(req.location_name || 'N/A')}</div></td>
-                <td><span class="approval-status status-${statusClass}">${status}</span></td>
-                <td class="approval-muted">${approvalEscape(req.approval_date ? formatDateTime(req.approval_date) : 'N/A')}</td>`;
-            tableBody.appendChild(row);
-        });
+        window.RvrgTickets.history(tableBody, data, 'approval');
 
     } catch (error) {
 

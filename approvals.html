@@ -12,26 +12,56 @@
     <link rel="stylesheet" href="theme.css">
     <link rel="stylesheet" href="typography.css">
 <style>
-.approvals-page { margin-top:70px; padding:12px 14px; min-height:calc(100dvh - 70px); }
-.approvals-page h3 { margin-bottom:0; }
-.approvals-page .card-header { padding:10px 12px !important; }
-.approvals-page .card-title { margin:0; }
-.approvals-page table { width:100%; min-width:1000px; table-layout:fixed; }
-.approvals-page th { overflow-wrap:normal; }
-.approvals-page td { overflow-wrap:anywhere; }
-.approvals-page .approval-material-meta { grid-template-columns:repeat(2,minmax(0,1fr)); gap:3px 12px; line-height:1.4; }
-.approvals-page .approval-material-meta > div { min-width:0; }
-.approvals-page td .badge { white-space:normal; }
-.approvals-page #pendingApprovalsTable > tr:only-child > td[colspan] { padding:14px !important; }
-@media(max-width:991.98px) {
- .approvals-page table { min-width:1000px; }
-}
-.approvals-scroll { max-height:65dvh; overflow:auto; }
-.approvals-scroll thead th { position:sticky; top:0; z-index:2; background:#f4f6f9; }
-.approval-material-meta { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 8px; overflow-wrap:anywhere; }
-.approvals-scroll td { vertical-align:top; padding:8px; }
-.approvals-scroll .badge { font-size:11px; }
-@media(max-width:767px){ .approval-material-meta { grid-template-columns:1fr; } }
+.approvals-page { margin-top:70px; padding:16px; min-width:0; min-height:calc(100dvh - 70px); color:#253347; }
+.approvals-page h3 { margin:0; font-size:20px; }
+.approvals-page .card { border:1px solid #e1e7ed !important; border-radius:8px; overflow:hidden; }
+.approvals-page .card-header { padding:14px 16px; background:#fff; border-bottom:1px solid #e7edf2; }
+.approvals-page .card-title { margin:0; color:#253347; font-size:14px; font-weight:650; }
+.approvals-page .record-browser { padding:10px 14px !important; background:#fff !important; gap:8px !important; }
+.approvals-page .record-browser label { color:#536276; font-size:11px; }
+.approvals-page .record-browser label:first-child { max-width:540px; }
+.approvals-page .record-pagination { background:#fff; padding:10px 14px !important; color:#64748b; }
+.approvals-scroll { overflow-x:auto; }
+.approvals-page .approval-ticket-list { table-layout:fixed; width:100%; margin:0; border-collapse:separate; border-spacing:0; }
+.approval-ticket-row > td { padding:12px; border:0; background:#f3f6f9; }
+.approval-ticket { border:1px solid #dce5eb; border-radius:7px; background:#fff; overflow:hidden; }
+.approval-ticket-header { display:grid; grid-template-columns:1.1fr 1fr 1.5fr auto; align-items:start; gap:16px; padding:14px 16px; border-bottom:1px solid #e1e9ee; background:#fbfcfd; }
+.approval-ticket-header > div { min-width:0; overflow-wrap:anywhere; line-height:1.6; }
+.approval-eyebrow { color:#718096; font-size:10px; font-weight:650; letter-spacing:.04em; margin-bottom:3px; }
+.approval-ticket-number,.approval-history-ticket { color:#155c79; font-weight:700; }
+.approval-ticket-number { font-size:14px; }
+.approval-count { display:inline-block; margin-left:5px; border-radius:4px; padding:1px 6px; background:#e8f0f6; color:#406276; font-size:10px; font-weight:600; letter-spacing:0; }
+.approval-muted { color:#68788b; font-size:11px; line-height:1.5; }
+.approval-ticket-actions { display:flex; flex-wrap:wrap; gap:7px; align-items:center; }
+.approval-ticket-actions .btn { white-space:nowrap; font-weight:600; }
+.approval-items-scroll { overflow:auto; max-width:100%; -webkit-overflow-scrolling:touch; }
+.approval-item-table { width:100%; min-width:830px; table-layout:fixed; }
+.approvals-page th { background:#f4f7fa; color:#596a7d; padding:9px 12px; font-size:11px; font-weight:650; border-bottom:1px solid #e0e8ee; vertical-align:middle; }
+.approval-item-table th small { display:block; font-size:10px; font-weight:400; }
+.approval-item-table td { padding:12px; vertical-align:middle; border-bottom:1px solid #edf1f5; overflow-wrap:anywhere; }
+.approval-item-table tbody tr:last-child td { border-bottom:0; }
+.approval-material-heading { display:flex; align-items:baseline; flex-wrap:wrap; gap:5px 9px; margin-bottom:5px; color:#263b4e; }
+.approval-material-code { font-size:11px; color:#176b91; font-weight:700; white-space:nowrap; }
+.approval-material-meta { display:flex; flex-wrap:wrap; gap:3px 13px; color:#33475b; font-size:11px; line-height:1.55; }
+.approval-material-meta > span { min-width:0; overflow-wrap:anywhere; }
+.approval-meta-label { color:#758497; }
+.approval-price { color:#253b4e; font-weight:600; white-space:nowrap; }
+.approval-stock { font-size:14px; font-weight:700; }
+.stock-available { color:#147d5b; }.stock-empty { color:#c43743; }.stock-unknown { color:#718096; font-size:11px; }
+.approval-quantity { display:inline-block; min-width:30px; padding:3px 7px; border-radius:4px; background:#edf2f7; color:#334b62; font-weight:650; }
+.approval-quantity-approved { background:#e6f4ed; color:#147d5b; }
+.approval-qty-input { width:82px; max-width:100%; text-align:center; border-color:#cbd8e2; }
+.approval-history-table { width:100%; min-width:1160px; table-layout:fixed; }
+.approval-history-table td { padding:12px; vertical-align:top; border-bottom:1px solid #e8eef3; overflow-wrap:anywhere; }
+.approval-history-table tbody tr:nth-child(even) { background:#fbfcfd; }
+.approval-history-price { margin-top:5px; font-size:10px; color:#758497; }
+.approval-history-price strong { color:#3a5267; margin-left:5px; }
+.approval-status { display:inline-block; border-radius:4px; padding:3px 6px; font-size:10px; font-weight:600; }
+.status-approved { background:#e6f4ed; color:#147d5b; }.status-issued { background:#e9f0fb; color:#28569a; }.status-partial { background:#fff3da; color:#8b6219; }
+.approval-history-scroll { max-height:65dvh; overflow:auto; }
+.approval-history-scroll thead th { position:sticky; top:0; z-index:2; }
+@media(max-width:1100px) { .approval-ticket-header { grid-template-columns:1fr 1fr; gap:12px 20px; }.approval-ticket-actions { justify-content:flex-start; } }
+@media(max-width:575px) { .approvals-page { padding:10px; }.approval-ticket-header { grid-template-columns:1fr; padding:12px; }.approval-ticket-row > td { padding:8px; }.approvals-page .record-browser label:first-child { width:100%; max-width:none; }.approvals-page h3 { font-size:17px; } }
 </style>
 </head>
 <body class="bg-light">
@@ -59,19 +89,7 @@
 
     <div class="card-body p-0">
         <div class="table-responsive approvals-scroll">
-            <table class="table table-hover align-top mb-0">
-<colgroup><col style="width:19%"><col style="width:13%"><col style="width:35%"><col style="width:10%"><col style="width:15%"><col style="width:8%"></colgroup>
-                <thead class="table-light">
-                    <tr>
-                        <th>Complaint Number / Request No.</th>
-                        <th>Department & Tech</th>
-                        <th>Material Details</th>
-                        <th>Qty</th>
-                        <th>Location & Type</th>
-                        <th class="text-center">Actions</th>
-                    </tr>
-                </thead>
-
+            <table class="approval-ticket-list" aria-label="Tickets awaiting approval">
                 <tbody id="pendingApprovalsTable">
                     <tr>
                         <td colspan="6" class="text-center text-muted py-4">
@@ -86,14 +104,14 @@
 
 <!-- Approved History Table -->
 <div class="card shadow-sm border-0">
-    <div class="card-header bg-success text-white fw-bold">
-        <i class="fa-solid fa-clock-rotate-left me-2"></i>
+    <div class="card-header fw-bold">
+        <i class="fa-solid fa-clock-rotate-left me-2 text-success"></i>
         Approved History
     </div>
 
     <div class="card-body p-0">
-        <div class="table-responsive approvals-scroll">
-            <table class="table table-hover align-top mb-0">
+        <div class="table-responsive approval-history-scroll">
+            <table class="table approval-history-table mb-0">
 <colgroup><col style="width:15%"><col style="width:11%"><col style="width:31%"><col style="width:8%"><col style="width:7%"><col style="width:12%"><col style="width:7%"><col style="width:9%"></colgroup>
                 <thead class="table-light">
                     <tr>
@@ -156,7 +174,7 @@
 <script src="navigation.js?v=20261113-profile"></script>
 <script src="operational-data.js"></script>
 <script src="record-browser.js?v=20261116"></script>
-<script src="approvals.js?v=20261116"></script>
+<script src="approvals.js?v=20261117-layout"></script>
 
 <!-- Page-specific JS -->
 </body>

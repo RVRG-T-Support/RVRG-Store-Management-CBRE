@@ -58,6 +58,18 @@ document.getElementById('btnRefreshApprovals').addEventListener('click', () => {
 document.getElementById('confirmRejectBtn').addEventListener('click', processRejection);
 });
 
+function approvalEscape(value) {
+    return window.RvrgRecords.escape(value);
+}
+
+function approvalMaterialDetails(req, includePrice = false) {
+    const material = req.materials || {};
+    const fields = [['Brand', material.brand], ['Type', material.item_type], ['Size', material.item_size], ['Specification', material.specification], ['Unit', material.unit]];
+    return `<div class="approval-material-heading"><span class="approval-material-code">${approvalEscape(material.material_code || '-')}</span><strong>${approvalEscape(material.material_name || '-')}</strong></div>
+        <div class="approval-material-meta">${fields.map(([label, value]) => `<span><span class="approval-meta-label">${label}:</span> ${approvalEscape(value || '-')}</span>`).join('')}</div>
+        ${includePrice ? `<div class="approval-history-price">Sales / unit (incl. GST) <strong>${formatCurrency(window.RvrgSales.unit(material, req.material_id))}</strong></div>` : ''}`;
+}
+
 // --- DATA LOADING LOGIC ---
 
 async function loadPendingApprovals() {
@@ -104,379 +116,63 @@ async function loadPendingApprovals() {
         if (!window.RvrgRecords.isCurrent('pendingApprovalsTable', data)) return;
         tableBody.innerHTML = ''; // Clear table
         
-// ====================================================
-// GROUP PENDING REQUESTS BY TICKET
-// ====================================================
-
-const ticketGroups = {};
-
-data.forEach(req => {
-
-    const ticketNo =
-        req.ticket_no || "NO-TICKET";
-
-    if(!ticketGroups[ticketNo]){
-
-        ticketGroups[ticketNo] = {
-            ticketNo: ticketNo,
-            complaintNo:
-                req.anacity_complaint_no || "N/A",
-            department:
-                req.materials?.departments?.department_name || "-",
-            technician:
-                req.technician_name || "-",
-            locationType:
-                req.location_type || "N/A",
-            locationName:
-                req.location_name || "N/A",
-            createdAt:
-                req.created_at,
-            items: []
-        };
-
-    }
-
-    ticketGroups[ticketNo].items.push(req);
-
-});
-
-
-// ====================================================
-// RENDER ONE ROW PER TICKET
-// ====================================================
-
-Object.values(ticketGroups).forEach(
-    ticket => {
-
-        const tr =
-            document.createElement("tr");
-
-        // --------------------------------------------
-        // COMPLAINT / TICKET
-        // --------------------------------------------
-
-        let ticketHtml = `
-
-            <div class="fw-bold text-success">
-                Complaint Number:
-                ${ticket.complaintNo}
-            </div>
-
-            <div class="fw-bold text-primary">
-                MR:
-                ${ticket.ticketNo}
-            </div>
-
-            <small class="text-muted">
-                ${formatDateTime(ticket.createdAt)}
-            </small>
-
-        `;
-
-
-  // --------------------------------------------
-// MATERIAL + QUANTITY ALIGNED ROWS
-// --------------------------------------------
-
-const approvalItemRowStyle =
-    "height:150px;" +
-    "box-sizing:border-box;" +
-    "display:flex;" +
-    "align-items:flex-start;" +
-    "border-bottom:1px solid #e5e5e5;" +
-    "padding:8px 0;";
-
-
-let materialHtml = "";
-
-
-ticket.items.forEach(
-    req => {
-
-        const material =
-            req.materials || {};
-
-
-        const materialCode =
-            material.material_code || "-";
-
-
-        const materialName =
-            material.material_name || "-";
-
-
-        const brand =
-            material.brand || "-";
-
-
-        const itemType =
-            material.item_type || "-";
-
-
-        const itemSize =
-            material.item_size || "-";
-
-
-        const specification =
-            material.specification || "-";
-
-
-        const unit =
-            material.unit || "-";
-
-
-        const unitCost =
-            window.RvrgSales.unit(material, req.material_id);
-
-
-        materialHtml += `
-
-            <div
-                style="${approvalItemRowStyle}">
-
-                <div
-                    style="
-                        width:100%;
-                        line-height:18px;
-                        overflow:auto;
-                    ">
-
-                    <div
-                        class="fw-bold text-primary">
-
-                        ${materialCode}
-
+        const tickets = new Map();
+        for (const req of data) {
+            if (!tickets.has(req.ticket_no)) tickets.set(req.ticket_no, []);
+            tickets.get(req.ticket_no).push(req);
+        }
+        for (const [ticketNo, items] of tickets) {
+            const first = items[0];
+            const row = document.createElement('tr');
+            row.className = 'approval-ticket-row';
+            row.innerHTML = `<td colspan="6">
+                <article class="approval-ticket" aria-label="${approvalEscape(ticketNo)}">
+                    <header class="approval-ticket-header">
+                        <div class="approval-ticket-identity">
+                            <div class="approval-eyebrow">MATERIAL REQUEST <span class="approval-count">${items.length} material${items.length === 1 ? '' : 's'}</span></div>
+                            <div class="approval-ticket-number">${approvalEscape(ticketNo)}</div>
+                            <div>Complaint <strong>${approvalEscape(first.anacity_complaint_no || 'N/A')}</strong></div>
+                            <div class="approval-muted">${approvalEscape(formatDateTime(first.created_at))}</div>
+                        </div>
+                        <div class="approval-ticket-context">
+                            <div class="approval-eyebrow">DEPARTMENT / TECHNICIAN</div>
+                            <strong>${approvalEscape(first.materials?.departments?.department_name || '-')}</strong>
+                            <div class="approval-muted">${approvalEscape(first.technician_name || '-')}</div>
+                        </div>
+                        <div class="approval-ticket-location">
+                            <div class="approval-eyebrow">LOCATION</div>
+                            <strong>${approvalEscape(first.location_type || 'N/A')}</strong>
+                            <div class="approval-muted">${approvalEscape(first.location_name || 'N/A')}</div>
+                        </div>
+                        <div class="approval-ticket-actions">
+                            <button type="button" class="btn btn-success btn-sm" data-approve>Approve ticket</button>
+                            <button type="button" class="btn btn-outline-danger btn-sm" data-reject>Reject</button>
+                        </div>
+                    </header>
+                    <div class="approval-items-scroll" tabindex="0" aria-label="Materials for ${approvalEscape(ticketNo)}">
+                        <table class="table approval-item-table mb-0">
+                            <colgroup><col style="width:49%"><col style="width:14%"><col style="width:15%"><col style="width:10%"><col style="width:12%"></colgroup>
+                            <thead><tr><th>Material details</th><th>Available stock</th><th>Sales / unit <small>incl. GST</small></th><th class="text-center">Requested</th><th>Approve qty</th></tr></thead>
+                            <tbody>${items.map(req => {
+                                const unit = req.materials?.unit || '-';
+                                const stock = pendingStock === null ? null : Number(pendingStock.get(String(req.material_id)) || 0);
+                                const requested = Number(req.requested_qty || 0);
+                                return `<tr>
+                                    <td>${approvalMaterialDetails(req)}</td>
+                                    <td><span class="approval-stock ${stock === null ? 'stock-unknown' : stock > 0 ? 'stock-available' : 'stock-empty'}">${stock === null ? 'Unavailable' : stock.toLocaleString('en-IN')}</span><div class="approval-muted">${approvalEscape(unit)}</div></td>
+                                    <td class="approval-price">${formatCurrency(window.RvrgSales.unit(req.materials, req.material_id))}</td>
+                                    <td class="text-center"><span class="approval-quantity">${requested}</span></td>
+                                    <td><label class="visually-hidden" for="approvedQty_${req.id}">Approve quantity for ${approvalEscape(req.materials?.material_code || req.id)}</label><input type="number" class="form-control form-control-sm approval-qty-input" id="approvedQty_${req.id}" value="${requested}" min="1" max="${requested}" step="1"></td>
+                                </tr>`;
+                            }).join('')}</tbody>
+                        </table>
                     </div>
-                    <div class="fw-semibold ${pendingStock && (pendingStock.get(String(req.material_id)) || 0) > 0 ? 'text-success' : 'text-danger'}">
-                        Balance stock: ${pendingStock ? Number(pendingStock.get(String(req.material_id)) || 0).toLocaleString('en-IN') : 'Unavailable'} ${unit}
-                    </div>
-
-
-                    <div
-                        class="fw-semibold">
-
-                        ${materialName}
-
-                    </div>
-
-
-                    <div class="small text-muted approval-material-meta">
-
-                        <div>
-                            <strong>Brand:</strong>
-                            ${brand}
-                        </div>
-
-                        <div>
-                            <strong>Type:</strong>
-                            ${itemType}
-                        </div>
-
-                        <div>
-                            <strong>Size:</strong>
-                            ${itemSize}
-                        </div>
-
-                        <div>
-                            <strong>Specification:</strong>
-                            ${specification}
-                        </div>
-
-                        <div>
-                            <strong>Unit:</strong>
-                            ${unit}
-                        </div>
-
-                        <div>
-                            <strong>Sales / unit (incl. GST):</strong>
-                            ₹${unitCost.toFixed(2)}
-                        </div>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-        `;
-
-    }
-);
-
-
-let quantityHtml = "";
-
-
-ticket.items.forEach(
-    req => {
-
-        const requestedQty =
-            Number(
-                req.requested_qty || 0
-            );
-
-
-        quantityHtml += `
-
-            <div
-                style="
-                    ${approvalItemRowStyle}
-                    display:flex;
-                    flex-direction:column;
-                    justify-content:center;
-                ">
-
-                <div
-                    class="fw-bold mb-1">
-
-                    Requested:
-
-                    <span
-                        class="badge bg-secondary">
-
-                        ${requestedQty}
-
-                    </span>
-
-                </div>
-
-
-                <label
-                    class="form-label small mb-1"
-                    for="approvedQty_${req.id}">
-
-                    Approve Qty
-
-                </label>
-
-
-                <input
-                    type="number"
-                    class="form-control form-control-sm text-center"
-                    id="approvedQty_${req.id}"
-                    value="${requestedQty}"
-                    min="1"
-                    max="${requestedQty}"
-                    step="1">
-
-            </div>
-
-        `;
-
-    }
-);
-
-        // --------------------------------------------
-        // BUILD TICKET ROW
-        // --------------------------------------------
-
-        tr.innerHTML = `
-
-            <td>
-
-                ${ticketHtml}
-
-                <div class="mt-2">
-
-                    <span
-                        class="badge bg-info text-dark"
-                    >
-                        ${ticket.items.length}
-                        Material(s)
-                    </span>
-
-                </div>
-
-            </td>
-
-
-            <td>
-
-                <strong>
-                    ${ticket.department}
-                </strong>
-
-                <br>
-
-                <small class="text-muted">
-
-                    <i
-                        class="fa-solid fa-user-wrench me-1"
-                    ></i>
-
-                    ${ticket.technician}
-
-                </small>
-
-            </td>
-
-
-            <td>
-
-                ${materialHtml}
-
-            </td>
-
-
-            <td>
-
-                ${quantityHtml}
-
-            </td>
-
-
-            <td>
-
-                ${ticket.locationType}
-
-                <br>
-
-                <small class="text-muted">
-                    ${ticket.locationName}
-                </small>
-
-            </td>
-
-
-            <td class="text-center">
-
-                <button
-                    class="btn btn-success btn-sm fw-bold mb-2"
-                    onclick="approveTicket('${ticket.ticketNo}')"
-                    title="Approve complete ticket"
-                >
-
-                    <i class="fa-solid fa-check"></i>
-
-                    Approve Ticket
-
-                </button>
-
-
-                <br>
-
-
-                <button
-                    class="btn btn-outline-danger btn-sm"
-                    onclick="openRejectModal('${ticket.ticketNo}')"
-                    title="Reject complete ticket"
-                >
-
-                    <i class="fa-solid fa-xmark"></i>
-
-                    Reject Ticket
-
-                </button>
-
-            </td>
-
-        `;
-
-
-        tableBody.appendChild(tr);
-
-    }
-);
+                </article>
+            </td>`;
+            row.querySelector('[data-approve]').addEventListener('click', () => window.approveTicket(ticketNo));
+            row.querySelector('[data-reject]').addEventListener('click', () => window.openRejectModal(ticketNo));
+            tableBody.appendChild(row);
+        }
 
     } catch (error) {
         console.error("Error loading approvals:", error.message);
@@ -957,212 +653,24 @@ async function loadApprovedHistory() {
         tableBody.innerHTML = '';
 
         data.forEach(req => {
-
-            const material =
-                req.materials || {};
-
-            const materialCode =
-                material.material_code || "-";
-
-            const materialName =
-                material.material_name || "-";
-
-            const brand =
-                material.brand || "-";
-
-            const itemType =
-                material.item_type || "-";
-
-            const itemSize =
-                material.item_size || "-";
-
-            const specification =
-                material.specification || "-";
-
-            const unit =
-                material.unit || "-";
-
-            const unitCost =
-                window.RvrgSales.unit(material, req.material_id);
-
-            const deptName =
-                material.departments?.department_name || "-";
-
-            const techName =
-                req.technician_name || "-";
-
-            const requestedQty =
-                Number(req.requested_qty || 0);
-
-            const approvedQty =
-                Number(
-                    req.approved_qty ?? requestedQty
-                );
-
-           
-const status = req.request_status;
-
-const statusBadge =
-    status === "PARTIALLY_APPROVED"
-        ? `
-            <span class="badge bg-warning text-dark">
-                Partially Approved
-            </span>
-        `
-        : status === "ISSUED"
-            ? `
-                <span class="badge bg-primary">
-                    Issued
-                </span>
-            `
-            : `
-                <span class="badge bg-success">
-                    Approved
-                </span>
-            `;
-
-
-const approvalDate =
-    req.approval_date
-        ? formatDateTime(req.approval_date)
-        : "N/A";
-            const tr =
-                document.createElement('tr');
-
-            tr.innerHTML = `
-
-                <td>
-
-                    <div class="fw-bold text-success">
-                        Complaint Number:
-                        ${req.anacity_complaint_no || "N/A"}
-                    </div>
-
-                    <div class="fw-bold text-primary">
-                        MR:
-                        ${req.ticket_no || "N/A"}
-                    </div>
-
-                </td>
-
-                <td>
-
-                    <strong>
-                        ${deptName}
-                    </strong>
-
-                    <br>
-
-                    <small class="text-muted">
-                        <i class="fa-solid fa-user-wrench me-1"></i>
-                        ${techName}
-                    </small>
-
-                </td>
-
-                <td>
-
-                    <div class="fw-bold text-primary">
-                        ${materialCode}
-                    </div>
-
-                    <div class="fw-semibold">
-                        ${materialName}
-                    </div>
-
-                    <div class="small text-muted mt-1 approval-material-meta">
-
-                        <div>
-                            <strong>Brand:</strong>
-                            ${brand}
-                        </div>
-
-                        <div>
-                            <strong>Type:</strong>
-                            ${itemType}
-                        </div>
-
-                        <div>
-                            <strong>Size:</strong>
-                            ${itemSize}
-                        </div>
-
-                        <div>
-                            <strong>Specification:</strong>
-                            ${specification}
-                        </div>
-
-                        <div>
-                            <strong>Unit:</strong>
-                            ${unit}
-                        </div>
-
-                        <div>
-                            <strong>Sales / unit (incl. GST):</strong>
-                            ₹${unitCost.toFixed(2)}
-                        </div>
-
-                    </div>
-
-                </td>
-
-                <td>
-
-                    <span class="badge bg-secondary">
-                        ${requestedQty}
-                    </span>
-
-                </td>
-
-                <td>
-
-                    <span class="badge ${
-                        approvedQty < requestedQty
-                            ? "bg-warning text-dark"
-                            : "bg-success"
-                    }">
-
-                        ${approvedQty}
-
-                    </span>
-
-                    ${
-                        approvedQty < requestedQty
-                            ? `
-                                <div class="small text-muted mt-1">
-                                    of ${requestedQty}
-                                </div>
-                            `
-                            : ""
-                    }
-
-                </td>
-
-                <td>
-
-                    ${req.location_type || "N/A"}
-
-                    <br>
-
-                    <small class="text-muted">
-                        ${req.location_name || "N/A"}
-                    </small>
-
-                </td>
-
-                <td>
-                    ${statusBadge}
-                </td>
-
-                <td>
-                    <small class="text-muted">
-                        ${approvalDate}
-                    </small>
-                </td>
-
-            `;
-
-            tableBody.appendChild(tr);
+            const requested = Number(req.requested_qty || 0);
+            const approved = Number(req.approved_qty ?? requested);
+            const statuses = {
+                APPROVED:['Approved','approved'], PARTIALLY_APPROVED:['Partially approved','partial'],
+                ISSUED:['Issued','issued'], PARTIALLY_ISSUED:['Partially issued','partial']
+            };
+            const [status, statusClass] = statuses[req.request_status] || ['Approved','approved'];
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td><div class="approval-history-ticket">${approvalEscape(req.ticket_no || 'N/A')}</div><div class="approval-muted">Complaint <strong>${approvalEscape(req.anacity_complaint_no || 'N/A')}</strong></div></td>
+                <td><strong>${approvalEscape(req.materials?.departments?.department_name || '-')}</strong><div class="approval-muted">${approvalEscape(req.technician_name || '-')}</div></td>
+                <td>${approvalMaterialDetails(req, true)}</td>
+                <td class="text-center"><span class="approval-quantity">${requested}</span></td>
+                <td class="text-center"><span class="approval-quantity approval-quantity-approved">${approved}</span></td>
+                <td><div>${approvalEscape(req.location_type || 'N/A')}</div><div class="approval-muted">${approvalEscape(req.location_name || 'N/A')}</div></td>
+                <td><span class="approval-status status-${statusClass}">${status}</span></td>
+                <td class="approval-muted">${approvalEscape(req.approval_date ? formatDateTime(req.approval_date) : 'N/A')}</td>`;
+            tableBody.appendChild(row);
         });
 
     } catch (error) {

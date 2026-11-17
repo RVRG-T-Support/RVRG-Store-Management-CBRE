@@ -67,6 +67,35 @@ try{
  await panel.getByRole('button',{name:'Previous',exact:true}).click();await page.waitForTimeout(80);assert.match(await panel.innerText(),/1–10 of/);
  }
  assert.deepEqual(errors,[],name+' browser errors');
+ if(name==='approvals'){
+ await page.evaluate(()=>{
+  const template=window.requestRows[0];
+  for(let i=0;i<6;i++) window.requestRows.push({...template,id:12000+i,ticket_no:'MR-DESIGN-0470',anacity_complaint_no:'196986',request_status:'PENDING',requested_qty:i===2?1:6,technician_name:'SHAIKH',location_name:'O-BLOCK 2ND SERIES CBR SHAFT FLUSHING GI LINE DAMAGE',materials:{...template.materials,material_code:'PLB-'+(390+i),material_name:i===0?'NUT, BOLTS & WASHERS':i===1?'MS FLANGE':'PIPE FITTING',brand:i===3?'<img src=x onerror=alert(1)>':'Manufacturer',item_type:'Spare',item_size:i===1?'65MM':'16 MM',specification:i===4?'Long specification with corrosion resistance and application details that must wrap naturally without clipping any text.':'Standard fitting',unit:i===0?'Kg':'Nos'}});
+  window.RvrgOps.stockBalances=async()=>new Map([['1',6]]);
+  window.approveTicket=ticket=>window.lastApproveClick=ticket;
+  rejectModalInstance={show(){window.rejectShown=true;}};
+ });
+ const search=page.locator('#pendingApprovalsTable-search');await search.fill('MR-DESIGN-0470');await search.press('Enter');await page.waitForTimeout(80);
+ const card=page.locator('.approval-ticket');assert.equal(await card.count(),1);
+ assert.equal(await card.locator('.approval-item-table tbody > tr').count(),6);
+ assert.equal(await card.locator('input[id^=approvedQty_]').count(),6);
+ for(const word of ['196986','SHAIKH','FLUSHING GI LINE DAMAGE','65MM','Available stock','incl. GST','Specification:'])assert.ok((await card.innerText()).includes(word),word);
+ assert.equal(await card.locator('img').count(),0);
+ await card.locator('[data-approve]').click();assert.equal(await page.evaluate(()=>window.lastApproveClick),'MR-DESIGN-0470');
+ await card.locator('[data-reject]').click();assert.equal(await page.locator('#rejectTicketNoDisplay').innerText(),'MR-DESIGN-0470');assert.equal(await page.evaluate(()=>window.rejectShown),true);
+ // Use a clean brand label in the design preview after verifying escaped markup.
+ await card.locator('.approval-material-meta').nth(3).evaluate(el=>{el.firstElementChild.textContent='Brand: Manufacturer';});
+ for(const width of [1440,1180,820,390]){
+  await page.setViewportSize({width,height:1000});await page.waitForTimeout(50);
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`approval page overflows at ${width}`);
+  const geometry=await card.locator('.approval-item-table tbody > tr').evaluateAll(rows=>rows.map(row=>({row:row.getBoundingClientRect().height,field:row.querySelector('input').getBoundingClientRect().y,top:row.getBoundingClientRect().y,bottom:row.getBoundingClientRect().bottom})));
+  for(const r of geometry){assert.ok(r.field>=r.top&&r.field<r.bottom,`quantity is outside matching row at ${width}`);assert.ok(r.row<135,`oversized material row ${r.row} at ${width}`);}
+  if(width===1440){fs.mkdirSync('test-results',{recursive:true});await page.locator('.main-content').screenshot({path:'test-results/approval-corporate-desktop.png'});}
+  if(width===390)await page.screenshot({path:'test-results/approval-corporate-mobile.png',fullPage:true});
+ }
+ assert.deepEqual(errors,[],'approval redesign browser errors');
+ console.log('PASS approval layout: six materials, aligned quantities, complete details, escaped content, action targets, desktop/tablet/mobile overflow checks.');
+ }
  if(name==='issue'){
  const input=page.locator('#approvedRequestsTable input').first();
  const requestId=(await input.getAttribute('id')).split('-')[1];

@@ -64,6 +64,14 @@ function getNavigationItems(role, permissions = {}) {
         },
 
         {
+            name: "Vendor Database",
+            icon: "fa-address-book",
+            link: "vendor_database.html",
+            section: "stock_entry",
+            roles: ["ADMIN", "FM", "AFM", "STOREKEEPER", "STORE"]
+        },
+
+        {
             name: "Stock Entry",
             icon: "fa-truck-ramp-box",
             link: "stock_entry.html",

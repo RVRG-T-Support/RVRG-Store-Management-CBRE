@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Vendor Database | RVRG Store Management</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="theme.css">
+</head>
+<body>
+    <div id="appHeader"></div>
+    <div id="globalSidebar"></div>
+
+    <main class="main-content">
+        <h1 class="h3 mb-3">Vendor Database</h1>
+
+        <form id="invoiceFilters" class="card card-body mb-3">
+            <div class="row g-3 align-items-end">
+                <div class="col-lg-5">
+                    <label class="form-label" for="invoiceSearch">Vendor, contact number, or invoice number</label>
+                    <input class="form-control" id="invoiceSearch" type="search" maxlength="120">
+                </div>
+                <div class="col-sm-6 col-lg-2">
+                    <label class="form-label" for="dateFrom">From date</label>
+                    <input class="form-control" id="dateFrom" type="date">
+                </div>
+                <div class="col-sm-6 col-lg-2">
+                    <label class="form-label" for="dateTo">To date</label>
+                    <input class="form-control" id="dateTo" type="date">
+                </div>
+                <div class="col-lg-3 d-flex gap-2">
+                    <button class="btn btn-primary" type="submit">Search</button>
+                    <button class="btn btn-outline-secondary" type="reset">Clear</button>
+                </div>
+            </div>
+            <div id="vendorHistory" class="mt-3" hidden>
+                <strong id="vendorHistoryLabel"></strong>
+                <button class="btn btn-sm btn-outline-secondary ms-2" id="allVendors" type="button">
+                    All vendors
+                </button>
+            </div>
+        </form>
+
+        <section class="card" aria-label="Purchase invoices">
+            <p id="invoiceStatus" class="px-3 pt-3 mb-2" role="status"></p>
+            <div class="table-responsive" tabindex="0" aria-label="Purchase invoice table">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th scope="col">Vendor</th>
+                            <th scope="col">Contact number</th>
+                            <th scope="col">Purchase date</th>
+                            <th scope="col">Invoice number</th>
+                            <th scope="col" class="text-end">Purchase amount</th>
+                            <th scope="col" class="text-end">GST</th>
+                            <th scope="col" class="text-end">Transport charges</th>
+                            <th scope="col" class="text-end">Invoice total</th>
+                            <th scope="col">Purchased materials</th>
+                        </tr>
+                    </thead>
+                    <tbody id="invoiceRows"></tbody>
+                </table>
+            </div>
+
+            <nav class="card-body d-flex flex-wrap justify-content-between gap-3" aria-label="Invoice pages">
+                <div class="d-flex align-items-center gap-2">
+                    <label for="invoicePageSize">Invoices per page</label>
+                    <select class="form-select form-select-sm w-auto" id="invoicePageSize">
+                        <option value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="50">50</option>
+                    </select>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-sm btn-outline-secondary" id="invoicePrevious" type="button" disabled>
+                        Previous
+                    </button>
+                    <span id="invoicePage" aria-live="polite"></span>
+                    <button class="btn btn-sm btn-outline-secondary" id="invoiceNext" type="button" disabled>
+                        Next
+                    </button>
+                </div>
+            </nav>
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <script src="secure-auth.js"></script>
+    <script src="common.js?v=vendor-database"></script>
+    <script src="navigation.js?v=vendor-database"></script>
+    <script>
+    (() => {
+        const invoiceFields = `
+            id, supplier_name, supplier_number, invoice_date, invoice_no, transport_cost, round_off,
+            stock_entry_details!inner (
+                material_id, quantity, purchase_price, gst_type, gst_percentage, line_total,
+                materials (material_code, material_name, unit)
+            )
+        `;
+        const currency = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' });
+        const money = paise => currency.format(paise / 100);
+        const toPaise = value => Math.round((Number(value) || 0) * 100);
+        const literalPattern = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+        function lineAmounts(line) {
+            const price = Number(line.purchase_price) || 0;
+            const quantity = Number(line.quantity) || 0;
+            const rate = (Number(line.gst_percentage) || 0) / 100;
+            const included = String(line.gst_type).trim().toUpperCase() === 'INCLUDED';
+            const extended = price * quantity;
+            const gross = toPaise(line.line_total ?? (included ? extended : extended * (1 + rate)));
+            const base = included ? Math.round(gross / (1 + rate)) : toPaise(extended);
+            return { base, gst: gross - base, gross };
+        }
+
+        function addCell(row, value, className = '') {
+            const cell = row.insertCell();
+            cell.textContent = value ?? '—';
+            cell.className = className;
+            return cell;
+        }
+
+        function renderInvoice(body, invoice, open, showHistory) {
+            const row = body.insertRow();
+            row.dataset.invoiceId = invoice.id;
+            const vendor = addCell(row, invoice.supplier_name || '—');
+
+            if (invoice.supplier_name) {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'btn btn-link p-0 text-start';
+                button.textContent = invoice.supplier_name;
+                button.setAttribute('aria-label', `View invoice history for ${invoice.supplier_name}`);
+                button.addEventListener('click', () => showHistory(invoice.supplier_name));
+                vendor.replaceChildren(button);
+            }
+
+            addCell(row, invoice.supplier_number || '—');
+            addCell(row, invoice.invoice_date, 'text-nowrap');
+            addCell(row, invoice.invoice_no);
+
+            const lines = invoice.stock_entry_details;
+            const totals = { base: 0, gst: 0, gross: 0 };
+            const details = document.createElement('details');
+            details.open = open;
+            const summary = document.createElement('summary');
+            summary.textContent = `${lines.length} ${lines.length === 1 ? 'material' : 'materials'}`;
+            const list = document.createElement('ul');
+            list.className = 'ps-3 mb-0';
+
+            for (const line of lines) {
+                const amounts = lineAmounts(line);
+                totals.base += amounts.base;
+                totals.gst += amounts.gst;
+                totals.gross += amounts.gross;
+                const material = line.materials;
+                const name = [material?.material_code, material?.material_name].filter(Boolean).join(' · ');
+                const quantity = [line.quantity, material?.unit].filter(Boolean).join(' ');
+                const item = document.createElement('li');
+                item.textContent = `${name || 'Material #' + line.material_id} — ${quantity} × ${money(toPaise(line.purchase_price))} · GST ${line.gst_percentage ?? 0}% · ${money(amounts.gross)}`;
+                list.append(item);
+            }
+
+            details.append(summary, list);
+            const transport = toPaise(invoice.transport_cost);
+            const roundOff = toPaise(invoice.round_off);
+            const amountClass = 'text-end text-nowrap';
+            addCell(row, money(totals.base), amountClass);
+            addCell(row, money(totals.gst), amountClass);
+            addCell(row, money(transport), amountClass);
+            const total = addCell(row, money(totals.gross + transport + roundOff), amountClass);
+            if (roundOff) {
+                const note = document.createElement('small');
+                note.className = 'd-block text-muted';
+                note.textContent = `Round-off ${money(roundOff)}`;
+                total.append(note);
+            }
+            row.insertCell().append(details);
+            return row;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!getCurrentUser()) {
+                window.location.replace('index.html');
+                return;
+            }
+            if (!checkUserAccess(['ADMIN', 'FM', 'AFM', 'STOREKEEPER', 'STORE'])) return;
+
+            const byId = id => document.getElementById(id);
+            const form = byId('invoiceFilters');
+            const search = byId('invoiceSearch');
+            const dateFrom = byId('dateFrom');
+            const dateTo = byId('dateTo');
+            const body = byId('invoiceRows');
+            const status = byId('invoiceStatus');
+            const pageSize = byId('invoicePageSize');
+            const previous = byId('invoicePrevious');
+            const next = byId('invoiceNext');
+            const pageLabel = byId('invoicePage');
+            const allVendors = byId('allVendors');
+
+            let filters = {};
+            let vendor = '';
+            let page = 0;
+            let requestId = 0;
+            let loading = false;
+            let lastResults;
+
+            function showHistory(name) {
+                vendor = name;
+                byId('vendorHistory').hidden = !vendor;
+                byId('vendorHistoryLabel').textContent = vendor ? `Invoice history for ${vendor}` : '';
+                if (vendor) {
+                    search.value = '';
+                    delete filters.search;
+                    allVendors.focus();
+                }
+                page = 0;
+                loadInvoices();
+            }
+
+            async function loadInvoices(background = false) {
+                if (background && loading) return;
+                const id = ++requestId;
+                const limit = Number(pageSize.value);
+                const first = page * limit;
+                loading = true;
+
+                if (!background) {
+                    status.textContent = 'Loading invoices…';
+                    body.replaceChildren();
+                    lastResults = undefined;
+                    previous.disabled = next.disabled = true;
+                    pageLabel.textContent = '';
+                }
+
+                try {
+                    let query = supabaseClient.from('stock_entry_header')
+                        .select(invoiceFields, { count: 'exact' })
+                        .order('invoice_date', { ascending: false, nullsFirst: false })
+                        .order('id', { ascending: false })
+                        .range(first, first + limit - 1);
+
+                    if (filters.from) query = query.gte('invoice_date', filters.from);
+                    if (filters.to) query = query.lte('invoice_date', filters.to);
+                    if (vendor) query = query.filter('supplier_name', 'imatch', `^${literalPattern(vendor)}$`);
+                    if (filters.search) {
+                        const pattern = JSON.stringify(literalPattern(filters.search));
+                        query = query.or(['supplier_name', 'supplier_number', 'invoice_no']
+                            .map(field => `${field}.imatch.${pattern}`).join(','));
+                    }
+
+                    const { data, error, count } = await query;
+                    if (id !== requestId) return;
+                    if (error) throw error;
+
+                    const pages = Math.max(1, Math.ceil(count / limit));
+                    if (page >= pages) {
+                        page = pages - 1;
+                        return loadInvoices();
+                    }
+
+                    const results = JSON.stringify(data);
+                    if (results !== lastResults) {
+                        const openIds = new Set(Array.from(body.rows)
+                            .filter(row => row.querySelector('details[open]'))
+                            .map(row => row.dataset.invoiceId));
+                        const focused = document.activeElement;
+                        const focusedInvoice = focused.closest('tr')?.dataset.invoiceId;
+                        body.replaceChildren();
+                        for (const invoice of data) {
+                            const invoiceId = String(invoice.id);
+                            const row = renderInvoice(body, invoice, openIds.has(invoiceId), showHistory);
+                            if (invoiceId === focusedInvoice) {
+                                row.querySelector(focused.localName)?.focus({ preventScroll: true });
+                            }
+                        }
+                        lastResults = results;
+                    }
+
+                    status.textContent = count
+                        ? `Showing ${first + 1}–${first + data.length} of ${count} invoices`
+                        : 'No purchase invoices match these filters.';
+                    pageLabel.textContent = `Page ${page + 1} of ${pages}`;
+                    previous.disabled = page === 0;
+                    next.disabled = page + 1 >= pages;
+                } catch (error) {
+                    if (id !== requestId) return;
+                    console.error('Vendor invoice query failed', error);
+                    status.textContent = background && body.rows.length
+                        ? 'Could not refresh purchase invoices. Showing the last loaded results.'
+                        : 'Could not load purchase invoices. Select Search to try again.';
+                } finally {
+                    if (id === requestId) loading = false;
+                }
+            }
+
+            dateFrom.addEventListener('input', () => dateTo.setCustomValidity(''));
+            dateTo.addEventListener('input', () => dateTo.setCustomValidity(''));
+
+            form.addEventListener('submit', event => {
+                event.preventDefault();
+                if (dateFrom.value && dateTo.value && dateFrom.value > dateTo.value) {
+                    dateTo.setCustomValidity('Choose a date on or after the from date.');
+                    dateTo.reportValidity();
+                    return;
+                }
+                filters = { search: search.value.trim(), from: dateFrom.value, to: dateTo.value };
+                page = 0;
+                loadInvoices();
+            });
+
+            form.addEventListener('reset', () => {
+                dateTo.setCustomValidity('');
+                filters = {};
+                showHistory('');
+            });
+
+            allVendors.addEventListener('click', () => {
+                showHistory('');
+                search.focus();
+            });
+
+            pageSize.addEventListener('change', () => {
+                page = 0;
+                loadInvoices();
+            });
+            previous.addEventListener('click', () => {
+                page -= 1;
+                loadInvoices();
+            });
+            next.addEventListener('click', () => {
+                page += 1;
+                loadInvoices();
+            });
+
+            const refresh = () => {
+                if (!document.hidden) loadInvoices(true);
+            };
+            window.addEventListener('focus', refresh);
+            document.addEventListener('visibilitychange', refresh);
+            window.setInterval(refresh, 60000);
+            loadInvoices();
+        });
+    })();
+    </script>
+</body>
+</html>

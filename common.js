@@ -159,6 +159,9 @@ function checkUserAccess(allowedRoles = []) {
 
         "stock_entry.html":
             "stock_entry",
+        
+        "vendor_database.html": 
+            "stock_entry",
 
         "current_stock.html":
             "current_stock",

@@ -2321,6 +2321,12 @@ if (updateNoError)
         const { error: ledgerError } = await supabase.from('stock_ledger').insert(ledgerArray);
         if (ledgerError) throw ledgerError;
 
+        try {
+            window.localStorage.setItem('RVRG_LAST_STOCK_ENTRY', String(entryId));
+        } catch {
+            // Vendor Database also refreshes on focus and periodically.
+        }
+
         // Keep the Material Master cost (and the current_stock view) in sync
         // only after the invoice details and stock movement have been saved.
         const costFailures = [];
